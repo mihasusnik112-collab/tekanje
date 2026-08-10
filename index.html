@@ -1180,6 +1180,9 @@
     const TREADMILL_DATA_CHAR_UUID = '00002ace-0000-1000-8000-00805f9b34fb';
     const TREADMILL_CONTROL_POINT_CHAR_UUID_1 = '00002ada-0000-1000-8000-00805f9b34fb';
     const TREADMILL_CONTROL_POINT_CHAR_UUID_2 = '00002ad9-0000-1000-8000-00805f9b34fb';
+    const FITSHOW_SERVICE_UUID = '0000fff0-0000-1000-8000-00805f9b34fb';
+    const FITSHOW_NOTIFY_UUID = '0000fff1-0000-1000-8000-00805f9b34fb';
+    const FITSHOW_WRITE_UUID = '0000fff2-0000-1000-8000-00805f9b34fb';
 
     const HR_SERVICE_UUID = '0000180d-0000-1000-8000-00805f9b34fb';
     const HR_MEASUREMENT_CHAR_UUID = '00002a37-0000-1000-8000-00805f9b34fb';
@@ -1187,6 +1190,11 @@
     let treadmillDevice = null;
     let treadmillChar = null;
     let controlPointChar = null;
+    let fitshowWriteChar = null;
+    let fitshowNotifyChar = null;
+    let treadmillProtocol = null; // 'ftms' | 'fitshow'
+    let treadmillBeltStarted = false;
+    let lastTargetSpeed = 5.0;
 
     let hrDevice = null;
     let hrChar = null;
@@ -1596,8 +1604,14 @@
     async function executeStartWorkoutWizard() {
         closeWizardModal();
 
+        if (!isTreadmillControllable()) {
+            alert("⚠️ Steza še ni povezana ali ne sprejema ukazov.\n\nNajprej kliknite '🔌 Poveži Stezo (FTMS)', nato znova zaženite tek.");
+            return;
+        }
+
         isWorkoutActive = true;
         hasHadSpeedBefore = false;
+        treadmillBeltStarted = false;
 
         // 1. Video
         const videoUrl = document.getElementById('wizVideoSelect').value;
@@ -1626,14 +1640,20 @@
             else if (progChoice === 'fatburn') loadFatBurnProgram();
             else generateAndApplyAiWorkout();
 
-            startCustomProgram();
+            await startCustomProgram();
         } else {
-            setTreadmillSpeed(5.0);
-            setTreadmillIncline(2.0);
+            const ok = await applyTreadmillTargets(5.0, 2.0, { start: true });
+            if (!ok) {
+                alert("Ukazi za hitrost/naklon niso bili sprejeti. Preverite Bluetooth povezavo s stezo.");
+                return;
+            }
+            currentSpeed = 5.0;
+            currentIncline = Math.min(2.0, maxInclineLimit);
+            updateUI();
         }
 
         document.getElementById('btnStopWorkout').disabled = false;
-        alert("▶ TEK SE JE PRIČEL! Srečno vadbo!");
+        alert("▶ TEK SE JE PRIČEL! Steza samodejno nastavlja hitrost in naklon.");
     }
 
     // --- GEMINI AI VIRTUALNI ASISTENT, TRENER IN UVOZ SLIK ---
@@ -2161,16 +2181,22 @@
         }
 
         txtEl.textContent = 'Iščem tekalno stezo...';
+        treadmillProtocol = null;
+        controlPointChar = null;
+        fitshowWriteChar = null;
+        fitshowNotifyChar = null;
+        treadmillChar = null;
+        treadmillBeltStarted = false;
 
         try {
             const optionalServices = [
                 FTMS_SERVICE_UUID,
-                '00001826-0000-1000-8000-00805f9b34fb',
-                '00002ace-0000-1000-8000-00805f9b34fb',
-                '00002ada-0000-1000-8000-00805f9b34fb',
-                '00002ad9-0000-1000-8000-00805f9b34fb',
-                '0000fff0-0000-1000-8000-00805f9b34fb',
-                '0000ff00-0000-1000-8000-00805f9b34fb',
+                FITSHOW_SERVICE_UUID,
+                TREADMILL_DATA_CHAR_UUID,
+                TREADMILL_CONTROL_POINT_CHAR_UUID_1,
+                TREADMILL_CONTROL_POINT_CHAR_UUID_2,
+                FITSHOW_NOTIFY_UUID,
+                FITSHOW_WRITE_UUID,
                 '0000fe59-0000-1000-8000-00805f9b34fb'
             ];
 
@@ -2179,8 +2205,7 @@
                 device = await navigator.bluetooth.requestDevice({
                     filters: [
                         { services: [FTMS_SERVICE_UUID] },
-                        { services: ['00001826-0000-1000-8000-00805f9b34fb'] },
-                        { services: ['0000fff0-0000-1000-8000-00805f9b34fb'] },
+                        { services: [FITSHOW_SERVICE_UUID] },
                         { namePrefix: 'Kubi' },
                         { namePrefix: 'Fit' },
                         { namePrefix: 'GB' },
@@ -2199,59 +2224,258 @@
             txtEl.textContent = 'Povezovanje z ' + (treadmillDevice.name || 'stezo') + '...';
 
             const server = await treadmillDevice.gatt.connect();
-            
-            let service = null;
+
+            // 1) Poskusi standardni FTMS
+            let ftmsService = null;
             try {
-                service = await server.getPrimaryService(FTMS_SERVICE_UUID);
-            } catch (e1) {
-                try {
-                    service = await server.getPrimaryService('0000fff0-0000-1000-8000-00805f9b34fb');
-                } catch (e2) {
-                    const services = await server.getPrimaryServices();
-                    service = services[0];
-                }
-            }
+                ftmsService = await server.getPrimaryService(FTMS_SERVICE_UUID);
+            } catch (e) {}
 
-            if (service) {
+            if (ftmsService) {
                 try {
-                    treadmillChar = await service.getCharacteristic(TREADMILL_DATA_CHAR_UUID);
-                } catch (e3) {
-                    const chars = await service.getCharacteristics();
-                    treadmillChar = chars.find(c => c.properties.notify || c.properties.indicate) || chars[0];
-                }
-
-                if (treadmillChar) {
+                    treadmillChar = await ftmsService.getCharacteristic(TREADMILL_DATA_CHAR_UUID);
                     await treadmillChar.startNotifications();
                     treadmillChar.addEventListener('characteristicvaluechanged', handleTreadmillData);
+                } catch (e) {
+                    console.warn('FTMS data char ni na voljo:', e);
                 }
 
                 try {
-                    controlPointChar = await service.getCharacteristic(TREADMILL_CONTROL_POINT_CHAR_UUID_1);
-                } catch (e) {
+                    controlPointChar = await ftmsService.getCharacteristic(TREADMILL_CONTROL_POINT_CHAR_UUID_2);
+                } catch (e1) {
                     try {
-                        controlPointChar = await service.getCharacteristic(TREADMILL_CONTROL_POINT_CHAR_UUID_2);
+                        controlPointChar = await ftmsService.getCharacteristic(TREADMILL_CONTROL_POINT_CHAR_UUID_1);
                     } catch (e2) {}
                 }
 
                 if (controlPointChar) {
                     try {
-                        await controlPointChar.writeValue(new Uint8Array([0x00]));
-                    } catch(e) {}
+                        if (controlPointChar.properties.indicate || controlPointChar.properties.notify) {
+                            await controlPointChar.startNotifications();
+                        }
+                    } catch (e) {}
+                    treadmillProtocol = 'ftms';
+                    await bleWrite(controlPointChar, new Uint8Array([0x00]));
+                    await sleepMs(150);
                 }
             }
 
-            dotEl.classList.add('connected');
-            txtEl.textContent = treadmillDevice.name || 'Povezano!';
-            document.getElementById('btnStopWorkout').disabled = false;
+            // 2) FitShow (FFF0/FFF1/FFF2) — če FTMS control ni na voljo
+            if (!controlPointChar) {
+                let fsService = null;
+                try {
+                    fsService = await server.getPrimaryService(FITSHOW_SERVICE_UUID);
+                } catch (e) {}
 
-            if (!startTime) {
-                startTime = Date.now();
-                startTimer();
+                if (fsService) {
+                    try {
+                        fitshowNotifyChar = await fsService.getCharacteristic(FITSHOW_NOTIFY_UUID);
+                        await fitshowNotifyChar.startNotifications();
+                        fitshowNotifyChar.addEventListener('characteristicvaluechanged', handleFitshowNotify);
+                    } catch (e) {
+                        console.warn('FitShow notify ni na voljo:', e);
+                    }
+
+                    try {
+                        fitshowWriteChar = await fsService.getCharacteristic(FITSHOW_WRITE_UUID);
+                        treadmillProtocol = 'fitshow';
+                    } catch (e) {
+                        console.warn('FitShow write ni na voljo:', e);
+                    }
+                }
             }
+
+            if (!isTreadmillControllable()) {
+                throw new Error('Steza je povezana, a ne najdem control/write karakteristike (FTMS 2AD9 ali FitShow FFF2).');
+            }
+
+            dotEl.classList.add('connected');
+            const modeLabel = treadmillProtocol === 'fitshow' ? 'FitShow' : 'FTMS';
+            txtEl.textContent = `${treadmillDevice.name || 'Povezano'} (${modeLabel})`;
         } catch (e) {
             console.error("BLE error:", e);
             txtEl.textContent = `Povezava spodletela: ${e.message}`;
             alert(`Povezovanje s stezo spodletelo:\n${e.message}\n\nREŠITEV:\n1. Preverite, ali je Bluetooth na telefonu vklopljen.\n2. Odklopite aplikacijo FitShow na telefonu, če teče v ozadju.\n3. V nastavitvah telefona pod Chrome dovolite 'Naprave v bližini'.`);
+        }
+    }
+
+    function isTreadmillControllable() {
+        return (treadmillProtocol === 'ftms' && !!controlPointChar) ||
+               (treadmillProtocol === 'fitshow' && !!fitshowWriteChar);
+    }
+
+    function sleepMs(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function bleWrite(characteristic, data) {
+        if (!characteristic) throw new Error('Manjka BLE karakteristika');
+        const payload = data instanceof Uint8Array ? data : new Uint8Array(data);
+        try {
+            if (characteristic.properties.write) {
+                await characteristic.writeValue(payload);
+                return;
+            }
+        } catch (e) {
+            console.warn('writeValue spodletel, poskušam withoutResponse:', e.message);
+        }
+        if (characteristic.properties.writeWithoutResponse && characteristic.writeValueWithoutResponse) {
+            await characteristic.writeValueWithoutResponse(payload);
+            return;
+        }
+        await characteristic.writeValue(payload);
+    }
+
+    function buildFitshowFrame(payload) {
+        let xor = 0;
+        for (const b of payload) xor ^= b;
+        return new Uint8Array([0x02, ...payload, xor, 0x03]);
+    }
+
+    async function fitshowSend(payload) {
+        if (!fitshowWriteChar) return false;
+        await bleWrite(fitshowWriteChar, buildFitshowFrame(payload));
+        return true;
+    }
+
+    function handleFitshowNotify(event) {
+        const data = new Uint8Array(event.target.value.buffer);
+        if (data.length < 4 || data[0] !== 0x02 || data[data.length - 1] !== 0x03) return;
+
+        const payload = data.slice(1, -2);
+        const cmd = payload[0];
+
+        // SYS_STATUS (0x51): stanje + hitrost/naklon
+        if (cmd === 0x51 && payload.length >= 4) {
+            const state = payload[1];
+            // 1=stop, 3=running, 4=stopping, 0x0A=pause
+            if (state === 0x01 || state === 0x03 || state === 0x04 || state === 0x0A) {
+                currentSpeed = (payload[2] || 0) / 10.0;
+                currentIncline = payload[3] || 0;
+                if (payload.length >= 8) {
+                    const distRaw = payload[6] | (payload[7] << 8);
+                    currentDistance = distRaw / 1000.0;
+                }
+                updateUI();
+            }
+        }
+    }
+
+    async function startTreadmillBelt() {
+        if (!isTreadmillControllable()) return false;
+
+        try {
+            if (treadmillProtocol === 'ftms') {
+                // Request Control + Start/Resume (obvezno pred nastavitvijo hitrosti)
+                await bleWrite(controlPointChar, new Uint8Array([0x00]));
+                await sleepMs(200);
+                await bleWrite(controlPointChar, new Uint8Array([0x07]));
+                await sleepMs(400);
+            } else if (treadmillProtocol === 'fitshow') {
+                // FitShow: uporabnik + zagon (0x53), nato steza odšteva 3-2-1
+                const weight = Math.max(30, Math.min(200, Math.round(realWeightKg || 70)));
+                const height = Math.max(120, Math.min(230, Math.round(userProfiles[currentUser]?.heightCm || 175)));
+                const age = Math.max(10, Math.min(100, Math.round(userProfiles[currentUser]?.age || 30)));
+                const gender = userProfiles[currentUser]?.gender === 'female' ? 1 : 0;
+                await fitshowSend([0x53, 0x00, 0x01, gender, weight & 0xff, age & 0xff, height & 0xff, 0xAA]);
+                await sleepMs(250);
+                await fitshowSend([0x53, 0x01, 0x00]);
+                await sleepMs(1200);
+            }
+            treadmillBeltStarted = true;
+            return true;
+        } catch (e) {
+            console.error('Zagon steze spodletel:', e);
+            return false;
+        }
+    }
+
+    async function stopTreadmillBelt() {
+        try {
+            if (treadmillProtocol === 'ftms' && controlPointChar) {
+                await bleWrite(controlPointChar, new Uint8Array([0x08, 0x01]));
+                await sleepMs(150);
+                await setTreadmillSpeed(0);
+            } else if (treadmillProtocol === 'fitshow' && fitshowWriteChar) {
+                await fitshowSend([0x53, 0x03]);
+            }
+        } catch (e) {
+            console.warn('Ustavitev steze:', e);
+        }
+        treadmillBeltStarted = false;
+    }
+
+    async function applyTreadmillTargets(speedKmh, inclinePercent, { start = false } = {}) {
+        if (!isTreadmillControllable()) {
+            console.warn('Steza ni pripravljena za ukaze (ni control point / FitShow write).');
+            return false;
+        }
+
+        const safeSpeed = Math.max(0, Math.min(speedKmh, 20));
+        const safeIncline = Math.min(Math.max(0, inclinePercent), maxInclineLimit);
+        lastTargetSpeed = safeSpeed > 0 ? safeSpeed : lastTargetSpeed;
+
+        try {
+            if (start || !treadmillBeltStarted) {
+                const started = await startTreadmillBelt();
+                if (!started) return false;
+            }
+
+            if (treadmillProtocol === 'fitshow') {
+                // FitShow: en ukaz nastavi hitrost (0.1 km/h) in naklon (1%)
+                const speedRaw = Math.round(safeSpeed * 10);
+                const inclineRaw = Math.round(safeIncline);
+                await fitshowSend([0x53, 0x02, speedRaw & 0xff, inclineRaw & 0xff]);
+                await sleepMs(120);
+            } else {
+                await setTreadmillSpeed(safeSpeed);
+                await sleepMs(120);
+                await setTreadmillIncline(safeIncline);
+            }
+            return true;
+        } catch (e) {
+            console.error('Nastavitev hitrosti/naklona spodletela:', e);
+            return false;
+        }
+    }
+
+    async function setTreadmillSpeed(speedKmh) {
+        if (treadmillProtocol === 'fitshow') {
+            return applyTreadmillTargets(speedKmh, currentIncline, { start: false });
+        }
+        if (!controlPointChar) return false;
+        try {
+            const rawSpeed = Math.round(Math.max(0, speedKmh) * 100);
+            const buffer = new ArrayBuffer(3);
+            const view = new DataView(buffer);
+            view.setUint8(0, 0x02);
+            view.setUint16(1, rawSpeed, true);
+            await bleWrite(controlPointChar, new Uint8Array(buffer));
+            return true;
+        } catch (e) {
+            console.error('setTreadmillSpeed:', e);
+            return false;
+        }
+    }
+
+    async function setTreadmillIncline(inclinePercent) {
+        if (treadmillProtocol === 'fitshow') {
+            const spd = currentSpeed > 0.5 ? currentSpeed : lastTargetSpeed;
+            return applyTreadmillTargets(spd, inclinePercent, { start: false });
+        }
+        if (!controlPointChar) return false;
+        try {
+            const safeIncline = Math.min(Math.max(0, inclinePercent), maxInclineLimit);
+            const rawIncline = Math.round(safeIncline * 10);
+            const buffer = new ArrayBuffer(3);
+            const view = new DataView(buffer);
+            view.setUint8(0, 0x03);
+            view.setInt16(1, rawIncline, true);
+            await bleWrite(controlPointChar, new Uint8Array(buffer));
+            return true;
+        } catch (e) {
+            console.error('setTreadmillIncline:', e);
+            return false;
         }
     }
 
@@ -2263,7 +2487,7 @@
 
         try {
             txtEl.textContent = 'Iščem uro...';
-            
+
             let device = null;
             try {
                 device = await navigator.bluetooth.requestDevice({
@@ -2277,7 +2501,7 @@
                     ],
                     optionalServices: [HR_SERVICE_UUID, HR_MEASUREMENT_CHAR_UUID]
                 });
-            } catch(e1) {
+            } catch (e1) {
                 device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
                     optionalServices: [HR_SERVICE_UUID, HR_MEASUREMENT_CHAR_UUID]
@@ -2296,38 +2520,11 @@
 
             dotEl.classList.add('connected');
             txtEl.textContent = hrDevice.name || 'Povezano!';
-            document.getElementById('btnStopWorkout').disabled = false;
         } catch (e) {
             console.error("HR BLE error:", e);
             txtEl.textContent = `Napaka: ${e.message}`;
             alert(`Povezovanje z uro / trakom spodletelo:\n${e.message}\n\n1. Na uri vklopite 'Heart Rate Broadcast' ali 'Oddajanje utripa'.\n2. Prepričajte se, da ura ni že povezana z drugo aplikacijo.`);
         }
-    }
-
-    async function setTreadmillSpeed(speedKmh) {
-        if (!controlPointChar) return;
-        try {
-            const rawSpeed = Math.round(speedKmh * 100);
-            const buffer = new ArrayBuffer(3);
-            const view = new DataView(buffer);
-            view.setUint8(0, 0x02);
-            view.setUint16(1, rawSpeed, true);
-            await controlPointChar.writeValue(buffer);
-        } catch (e) {}
-    }
-
-    async function setTreadmillIncline(inclinePercent) {
-        if (!controlPointChar) return;
-        try {
-            // VARNOSTNA OMEJITEV NAKLONA NA maxInclineLimit!
-            const safeIncline = Math.min(Math.max(0, inclinePercent), maxInclineLimit);
-            const rawIncline = Math.round(safeIncline * 10);
-            const buffer = new ArrayBuffer(3);
-            const view = new DataView(buffer);
-            view.setUint8(0, 0x03);
-            view.setInt16(1, rawIncline, true);
-            await controlPointChar.writeValue(buffer);
-        } catch (e) {}
     }
 
     function handleTreadmillData(event) {
@@ -2551,21 +2748,34 @@
 
     async function startCustomProgram() {
         if (programSteps.length === 0) return alert("Najprej sestavite ali izberite program!");
+
+        if (!isTreadmillControllable()) {
+            return alert("⚠️ Steza ni povezana. Najprej kliknite '🔌 Poveži Stezo (FTMS)', nato znova zaženite program.");
+        }
+
         if (!startTime) {
             startTime = Date.now();
             startTimer();
         }
 
         isWorkoutActive = true;
+        hasHadSpeedBefore = false;
+        treadmillBeltStarted = false;
         currentStepIdx = 0;
-        executeStep(programSteps[currentStepIdx]);
+        await executeStep(programSteps[currentStepIdx], true);
+        document.getElementById('btnStopWorkout').disabled = false;
     }
 
-    async function executeStep(step) {
+    async function executeStep(step, isFirstStep = false) {
         stepTimeRemaining = step.duration;
 
-        await setTreadmillSpeed(step.speed);
-        await setTreadmillIncline(step.incline);
+        const ok = await applyTreadmillTargets(step.speed, step.incline, {
+            start: isFirstStep || !treadmillBeltStarted
+        });
+        if (!ok && isFirstStep) {
+            alert("Steza ni sprejela ukazov za zagon. Preverite Bluetooth / FitShow povezavo.");
+            return;
+        }
 
         currentSpeed = step.speed;
         currentIncline = Math.min(step.incline, maxInclineLimit);
@@ -2578,7 +2788,7 @@
             if (stepTimeRemaining <= 0) {
                 currentStepIdx++;
                 if (currentStepIdx < programSteps.length) {
-                    executeStep(programSteps[currentStepIdx]);
+                    executeStep(programSteps[currentStepIdx], false);
                 } else {
                     // IZTEK INTERVALNEGA PROGRAMA -> POPOLNA ZAUSTAVITEV
                     stopWorkout('interval_completed');
@@ -2758,14 +2968,19 @@
         }
     }
 
-    function startGpxRouteOnTreadmill() {
+    async function startGpxRouteOnTreadmill() {
         if (!gpxPoints || gpxPoints.length === 0) {
             return alert("Najprej izberite ali naložite GPX progo!");
+        }
+
+        if (!isTreadmillControllable()) {
+            return alert("⚠️ Steza ni povezana. Najprej kliknite '🔌 Poveži Stezo (FTMS)'.");
         }
 
         isGpxFollowingActive = true;
         isWorkoutActive = true;
         hasHadSpeedBefore = false;
+        treadmillBeltStarted = false;
 
         if (!startTime) {
             startTime = Date.now();
@@ -2773,8 +2988,16 @@
         }
 
         const initialInc = Math.min(gpxPoints[0].inclinePct || 0, maxInclineLimit);
-        setTreadmillSpeed(5.0);
-        setTreadmillIncline(initialInc);
+        const ok = await applyTreadmillTargets(5.0, initialInc, { start: true });
+        if (!ok) {
+            isGpxFollowingActive = false;
+            isWorkoutActive = false;
+            return alert("Steza ni sprejela ukazov za zagon GPX proge.");
+        }
+
+        currentSpeed = 5.0;
+        currentIncline = initialInc;
+        updateUI();
 
         document.getElementById('btnStopWorkout').disabled = false;
         switchSection('secLive', { currentTarget: document.querySelectorAll('.selector-btn')[0] });
@@ -2877,8 +3100,8 @@
 
         stopTimer();
 
-        // 1. Ustavitev steze
-        setTreadmillSpeed(0);
+        // 1. Ustavitev steze (FTMS Stop ali FitShow Stop)
+        stopTreadmillBelt();
         currentSpeed = 0.0;
 
         // 2. Ustavitev intervalnega programa
