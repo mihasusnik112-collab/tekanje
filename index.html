@@ -753,9 +753,14 @@
                             </div>
                         </div>
 
-                        <button class="btn btn-purple" style="margin-top: 0.5rem;" onclick="saveActiveProfileSettings()">
-                            💾 Shrani Spremembe Profila
-                        </button>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                            <button class="btn btn-purple" style="flex: 1;" onclick="saveActiveProfileSettings()">
+                                💾 Shrani Spremembe Profila
+                            </button>
+                            <button class="btn btn-danger" onclick="deleteActiveProfile()" title="Izbriši ta profil">
+                                🗑️ Izbriši Profil
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -1330,7 +1335,7 @@
         loadSavedYouTubeAudio();
     }
 
-    // --- UREJANJE IN DODAJANJE NOVIH PROFILOV Z DATUMOM ROJSTVA IN SUPABASE SINHRONIZACIJO ---
+    // --- UREJANJE, DODAJANJE IN IZBRIS PROFILOV Z SUPABASE SINHRONIZACIJO ---
     function populateProfileForm() {
         const prof = userProfiles[currentUser];
         if (!prof) return;
@@ -1461,6 +1466,37 @@
 
         await setUser(newName);
         alert(`Profil '${newName}' je uspešno shranjen in sinhroniziran v Supabase!`);
+    }
+
+    async function deleteActiveProfile() {
+        const profileNames = Object.keys(userProfiles);
+        if (profileNames.length <= 1) {
+            return alert("Ni mogoče izbrisati edinega preostalega profila! V aplikaciji mora vedno ostati vsaj en profil.");
+        }
+
+        const nameToDelete = currentUser;
+        if (!confirm(`Ali ste prepričani, da želite trajno izbrisati profil '${nameToDelete}' ter njegove nastavitve?`)) return;
+
+        // Izbris iz Supabase baze
+        if (supabaseClient) {
+            try {
+                await supabaseClient.from('profiles').delete().eq('name', nameToDelete);
+                await supabaseClient.from('workouts').delete().eq('user_name', nameToDelete);
+                await supabaseClient.from('interval_programs').delete().eq('program_name', `${nameToDelete}_Program`);
+            } catch (e) {
+                console.warn("Napaka pri brisanju profila iz Supabase:", e);
+            }
+        }
+
+        // Izbris iz lokalne shrambe
+        delete userProfiles[nameToDelete];
+        localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
+
+        // Preklop na prvi preostali profil
+        const remaining = Object.keys(userProfiles);
+        await setUser(remaining[0]);
+
+        alert(`Profil '${nameToDelete}' je bil uspešno izbrisan.`);
     }
 
     // --- INTERAKTIVNI ČAROVNIK ZA ZAGON TEKA ("ZAČNI TEK" Z AVDIO MOŽNOSTJO) ---
