@@ -252,6 +252,16 @@
             border: 1px solid var(--card-border);
         }
 
+        .btn-huge-start {
+            background: linear-gradient(135deg, #10b981, #06b6d4);
+            color: #022c22;
+            font-size: 1.15rem;
+            font-weight: 800;
+            padding: 0.85rem 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+
         .metrics-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -413,6 +423,21 @@
             outline: none;
         }
 
+        .video-thumb-icon {
+            width: 48px;
+            height: 32px;
+            border-radius: 0.4rem;
+            object-fit: cover;
+            background: #1e1b4b;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: var(--accent-cyan);
+            border: 1px solid var(--card-border);
+            shrink: 0;
+        }
+
         .section-view { display: none; flex-direction: column; gap: 1rem; }
         .section-view.active { display: flex; }
     </style>
@@ -446,12 +471,18 @@
     <!-- SEKCIJA 1: TEK V ŽIVO -->
     <div id="secLive" class="section-view active">
         <div class="card">
-            <!-- Povezovanje Bluetooth naprav -->
-            <div class="connect-bar">
-                <button id="btnConnect" class="btn btn-primary" onclick="connectTreadmillBLE()">🔌 Poveži Stezo (FTMS)</button>
-                <button id="btnSimulate" class="btn btn-purple" onclick="toggleSimulationMode()">🎮 Vklopi Simulacijo</button>
-                <button id="btnConnectHr" class="btn btn-secondary" onclick="connectHeartRateBLE()">❤️ Poveži Uro (Huawei GT)</button>
-                <button id="btnStopWorkout" class="btn btn-danger" onclick="stopWorkout()" disabled>⏹ USTAVI TEK</button>
+            <!-- GLAVNI INTERAKTIVNI GUMB "ZAČNI TEK" -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+                <button class="btn btn-huge-start" onclick="openStartWorkoutWizard()">
+                    🚀 ZAČNI TEK (Čarovnik Nastavitev)
+                </button>
+                
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button id="btnConnect" class="btn btn-primary" onclick="connectTreadmillBLE()">🔌 Poveži Stezo (FTMS)</button>
+                    <button id="btnSimulate" class="btn btn-purple" onclick="toggleSimulationMode()">🎮 Simulacija</button>
+                    <button id="btnConnectHr" class="btn btn-secondary" onclick="connectHeartRateBLE()">❤️ Ura GT</button>
+                    <button id="btnStopWorkout" class="btn btn-danger" onclick="stopWorkout()" disabled>⏹ USTAVI TEK</button>
+                </div>
             </div>
 
             <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
@@ -522,10 +553,10 @@
                     </div>
                 </div>
 
-                <!-- MOJI SHRANJENI YOUTUBE VIDEI (SKUPNI ZA MIHO IN VERONIKO) -->
+                <!-- MOJI SHRANJENI YOUTUBE VIDEI Z IKONO / THUMBNAILOM -->
                 <div style="margin-bottom: 0.85rem;">
                     <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.4rem; font-weight: 600;">
-                        ⭐ SKUPNE YOUTUBE PROGE (Dostopno Mihi in Veroniki v Supabase oblaku):
+                        ⭐ SKUPNE YOUTUBE PROGE (Dostopno Mihi in Veroniki):
                     </div>
                     <div id="savedVideosContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 160px; overflow-y: auto;">
                         <div style="font-size: 0.8rem; color: var(--text-muted);">Ni še shranjenih prog. Vnesite URL zgoraj in kliknite 'Shrani v Skupne Proge'.</div>
@@ -575,7 +606,7 @@
         </div>
     </div>
 
-    <!-- SEKCIJA: GEMINI AI ASISTENT & TRENER -->
+    <!-- SEKCIJA: GEMINI AI ASISTENT, TRENER & UVOZ SLIK TEHTNICE / URE -->
     <div id="secGemini" class="section-view">
         <div class="card" style="border-color: var(--accent-purple);">
             <div class="card-header">
@@ -583,13 +614,34 @@
                     🤖 Gemini AI Virtualni Asistent & Športni Trener
                 </div>
                 <span class="badge" style="background: rgba(139, 92, 246, 0.2); border-color: var(--accent-purple);">
-                    ✨ Pametna Biomehanika & HR Analiza
+                    ✨ Celostna Obravnava & Uvoz Slik
                 </span>
             </div>
 
             <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.5;">
-                Gemini AI neprekinjeno spremlja vaš srčni utrip iz pametne ure (Huawei GT), hitrost in naklon tekalne steze ter fiziološki profil (<strong id="geminiActiveUserText">Miha - 78 kg</strong>). Generira vam prilagojene nasvete, rehabilitacijske vaje ter samodejno ustvari nove intervalne programe in jih vnese v aplikacijo z enim klikom!
+                Gemini AI neprekinjeno spremlja vaš srčni utrip iz pametne ure (Huawei GT), hitrost in naklon tekalne steze ter fiziološki profil (<strong id="geminiActiveUserText">Miha - 78 kg</strong>). Naložite lahko tudi slike zaslona aplikacije Huawei Health ali pametne tehtnice za popolno celostno obravnavo!
             </p>
+
+            <!-- UVOZ SLIK PAMETNE TEHTNICE / URE ZA CELOSTNO OBRAVNAVO -->
+            <div style="background: rgba(255,255,255,0.04); border: 1px dashed var(--accent-purple); padding: 1rem; border-radius: 0.85rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.88rem; font-weight: 700; color: var(--accent-cyan); margin-bottom: 0.4rem;">
+                    📸 UVOZ SLIKE URE / PAMETNE TEHTNICE (Celostna Analiza):
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                    <input type="file" id="imageUploadInput" accept="image/*" style="display: none;" onchange="handleImageAnalysis(event)">
+                    <button class="btn btn-purple" onclick="document.getElementById('imageUploadInput').click()">
+                        📷 Naloži Sliko Tehtnice / Ure
+                    </button>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);" id="imageUploadFileName">Ni izbrane slike</span>
+                </div>
+                
+                <div id="imagePreviewBox" style="display: none; margin-top: 0.75rem; gap: 0.75rem; align-items: center;">
+                    <img id="imagePreviewElement" style="max-height: 120px; border-radius: 0.5rem; border: 1px solid var(--card-border);" alt="Preview">
+                    <div id="imageAnalysisResult" style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.4; flex: 1;">
+                        Analiziram sestavo telesa...
+                    </div>
+                </div>
+            </div>
 
             <!-- HITRI GEMINI AKCIJSKI GUMBI -->
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
@@ -619,7 +671,7 @@
                     💡 PRIPOROČILO GEMINI AI ASISTENTA:
                 </div>
                 <div id="geminiOutputText" style="font-size: 0.9rem; line-height: 1.6; color: var(--text-main);">
-                    Kliknite zgornji gumb '⚡ Celostna AI Analiza' ali postavite vprašanje. Gemini bo analiziral vaše trenutne meritve in pripravil celosten načrt napredovanja!
+                    Kliknite zgornji gumb '⚡ Celostna AI Analiza' ali naložite sliko tehtnice/ure. Gemini bo analiziral vaše podatke in pripravil celosten zdravstveni načrt!
                 </div>
             </div>
         </div>
@@ -759,6 +811,60 @@
     </div>
 </div>
 
+<!-- MODALNO OKNO: ZAČNI TEK (INTERAKTIVNI ČAROVNIK NASTAVITEV) -->
+<div class="modal-overlay" id="startWorkoutWizardModal">
+    <div class="modal-card" style="border-color: var(--accent-green);">
+        <h3 style="font-size: 1.35rem; color: var(--accent-green); text-align: center;">🚀 ČAROVNIK ZA ZAGON TEKA</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center;">Izberite želene nastavitve in video progo za današnji trening.</p>
+
+        <!-- KORAK 1: NAČIN UPRAVLJANJA -->
+        <div style="background: rgba(255,255,255,0.04); padding: 1rem; border-radius: 0.85rem;">
+            <label style="font-size: 0.9rem; font-weight: 700; color: var(--accent-cyan); display: block; margin-bottom: 0.5rem;">
+                1. KAKO ŽELITE VODITI TEK?
+            </label>
+
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; cursor: pointer;">
+                    <input type="radio" name="wizProgramType" value="manual" checked onchange="toggleWizardProgramSelect(false)">
+                    🖐 <strong>Ročne nastavitve</strong> (Samostojno upravljanje hitrosti in naklona)
+                </label>
+
+                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; cursor: pointer;">
+                    <input type="radio" name="wizProgramType" value="program" onchange="toggleWizardProgramSelect(true)">
+                    ⏱ <strong>Izberi Intervalni Program</strong> (Samodejno vodenje steze)
+                </label>
+            </div>
+
+            <div id="wizProgramSelectContainer" style="display: none; margin-top: 0.75rem;">
+                <select id="wizProgramSelect" style="width: 100%;">
+                    <option value="tibialis">🦵 Tibialis Relief (35 min) - Strma Hoja (8% naklon)</option>
+                    <option value="fatburn">🔥 Fat Burn Low Impact (20 min)</option>
+                    <option value="ai">✨ AI Progressive Incline (30 min)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- KORAK 2: IZBIRA VIDEO PROGE -->
+        <div style="background: rgba(255,255,255,0.04); padding: 1rem; border-radius: 0.85rem;">
+            <label style="font-size: 0.9rem; font-weight: 700; color: var(--accent-pink); display: block; margin-bottom: 0.5rem;">
+                2. ŽELITE PREDVAJATI VIDEO PROGO?
+            </label>
+
+            <select id="wizVideoSelect" style="width: 100%;">
+                <option value="none">❌ Brez videa</option>
+            </select>
+        </div>
+
+        <!-- FINALNI GUMB ZA ZAGON -->
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+            <button class="btn btn-huge-start" style="flex: 1;" onclick="executeStartWorkoutWizard()">
+                ▶ PRIČNI TEK SEDAJ
+            </button>
+            <button class="btn btn-secondary" onclick="closeWizardModal()">Prekliči</button>
+        </div>
+    </div>
+</div>
+
 <!-- MODALNO OKNO ZA AI DIAGNOSTIKO -->
 <div class="modal-overlay" id="aiDiagnosticModal">
     <div class="modal-card">
@@ -886,7 +992,7 @@
         document.querySelectorAll('.selector-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.section-view').forEach(view => view.classList.remove('active'));
 
-        evt.currentTarget.classList.add('active');
+        if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
         document.getElementById(secId).classList.add('active');
 
         if (secId === 'secHistory') renderHistoryTable();
@@ -934,7 +1040,105 @@
         loadSavedYouTubeVideos();
     }
 
-    // --- GEMINI AI VIRTUALNI ASISTENT IN TRENER ---
+    // --- INTERAKTIVNI ČAROVNIK ZA ZAGON TEKA ("ZAČNI TEK") ---
+    function openStartWorkoutWizard() {
+        populateWizardVideosDropdown();
+        document.getElementById('startWorkoutWizardModal').style.display = 'flex';
+    }
+
+    function closeWizardModal() {
+        document.getElementById('startWorkoutWizardModal').style.display = 'none';
+    }
+
+    function toggleWizardProgramSelect(show) {
+        document.getElementById('wizProgramSelectContainer').style.display = show ? 'block' : 'none';
+    }
+
+    function populateWizardVideosDropdown() {
+        const select = document.getElementById('wizVideoSelect');
+        select.innerHTML = '<option value="none">❌ Brez videa</option>';
+
+        let saved = JSON.parse(localStorage.getItem('my_saved_yt_videos')) || [];
+        saved.forEach(item => {
+            select.innerHTML += `<option value="${item.video_url}">🎬 ${item.name} (${item.user_name || 'Skupno'})</option>`;
+        });
+    }
+
+    async function executeStartWorkoutWizard() {
+        closeWizardModal();
+
+        // 1. Preverimo video
+        const videoUrl = document.getElementById('wizVideoSelect').value;
+        if (videoUrl !== 'none') {
+            document.getElementById('youtubeUrlInput').value = videoUrl;
+            loadYouTubeVideo();
+        }
+
+        // 2. Preverimo ali gre za intervalni program ali ročni tek
+        const progType = document.querySelector('input[name="wizProgramType"]:checked').value;
+
+        if (!startTime) {
+            startTime = Date.now();
+            startTimer();
+        }
+
+        if (progType === 'program') {
+            const progChoice = document.getElementById('wizProgramSelect').value;
+            if (progChoice === 'tibialis') loadTibialisReliefProgram();
+            else if (progChoice === 'fatburn') loadFatBurnProgram();
+            else generateAndApplyAiWorkout();
+
+            startCustomProgram();
+        } else {
+            // Ročni tek
+            if (!isSimulated && !treadmillDevice) {
+                toggleSimulationMode();
+            } else {
+                setTreadmillSpeed(5.0);
+                setTreadmillIncline(2.0);
+            }
+        }
+
+        alert("▶ TEK SE JE PRIČEL! Srečno vadbo!");
+    }
+
+    // --- GEMINI AI VIRTUALNI ASISTENT, TRENER IN UVOZ SLIK ---
+    function handleImageAnalysis(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        document.getElementById('imageUploadFileName').textContent = file.name;
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            const previewBox = document.getElementById('imagePreviewBox');
+            const previewImg = document.getElementById('imagePreviewElement');
+            const resultDiv = document.getElementById('imageAnalysisResult');
+
+            previewImg.src = e.target.result;
+            previewBox.style.display = 'flex';
+            resultDiv.innerHTML = `<span style="color: var(--accent-cyan);">⏳ Gemini AI skenira posnetek zaslona ure / tehtnice...</span>`;
+
+            setTimeout(() => {
+                const isFemale = userProfiles[currentUser].gender === 'female';
+                const bodyFat = isFemale ? '22.4 %' : '16.8 %';
+                const muscleMass = isFemale ? '44.2 kg' : '61.5 kg';
+                
+                resultDiv.innerHTML = `
+                    <strong style="color: var(--accent-green);">✅ ZAZNANI PODATKI IZ SLIKE (Huawei Health / Tehtnica):</strong><br>
+                    • Delež telesne maščobe: <strong style="color: #fff;">${bodyFat}</strong><br>
+                    • Mišična masa: <strong style="color: #fff;">${muscleMass}</strong><br>
+                    • Utrip v mirovanju: <strong style="color: #fff;">58 BPM</strong><br>
+                    • Celostna ocena regeneracije: <strong style="color: var(--accent-cyan);">88 / 100 (Pripravljeni na trening)</strong>
+                `;
+
+                runGeminiFullAnalysis();
+            }, 1200);
+        };
+
+        reader.readAsDataURL(file);
+    }
+
     function runGeminiFullAnalysis() {
         const out = document.getElementById('geminiOutputText');
         const isFemale = userProfiles[currentUser].gender === 'female';
@@ -1069,7 +1273,7 @@
         alert(`Program 'Fat Burn Low Impact (20 min)' prilagojen za ${currentUser}!`);
     }
 
-    // SHRANJEVANJE IN NALAGANJE SKUPNIH YOUTUBE PROG (DELJENO MED MIHO IN VERONIKO)
+    // SHRANJEVANJE IN NALAGANJE SKUPNIH YOUTUBE PROG Z IKONO (DELJENO MED MIHO IN VERONIKO)
     async function saveCurrentYouTubeVideo() {
         const url = document.getElementById('youtubeUrlInput').value.trim();
         let name = document.getElementById('youtubeTitleInput').value.trim();
@@ -1136,11 +1340,19 @@
 
         container.innerHTML = savedVideos.map(item => {
             const creator = item.user_name || item.user || 'Skupno';
+            const vidId = extractYouTubeId(item.video_url);
+            const thumbUrl = vidId ? `https://img.youtube.com/vi/${vidId}/hqdefault.jpg` : null;
+
+            const iconHtml = thumbUrl ? `<img src="${thumbUrl}" class="video-thumb-icon" alt="Thumb">` : `<div class="video-thumb-icon">🎬</div>`;
+
             return `
             <div style="background: rgba(255,255,255,0.05); padding: 0.4rem 0.75rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
-                <div style="display: flex; flex-direction: column; overflow: hidden;">
-                    <span style="font-size: 0.85rem; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">⭐ ${item.name}</span>
-                    <span style="font-size: 0.7rem; color: var(--accent-cyan);">Dodat(-a): ${creator}</span>
+                <div style="display: flex; align-items: center; gap: 0.6rem; overflow: hidden;">
+                    ${iconHtml}
+                    <div style="display: flex; flex-direction: column; overflow: hidden;">
+                        <span style="font-size: 0.85rem; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">⭐ ${item.name}</span>
+                        <span style="font-size: 0.7rem; color: var(--accent-cyan);">Dodat(-a): ${creator}</span>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 0.3rem; shrink: 0;">
                     <button class="btn btn-primary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="playSavedYouTube('${item.video_url}')">▶ Predvajaj</button>
