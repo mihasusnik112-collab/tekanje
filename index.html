@@ -2621,7 +2621,7 @@
     }
 
     // --- GEMINI AI VIRTUALNI ASISTENT, TRENER IN UVOZ SLIK ---
-    const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.0-flash'];
+    const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest'];
     // Ključ ni v plaintextu — XOR + razpršeni bajti (prepis v localStorage lahko preglasi)
     function _resolveEmbeddedGeminiKey() {
         const x = 90;
@@ -2762,13 +2762,14 @@ OBVEZNO:
         if (imageDataUrl) {
             const m = String(imageDataUrl).match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
             if (m) {
-                parts.push({ inline_data: { mime_type: m[1], data: m[2] } });
+                // REST API: camelCase (inlineData) — deluje z AQ. auth ključi
+                parts.push({ inlineData: { mimeType: m[1], data: m[2] } });
             }
         }
         parts.push({ text: userText });
 
         const body = {
-            system_instruction: { parts: [{ text: getGeminiSystemInstruction() }] },
+            systemInstruction: { parts: [{ text: getGeminiSystemInstruction() }] },
             contents: [{ role: 'user', parts }],
             generationConfig: {
                 temperature,
@@ -2780,18 +2781,26 @@ OBVEZNO:
         let lastError = null;
         for (const model of GEMINI_MODELS) {
             try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(geminiApiKey)}`;
+                // AQ. auth ključi: x-goog-api-key header (ne ?key= v URL)
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
                 const res = await fetch(url, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': geminiApiKey
+                    },
                     body: JSON.stringify(body)
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) {
                     const msg = data?.error?.message || `HTTP ${res.status}`;
                     lastError = new Error(`${model}: ${msg}`);
+                    // Auth napaka — nehaj (drugi modeli ne pomagajo)
+                    if (res.status === 401 || res.status === 403 || /api key|authentication|credential|permission|PERMISSION_DENIED/i.test(msg)) {
+                        throw lastError;
+                    }
                     // Poskusi naslednji model pri 404 / not found / unsupported
-                    if (res.status === 404 || /not found|not supported|deprecated/i.test(msg)) continue;
+                    if (res.status === 404 || /not found|not supported|deprecated|not available/i.test(msg)) continue;
                     throw lastError;
                 }
                 const text = (data?.candidates || [])
@@ -2800,14 +2809,16 @@ OBVEZNO:
                     .join('')
                     .trim();
                 if (!text) {
-                    lastError = new Error(`${model}: prazen odgovor (morda blocked).`);
+                    const block = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
+                    lastError = new Error(`${model}: prazen odgovor${block ? ` (${block})` : ''}.`);
                     continue;
                 }
                 return { text, model, raw: data };
             } catch (e) {
                 lastError = e;
-                if (e?.message && !/404|not found|deprecated/i.test(e.message) && !String(e).includes('Failed to fetch')) {
-                    // network vs model — keep trying on network for other models only if model-related
+                // Auth / hard fail — nehaj zanke
+                if (/api key|authentication|credential|permission|PERMISSION_DENIED|HTTP 401|HTTP 403/i.test(e?.message || '')) {
+                    break;
                 }
             }
         }
@@ -2823,8 +2834,13 @@ OBVEZNO:
         const out = document.getElementById('geminiOutputText');
         const msg = err?.message || String(err);
         if (out) {
-            out.innerHTML = `<strong style="color:var(--accent-red);">❌ Gemini napaka:</strong><br>${formatGeminiHtml(msg)}<br><br>
-            Preveri API ključ in omrežje. Ključ dobiš na <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent-cyan);">aistudio.google.com/apikey</a>.`;
+            const authHint = /api key|authentication|credential|permission/i.test(msg)
+                ? `<br><br><strong>Kaj narediti:</strong><br>
+                1. V <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent-cyan);">AI Studio</a> omeji ključ na <em>Gemini API only</em> (ne sme biti Unrestricted).<br>
+                2. Če še ne dela: ustvari nov Auth ključ (začne se z AQ.) in ga vstavi pod <em>Napredno: zamenjaj ključ</em>.<br>
+                3. Stari lokalni ključ lahko počistiš z gumbom <em>Privzeti</em>.`
+                : `<br><br>Preveri omrežje in poskusi znova.`;
+            out.innerHTML = `<strong style="color:var(--accent-red);">❌ Gemini napaka:</strong><br>${formatGeminiHtml(msg)}${authHint}`;
         }
     }
 
