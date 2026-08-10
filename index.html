@@ -735,6 +735,20 @@
                             </div>
                         </div>
 
+                        <!-- VARNOSTNA OMEJITEV NAKLONA TEKALNE STEZE -->
+                        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid var(--accent-green); padding: 0.75rem; border-radius: 0.75rem;">
+                            <label style="font-size: 0.82rem; font-weight: 700; color: var(--accent-green); display: block; margin-bottom: 0.3rem;">
+                                🛡️ VARNOSTNA MEJA NAKLONA STEZE (%):
+                            </label>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <input type="number" id="profInputMaxIncline" step="0.5" min="1" max="15" value="10.0" style="flex: 1;" onchange="setMaxInclineLimit(this.value)">
+                                <span style="font-size: 0.8rem; color: var(--text-muted);">Max % (npr. 10.0%)</span>
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">
+                                Preprečuje preobremenitev steze. Vsi GPX in intervalni nakloni se samodejno omejijo na to vrednost.
+                            </div>
+                        </div>
+
                         <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
                             <button class="btn btn-purple" style="flex: 1;" onclick="saveActiveProfileSettings()">
                                 💾 Shrani Spremembe Profila
@@ -883,7 +897,7 @@
             <div class="card-header">
                 <div class="card-title">🗺️ Supabase Proge in GPX Auto-Following</div>
                 <input type="file" id="gpxFileInput" accept=".gpx" style="display: none;" onchange="loadGpxFile(event)">
-                <button class="btn btn-primary" onclick="document.getElementById('gpxFileInput').click()">Izberi Lokalni GPX</button>
+                <button class="btn btn-primary" onclick="document.getElementById('gpxFileInput').click()">📥 Izberi Lokalni GPX</button>
             </div>
 
             <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;">
@@ -894,10 +908,20 @@
                 <button class="btn btn-secondary" onclick="fetchSupabaseRoutes()">🔄 Osveži Proge</button>
             </div>
 
-            <div id="gpxInfoCard" style="display: none; background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 0.85rem; margin-bottom: 1rem;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <div id="gpxInfoCard" style="display: none; background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 0.85rem; margin-bottom: 1rem; border: 1px solid var(--accent-cyan);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
                     <span>Ime Proge: <strong id="gpxName" style="color: var(--accent-cyan);">-</strong></span>
                     <span>Skupna Dolžina: <strong id="gpxDistance">0.0 km</strong></span>
+                    <span>Varnostna Meja Naklona: <strong id="gpxMaxIncLimitText" style="color: var(--accent-green);">10.0%</strong></span>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="btn btn-huge-start" style="font-size: 0.95rem; padding: 0.6rem 1.1rem;" onclick="startGpxRouteOnTreadmill()">
+                        🚀 ZAŽENI GPX PROGO NA STEZI
+                    </button>
+                    <button class="btn btn-primary" onclick="saveCurrentGpxToSupabase()">
+                        💾 Shrani GPX v Supabase (Skupne Proge)
+                    </button>
                 </div>
             </div>
 
@@ -1135,6 +1159,23 @@
     let userProfiles = JSON.parse(localStorage.getItem('ble_user_profiles_v3')) || defaultUserProfiles;
     let currentUser = localStorage.getItem('ble_active_user') || 'Miha';
 
+    // VARNOSTNA MEJA NAKLONA TEKALNE STEZE
+    let maxInclineLimit = parseFloat(localStorage.getItem('ble_max_incline_limit')) || 10.0;
+
+    function setMaxInclineLimit(val) {
+        let num = parseFloat(val);
+        if (isNaN(num) || num < 1) num = 10.0;
+        if (num > 15.0) num = 15.0;
+        maxInclineLimit = num;
+        localStorage.setItem('ble_max_incline_limit', maxInclineLimit);
+        
+        const textEl = document.getElementById('gpxMaxIncLimitText');
+        if (textEl) textEl.textContent = `${maxInclineLimit.toFixed(1)}%`;
+
+        const inputEl = document.getElementById('profInputMaxIncline');
+        if (inputEl) inputEl.value = maxInclineLimit;
+    }
+
     const FTMS_SERVICE_UUID = '00001826-0000-1000-8000-00805f9b34fb';
     const TREADMILL_DATA_CHAR_UUID = '00002ace-0000-1000-8000-00805f9b34fb';
     const TREADMILL_CONTROL_POINT_CHAR_UUID_1 = '00002ada-0000-1000-8000-00805f9b34fb';
@@ -1164,6 +1205,8 @@
 
     let gpxPoints = [];
     let gpxTotalLength = 0.0;
+    let currentLoadedGpxXml = '';
+    let isGpxFollowingActive = false;
 
     let programSteps = [];
     let activeProgramInterval = null;
@@ -1213,6 +1256,11 @@
         fetchSupabaseRoutes();
         await loadSavedYouTubeVideos();
         await loadSavedYouTubeAudio();
+
+        const inputInc = document.getElementById('profInputMaxIncline');
+        if (inputInc) inputInc.value = maxInclineLimit;
+        const textInc = document.getElementById('gpxMaxIncLimitText');
+        if (textInc) textInc.textContent = `${maxInclineLimit.toFixed(1)}%`;
     });
 
     // CELOZASLONSKI NAČIN (SKRIJE ZGORNJO URO / SISTEMSKE IKONE IN SPODNJE 3 GUMBE TELEFONA)
@@ -1355,6 +1403,7 @@
         document.getElementById('profInputHeight').value = prof.heightCm || 175;
         document.getElementById('profInputBirthdate').value = prof.birthdate || '1995-01-01';
         document.getElementById('profInputAge').value = prof.age || 30;
+        document.getElementById('profInputMaxIncline').value = maxInclineLimit;
 
         calculateProfileMetrics();
     }
@@ -1438,9 +1487,11 @@
         const birthdate = document.getElementById('profInputBirthdate').value;
         const age = parseInt(document.getElementById('profInputAge').value);
         const gender = document.getElementById('profInputGender').value;
+        const maxIncVal = parseFloat(document.getElementById('profInputMaxIncline').value);
 
         if (!newName) return alert("Ime ne more biti prazno!");
         if (isNaN(weight)) return alert("Vnesite veljavno težo!");
+        if (!isNaN(maxIncVal)) setMaxInclineLimit(maxIncVal);
 
         const prof = userProfiles[currentUser] || {};
         delete userProfiles[currentUser];
@@ -1800,7 +1851,14 @@
             try {
                 const { data } = await supabaseClient.from('routes').select('*');
                 if (data && data.length > 0) {
-                    videos = data.filter(item => item.name && !item.name.startsWith('AUDIO::') && !item.name.startsWith('[AUDIO]'));
+                    // Izključi avdio zapise in GPX-only proge brez video URL-ja
+                    videos = data.filter(item =>
+                        item.name &&
+                        !item.name.startsWith('AUDIO::') &&
+                        !item.name.startsWith('[AUDIO]') &&
+                        item.video_url &&
+                        String(item.video_url).trim() !== ''
+                    );
                 }
             } catch (e) {
                 console.warn("Napaka pri pridobivanju prog iz Supabase:", e);
@@ -2261,7 +2319,9 @@
     async function setTreadmillIncline(inclinePercent) {
         if (!controlPointChar) return;
         try {
-            const rawIncline = Math.round(inclinePercent * 10);
+            // VARNOSTNA OMEJITEV NAKLONA NA maxInclineLimit!
+            const safeIncline = Math.min(Math.max(0, inclinePercent), maxInclineLimit);
+            const rawIncline = Math.round(safeIncline * 10);
             const buffer = new ArrayBuffer(3);
             const view = new DataView(buffer);
             view.setUint8(0, 0x03);
@@ -2333,10 +2393,12 @@
         if (document.getElementById('hudHr')) document.getElementById('hudHr').innerHTML = `${currentHr > 0 ? currentHr : '--'} <span style="font-size: 0.75rem;">bpm</span>`;
         if (document.getElementById('hudDistance')) document.getElementById('hudDistance').innerHTML = `${currentDistance.toFixed(2)} <span style="font-size: 0.75rem;">km</span>`;
 
-        if (gpxPoints.length > 0) {
+        // SAMODEJNO SPREMLJANJE GPX NAKLONA (samo po eksplicitnem zagonu GPX proge)
+        if (isGpxFollowingActive && gpxPoints.length > 0) {
             const currentTargetPoint = gpxPoints.find(p => p.distKm >= currentDistance);
             if (currentTargetPoint) {
-                const targetIncline = currentTargetPoint.inclinePct;
+                const rawTargetInc = currentTargetPoint.inclinePct;
+                const targetIncline = Math.min(rawTargetInc, maxInclineLimit);
                 if (Math.abs(currentIncline - targetIncline) >= 0.5) {
                     currentIncline = targetIncline;
                     setTreadmillIncline(currentIncline);
@@ -2371,11 +2433,17 @@
         try {
             const { data, error } = await supabaseClient.from('routes').select('*');
             if (data && data.length > 0) {
-                const videoData = data.filter(r => r.name && !r.name.startsWith('AUDIO::') && !r.name.startsWith('[AUDIO]'));
+                // V GPX dropdownu pokaži video + GPX proge (brez čistih avdio zapisov)
+                const routeData = data.filter(r =>
+                    r.name &&
+                    !r.name.startsWith('AUDIO::') &&
+                    !r.name.startsWith('[AUDIO]')
+                );
                 const select = document.getElementById('supabaseRouteSelect');
                 select.innerHTML = '<option value="">-- Izberi progo iz Supabase baze --</option>';
-                videoData.forEach((r, idx) => {
-                    select.innerHTML += `<option value="${r.id}">${r.name}</option>`;
+                routeData.forEach((r) => {
+                    const kind = r.gpx_data ? '🗺️ ' : (r.video_url ? '🎬 ' : '');
+                    select.innerHTML += `<option value="${r.id}">${kind}${r.name}</option>`;
                 });
                 window.supabaseRoutesData = data;
             }
@@ -2404,7 +2472,11 @@
         }
 
         if (route.gpx_data) {
+            currentLoadedGpxXml = route.gpx_data;
             parseGpxXml(route.gpx_data);
+            alert(`🗺️ GPX proga '${route.name}' je uspešno naložena! Kliknite '🚀 ZAŽENI GPX PROGO NA STEZI'.`);
+        } else if (!route.video_url) {
+            alert(`Proga '${route.name}' nima GPX podatkov niti video povezave.`);
         }
     }
 
@@ -2496,7 +2568,7 @@
         await setTreadmillIncline(step.incline);
 
         currentSpeed = step.speed;
-        currentIncline = step.incline;
+        currentIncline = Math.min(step.incline, maxInclineLimit);
         updateUI();
 
         if (activeProgramInterval) clearInterval(activeProgramInterval);
@@ -2607,7 +2679,10 @@
         const file = event.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = function(e) { parseGpxXml(e.target.result); };
+        reader.onload = function(e) {
+            currentLoadedGpxXml = e.target.result;
+            parseGpxXml(e.target.result);
+        };
         reader.readAsText(file);
     }
 
@@ -2639,10 +2714,72 @@
         }
 
         gpxTotalLength = cumDist;
+        const gpxTitle = xmlDoc.getElementsByTagName("name")[0]?.textContent || "GPX Proga";
         document.getElementById('gpxInfoCard').style.display = 'block';
-        document.getElementById('gpxName').textContent = xmlDoc.getElementsByTagName("name")[0]?.textContent || "GPX Proga";
+        document.getElementById('gpxName').textContent = gpxTitle;
         document.getElementById('gpxDistance').textContent = `${cumDist.toFixed(2)} km`;
+        document.getElementById('gpxMaxIncLimitText').textContent = `${maxInclineLimit.toFixed(1)}%`;
         renderGpxProfileChart();
+    }
+
+    async function saveCurrentGpxToSupabase() {
+        if (!currentLoadedGpxXml) return alert("Najprej izberite GPX datoteko s klikom na 'Izberi Lokalni GPX'.");
+
+        let defaultName = document.getElementById('gpxName').textContent;
+        if (!defaultName || defaultName === '-') defaultName = 'Moja GPX Proga';
+
+        const customName = prompt("Vnesite ime proge za shranjevanje v Supabase bazo (za oba uporabnika):", defaultName);
+        if (!customName || !customName.trim()) return;
+
+        const fullRouteTitle = `🗺️ ${customName.trim()} (${currentUser})`;
+
+        if (supabaseClient) {
+            try {
+                const { error } = await supabaseClient.from('routes').insert({
+                    name: fullRouteTitle,
+                    gpx_data: currentLoadedGpxXml,
+                    video_url: ''
+                });
+                if (error) {
+                    console.error("Supabase GPX save error:", error);
+                    alert(`Napaka pri shranjevanju GPX v Supabase: ${error.message}`);
+                } else {
+                    alert(`🎉 GPX proga '${customName}' je uspešno shranjena v Supabase in na voljo vsem uporabnikom!`);
+                    await fetchSupabaseRoutes();
+                }
+            } catch (e) {
+                alert(`Napaka pri pošiljanju GPX: ${e.message}`);
+            }
+        } else {
+            let localGpx = JSON.parse(localStorage.getItem('my_saved_gpx_routes')) || [];
+            localGpx.unshift({ id: Date.now(), name: fullRouteTitle, gpx_data: currentLoadedGpxXml });
+            localStorage.setItem('my_saved_gpx_routes', JSON.stringify(localGpx));
+            alert(`GPX proga '${customName}' je shranjena lokalno!`);
+        }
+    }
+
+    function startGpxRouteOnTreadmill() {
+        if (!gpxPoints || gpxPoints.length === 0) {
+            return alert("Najprej izberite ali naložite GPX progo!");
+        }
+
+        isGpxFollowingActive = true;
+        isWorkoutActive = true;
+        hasHadSpeedBefore = false;
+
+        if (!startTime) {
+            startTime = Date.now();
+            startTimer();
+        }
+
+        const initialInc = Math.min(gpxPoints[0].inclinePct || 0, maxInclineLimit);
+        setTreadmillSpeed(5.0);
+        setTreadmillIncline(initialInc);
+
+        document.getElementById('btnStopWorkout').disabled = false;
+        switchSection('secLive', { currentTarget: document.querySelectorAll('.selector-btn')[0] });
+
+        alert(`🚀 GPX PROGA JE ZAŽENJENA NA STEZI!\nSteza bo samodejno prilagajala naklon terenu (varnostno omejeno na max ${maxInclineLimit}%).`);
     }
 
     function haversineDistance(lat1, lon1, lat2, lon2) {
@@ -2736,6 +2873,7 @@
     function stopWorkout(reason = 'user_click') {
         if (!isWorkoutActive && !startTime) return;
         isWorkoutActive = false;
+        isGpxFollowingActive = false;
 
         stopTimer();
 
