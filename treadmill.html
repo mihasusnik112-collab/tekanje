@@ -63,7 +63,6 @@
             gap: 1rem;
         }
 
-        /* GLAVA APLIKACIJE SE NIKOLI NE SKRIJE */
         .clean-header {
             display: flex;
             justify-content: space-between;
@@ -459,7 +458,7 @@
 <body>
 
 <div class="app-container" id="mainContainer">
-    <!-- GLAVA Z MODERNO IKONO TEKAČA, UPORABNIKOM IN NAMESTITVENIM GUMBOM (STALNO VIDNA) -->
+    <!-- GLAVA Z MODERNO IKONO TEKAČA, UPORABNIKOM IN NAMESTITVENIM GUMBOM -->
     <header class="clean-header" id="appCleanHeader">
         <div class="brand-title">
             <img src="icon.svg" style="width: 38px; height: 38px; border-radius: 0.6rem; filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.8));" alt="Tekalna Steza Logo">
@@ -578,7 +577,7 @@
                         ⭐ SKUPNE YOUTUBE PROGE (Dostopno vsem):
                     </div>
                     <div id="savedVideosContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 140px; overflow-y: auto;">
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">Ni še shranjenih prog. Vnesite URL zgoraj in kliknite 'Shrani v Skupne Proge'.</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Nalaganje prog iz Supabase baze...</div>
                     </div>
                 </div>
 
@@ -601,7 +600,7 @@
                     </div>
 
                     <div id="savedAudioContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 130px; overflow-y: auto;">
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">Ni shranjenih avdio skladb. Vnesite URL zgoraj in kliknite 'Shrani Avdio'.</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Nalaganje avdio skladb iz Supabase baze...</div>
                     </div>
 
                     <!-- SKRITI PREDVAJALNIK ZA YOUTUBE AVDIO -->
@@ -1189,8 +1188,8 @@
         await setUser(currentUser);
         initCharts();
         fetchSupabaseRoutes();
-        loadSavedYouTubeVideos();
-        loadSavedYouTubeAudio();
+        await loadSavedYouTubeVideos();
+        await loadSavedYouTubeAudio();
     });
 
     // CELOZASLONSKI NAČIN (SKRIJE ZGORNJO URO / SISTEMSKE IKONE IN SPODNJE 3 GUMBE TELEFONA)
@@ -1317,8 +1316,8 @@
         await fetchIntervalPrograms();
         await renderHistoryTable();
         loadStats();
-        loadSavedYouTubeVideos();
-        loadSavedYouTubeAudio();
+        await loadSavedYouTubeVideos();
+        await loadSavedYouTubeAudio();
     }
 
     // --- UREJANJE, DODAJANJE IN IZBRIS PROFILOV Z SUPABASE SINHRONIZACIJO ---
@@ -1486,9 +1485,9 @@
     }
 
     // --- INTERAKTIVNI ČAROVNIK ZA ZAGON TEKA ("ZAČNI TEK" Z AVDIO MOŽNOSTJO) ---
-    function openStartWorkoutWizard() {
-        populateWizardVideosDropdown();
-        populateWizardAudioDropdown();
+    async function openStartWorkoutWizard() {
+        await populateWizardVideosDropdown();
+        await populateWizardAudioDropdown();
         document.getElementById('startWorkoutWizardModal').style.display = 'flex';
     }
 
@@ -1500,22 +1499,22 @@
         document.getElementById('wizProgramSelectContainer').style.display = show ? 'block' : 'none';
     }
 
-    function populateWizardVideosDropdown() {
+    async function populateWizardVideosDropdown() {
         const select = document.getElementById('wizVideoSelect');
         select.innerHTML = '<option value="none">❌ Brez videa</option>';
 
-        let saved = JSON.parse(localStorage.getItem('my_saved_yt_videos')) || [];
-        saved.forEach(item => {
+        let videos = await fetchAllSavedVideos();
+        videos.forEach(item => {
             select.innerHTML += `<option value="${item.video_url}">🎬 ${item.name}</option>`;
         });
     }
 
-    function populateWizardAudioDropdown() {
+    async function populateWizardAudioDropdown() {
         const select = document.getElementById('wizAudioSelect');
         select.innerHTML = '<option value="none">🔇 Brez avdio glasbe</option>';
 
-        let saved = JSON.parse(localStorage.getItem('my_saved_yt_audio')) || [];
-        saved.forEach(item => {
+        let audioTracks = await fetchAllSavedAudio();
+        audioTracks.forEach(item => {
             select.innerHTML += `<option value="${item.audio_url}">🎵 ${item.name}</option>`;
         });
     }
@@ -1746,7 +1745,55 @@
         alert(`Program 'Fat Burn Low Impact (20 min)' prilagojen za ${currentUser}!`);
     }
 
-    // --- SHRANJEVANJE IN NALAGANJE SKUPNIH YOUTUBE AVDIO SKLADB Z UPORABO ROUTES TABELE ---
+    // --- ROBUSNO PRIDOBIVANJE IN SHRANJEVANJE VSEH YOUTUBE AVDIO IN VIDEO PROG Z SUPABASE BAZE ---
+    async function fetchAllSavedVideos() {
+        let videos = [];
+        if (supabaseClient) {
+            try {
+                const { data } = await supabaseClient.from('routes').select('*');
+                if (data && data.length > 0) {
+                    videos = data.filter(item => item.name && !item.name.startsWith('AUDIO::') && !item.name.startsWith('[AUDIO]'));
+                }
+            } catch (e) {
+                console.warn("Napaka pri pridobivanju prog iz Supabase:", e);
+            }
+        }
+        const local = JSON.parse(localStorage.getItem('my_saved_yt_videos')) || [];
+        local.forEach(loc => {
+            if (!videos.some(v => v.video_url === loc.video_url || v.name === loc.name)) {
+                videos.push(loc);
+            }
+        });
+        return videos;
+    }
+
+    async function fetchAllSavedAudio() {
+        let audioTracks = [];
+        if (supabaseClient) {
+            try {
+                const { data } = await supabaseClient.from('routes').select('*');
+                if (data && data.length > 0) {
+                    audioTracks = data
+                        .filter(item => item.name && (item.name.startsWith('AUDIO::') || item.name.startsWith('[AUDIO]')))
+                        .map(item => ({
+                            id: item.id,
+                            name: item.name.replace('AUDIO::', '').replace('[AUDIO] ', ''),
+                            audio_url: item.video_url
+                        }));
+                }
+            } catch (e) {
+                console.warn("Napaka pri pridobivanju avdio skladb iz Supabase:", e);
+            }
+        }
+        const local = JSON.parse(localStorage.getItem('my_saved_yt_audio')) || [];
+        local.forEach(loc => {
+            if (!audioTracks.some(a => a.audio_url === loc.audio_url || a.name === loc.name)) {
+                audioTracks.push(loc);
+            }
+        });
+        return audioTracks;
+    }
+
     async function saveCurrentYouTubeAudio() {
         const url = document.getElementById('youtubeAudioUrlInput').value.trim();
         let name = document.getElementById('youtubeAudioTitleInput').value.trim();
@@ -1756,15 +1803,15 @@
         if (!videoId) return alert("Neveljaven YouTube URL!");
 
         if (!name) name = `Avdio skladba ${new Date().toLocaleDateString('sl-SI')}`;
-
-        const fullAudioTitle = `[AUDIO] ${name} (${currentUser})`;
+        const fullAudioTitle = `AUDIO::${name} (${currentUser})`;
 
         if (supabaseClient) {
             try {
-                await supabaseClient.from('routes').insert({
+                const { error } = await supabaseClient.from('routes').insert({
                     name: fullAudioTitle,
                     video_url: url
                 });
+                if (error) console.error("Supabase audio save error:", error);
             } catch (e) {
                 console.warn("Napaka pri shranjevanju avdia v Supabase:", e);
             }
@@ -1776,35 +1823,11 @@
 
         alert(`Avdio skladba '${name}' je shranjena in sinhronizirana za oba uporabnika!`);
         document.getElementById('youtubeAudioTitleInput').value = '';
-        loadSavedYouTubeAudio();
+        await loadSavedYouTubeAudio();
     }
 
     async function loadSavedYouTubeAudio() {
-        let savedAudio = [];
-
-        if (supabaseClient) {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('routes')
-                    .select('*')
-                    .like('name', '[AUDIO]%');
-
-                if (data && data.length > 0) {
-                    savedAudio = data.map(item => ({
-                        id: item.id,
-                        name: item.name.replace('[AUDIO] ', ''),
-                        audio_url: item.video_url
-                    }));
-                }
-            } catch (e) {
-                console.warn("Napaka pri nalaganju avdio skladb iz Supabase:", e);
-            }
-        }
-
-        if (savedAudio.length === 0) {
-            savedAudio = JSON.parse(localStorage.getItem('my_saved_yt_audio')) || [];
-        }
-
+        const savedAudio = await fetchAllSavedAudio();
         const container = document.getElementById('savedAudioContainer');
         if (!container) return;
 
@@ -1840,15 +1863,15 @@
         playYouTubeAudioOnly();
     }
 
-    function deleteSavedAudio(id) {
+    async function deleteSavedAudio(id) {
         if (confirm("Izbrišem to avdio skladbo?")) {
-            if (supabaseClient) {
-                supabaseClient.from('routes').delete().eq('id', id).then();
+            if (supabaseClient && id) {
+                await supabaseClient.from('routes').delete().eq('id', id);
             }
             let localAudio = JSON.parse(localStorage.getItem('my_saved_yt_audio')) || [];
             localAudio = localAudio.filter(a => a.id != id);
             localStorage.setItem('my_saved_yt_audio', JSON.stringify(localAudio));
-            loadSavedYouTubeAudio();
+            await loadSavedYouTubeAudio();
         }
     }
 
@@ -1894,10 +1917,11 @@
 
         if (supabaseClient) {
             try {
-                await supabaseClient.from('routes').insert({
+                const { error } = await supabaseClient.from('routes').insert({
                     name: fullTitle,
                     video_url: url
                 });
+                if (error) console.error("Supabase route save error:", error);
             } catch (e) {
                 console.warn("Napaka pri shranjevanju proge v Supabase:", e);
             }
@@ -1909,31 +1933,12 @@
 
         alert(`Proga '${name}' je shranjena in sinhronizirana z obema telefonoma!`);
         document.getElementById('youtubeTitleInput').value = '';
-        loadSavedYouTubeVideos();
+        await loadSavedYouTubeVideos();
+        await fetchSupabaseRoutes();
     }
 
     async function loadSavedYouTubeVideos() {
-        let savedVideos = [];
-
-        if (supabaseClient) {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('routes')
-                    .select('*')
-                    .not('name', 'like', '[AUDIO]%');
-
-                if (data && data.length > 0) {
-                    savedVideos = data;
-                }
-            } catch (e) {
-                console.warn("Napaka pri nalaganju shranjenih prog iz Supabase:", e);
-            }
-        }
-
-        if (savedVideos.length === 0) {
-            savedVideos = JSON.parse(localStorage.getItem('my_saved_yt_videos')) || [];
-        }
-
+        const savedVideos = await fetchAllSavedVideos();
         const container = document.getElementById('savedVideosContainer');
         if (!container) return;
 
@@ -1969,15 +1974,16 @@
         loadYouTubeVideo();
     }
 
-    function deleteSavedYouTube(id) {
+    async function deleteSavedYouTube(id) {
         if (confirm("Izbrišem to skupno progo za oba uporabnika?")) {
-            if (supabaseClient) {
-                supabaseClient.from('routes').delete().eq('id', id).then();
+            if (supabaseClient && id) {
+                await supabaseClient.from('routes').delete().eq('id', id);
             }
             let localRoutes = JSON.parse(localStorage.getItem('my_saved_yt_videos')) || [];
             localRoutes = localRoutes.filter(r => r.id != id);
             localStorage.setItem('my_saved_yt_videos', JSON.stringify(localRoutes));
-            loadSavedYouTubeVideos();
+            await loadSavedYouTubeVideos();
+            await fetchSupabaseRoutes();
         }
     }
 
@@ -2258,11 +2264,12 @@
         if (!supabaseClient) return;
 
         try {
-            const { data, error } = await supabaseClient.from('routes').select('*').not('name', 'like', '[AUDIO]%');
+            const { data, error } = await supabaseClient.from('routes').select('*');
             if (data && data.length > 0) {
+                const videoData = data.filter(r => r.name && !r.name.startsWith('AUDIO::') && !r.name.startsWith('[AUDIO]'));
                 const select = document.getElementById('supabaseRouteSelect');
                 select.innerHTML = '<option value="">-- Izberi progo iz Supabase baze --</option>';
-                data.forEach((r, idx) => {
+                videoData.forEach((r, idx) => {
                     select.innerHTML += `<option value="${r.id}">${r.name}</option>`;
                 });
                 window.supabaseRoutesData = data;
@@ -2845,7 +2852,6 @@
             gpxXml += `            <gpxtpx:cad>${cad}</gpxtpx:cad>\n`;
             gpxXml += `          </gpxtpx:TrackPointExtension>\n`;
             gpxXml += `        </extensions>\n`;
-            gpxXml += `      </trkpt>\n`;
         });
 
         gpxXml += `    </trkseg>\n`;
