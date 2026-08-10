@@ -183,13 +183,6 @@
             gap: 0.5rem;
         }
 
-        .connect-bar {
-            display: flex;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-            margin-bottom: 1rem;
-        }
-
         .badge {
             display: inline-flex;
             align-items: center;
@@ -529,7 +522,7 @@
             </div>
         </div>
 
-        <!-- Video Sync & Live Chart -->
+        <!-- Video Sync, Audio Sync & Live Chart -->
         <div class="media-grid">
             <div class="card">
                 <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem;">
@@ -543,11 +536,11 @@
                     </div>
                 </div>
 
-                <!-- YOUTUBE VNOS & SHRANJEVANJE POVEZAV -->
+                <!-- YOUTUBE VNOS & SHRANJEVANJE POVEZAV (VIDEO) -->
                 <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.85rem;">
                     <div style="display: flex; gap: 0.5rem;">
                         <input type="text" id="youtubeUrlInput" placeholder="Vnesite svoj YouTube URL posnetka..." style="flex: 1;">
-                        <button class="btn btn-red" onclick="loadYouTubeVideo()">▶ Predvajaj</button>
+                        <button class="btn btn-red" onclick="loadYouTubeVideo()">▶ Predvajaj Video</button>
                     </div>
                     <div style="display: flex; gap: 0.5rem;">
                         <input type="text" id="youtubeTitleInput" placeholder="Ime moje proge (npr. Moja najljubša proga)..." style="flex: 1;">
@@ -556,12 +549,40 @@
                 </div>
 
                 <!-- MOJI SHRANJENI YOUTUBE VIDEI Z IKONO / THUMBNAILOM -->
-                <div style="margin-bottom: 0.85rem;">
+                <div style="margin-bottom: 1rem;">
                     <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.4rem; font-weight: 600;">
-                        ⭐ SKUPNE YOUTUBE PROGE (Dostopno vsem uporabnikom):
+                        ⭐ SKUPNE YOUTUBE PROGE (Dostopno vsem):
                     </div>
-                    <div id="savedVideosContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 160px; overflow-y: auto;">
+                    <div id="savedVideosContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 140px; overflow-y: auto;">
                         <div style="font-size: 0.8rem; color: var(--text-muted);">Ni še shranjenih prog. Vnesite URL zgoraj in kliknite 'Shrani v Skupne Proge'.</div>
+                    </div>
+                </div>
+
+                <!-- NOVO: SKUPNA YOUTUBE GLASBA / PODCASTI (SAMO AVDIO) -->
+                <div style="background: rgba(139, 92, 246, 0.08); border: 1px solid var(--accent-purple); padding: 0.85rem; border-radius: 0.85rem; margin-bottom: 0.85rem;">
+                    <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent-purple); margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                        <span>🎵 YouTube Avdio & Glasba (Brez Videa)</span>
+                        <span id="audioPlayingBadge" style="font-size: 0.75rem; color: var(--accent-green); display: none;">▶ Predvaja se avdio</span>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="text" id="youtubeAudioUrlInput" placeholder="Vnesite YouTube URL za pesem / podcast..." style="flex: 1;">
+                            <button class="btn btn-purple" onclick="playYouTubeAudioOnly()">▶ Predvajaj Avdio</button>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="text" id="youtubeAudioTitleInput" placeholder="Ime pesmi ali zvrsti (npr. Running Motivation Beats)..." style="flex: 1;">
+                            <button class="btn btn-primary" onclick="saveCurrentYouTubeAudio()">💾 Shrani Avdio</button>
+                        </div>
+                    </div>
+
+                    <div id="savedAudioContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 130px; overflow-y: auto;">
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Ni shranjenih avdio skladb. Vnesite URL zgoraj in kliknite 'Shrani Avdio'.</div>
+                    </div>
+
+                    <!-- SKRITI PREDVAJALNIK ZA YOUTUBE AVDIO -->
+                    <div id="youtubeAudioPlayerContainer" style="position: absolute; width: 1px; height: 1px; opacity: 0.01; overflow: hidden; pointer-events: none;">
+                        <div id="youtubeAudioPlayer"></div>
                     </div>
                 </div>
 
@@ -887,11 +908,11 @@
     </div>
 </div>
 
-<!-- MODALNO OKNO: ZAČNI TEK (INTERAKTIVNI ČAROVNIK NASTAVITEV) -->
+<!-- MODALNO OKNO: ZAČNI TEK (INTERAKTIVNI ČAROVNIK NASTAVITEV Z AVDIO MOŽNOSTJO) -->
 <div class="modal-overlay" id="startWorkoutWizardModal">
     <div class="modal-card" style="border-color: var(--accent-green);">
         <h3 style="font-size: 1.35rem; color: var(--accent-green); text-align: center;">🚀 ČAROVNIK ZA ZAGON TEKA</h3>
-        <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center;">Izberite želene nastavitve in video progo za današnji trening.</p>
+        <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center;">Izberite želene nastavitve, video progo in glasbo za današnji trening.</p>
 
         <!-- KORAK 1: NAČIN UPRAVLJANJA -->
         <div style="background: rgba(255,255,255,0.04); padding: 1rem; border-radius: 0.85rem;">
@@ -928,6 +949,17 @@
 
             <select id="wizVideoSelect" style="width: 100%;">
                 <option value="none">❌ Brez videa</option>
+            </select>
+        </div>
+
+        <!-- KORAK 3: IZBIRA AVDIO / GLASBE -->
+        <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid var(--accent-purple); padding: 1rem; border-radius: 0.85rem;">
+            <label style="font-size: 0.9rem; font-weight: 700; color: var(--accent-purple); display: block; margin-bottom: 0.5rem;">
+                3. ŽELITE PREDVAJATI GLASBO / PODCAST (YouTube Avdio)?
+            </label>
+
+            <select id="wizAudioSelect" style="width: 100%;">
+                <option value="none">🔇 Brez avdio glasbe</option>
             </select>
         </div>
 
@@ -1028,6 +1060,9 @@
     let ytPlayer = null;
     let isYouTubeActive = false;
 
+    let ytAudioPlayer = null;
+    let isYouTubeAudioActive = false;
+
     let timerInterval = null;
     let liveChart = null;
     let gpxProfileChart = null;
@@ -1040,6 +1075,7 @@
         fetchSupabaseRoutes();
         fetchIntervalPrograms();
         loadSavedYouTubeVideos();
+        loadSavedYouTubeAudio();
     });
 
     function toggleFullScreen() {
@@ -1133,6 +1169,7 @@
         renderHistoryTable();
         loadStats();
         loadSavedYouTubeVideos();
+        loadSavedYouTubeAudio();
     }
 
     // --- UREJANJE IN DODAJANJE NOVIH PROFILOV Z DATUMOM ROJSTVA ---
@@ -1259,9 +1296,10 @@
         alert(`Profil '${newName}' je uspešno shranjen!`);
     }
 
-    // --- INTERAKTIVNI ČAROVNIK ZA ZAGON TEKA ("ZAČNI TEK") ---
+    // --- INTERAKTIVNI ČAROVNIK ZA ZAGON TEKA ("ZAČNI TEK" Z AVDIO MOŽNOSTJO) ---
     function openStartWorkoutWizard() {
         populateWizardVideosDropdown();
+        populateWizardAudioDropdown();
         document.getElementById('startWorkoutWizardModal').style.display = 'flex';
     }
 
@@ -1283,13 +1321,31 @@
         });
     }
 
+    function populateWizardAudioDropdown() {
+        const select = document.getElementById('wizAudioSelect');
+        select.innerHTML = '<option value="none">🔇 Brez avdio glasbe</option>';
+
+        let saved = JSON.parse(localStorage.getItem('my_saved_yt_audio')) || [];
+        saved.forEach(item => {
+            select.innerHTML += `<option value="${item.audio_url}">🎵 ${item.name} (${item.user_name || 'Skupno'})</option>`;
+        });
+    }
+
     async function executeStartWorkoutWizard() {
         closeWizardModal();
 
+        // 1. Video
         const videoUrl = document.getElementById('wizVideoSelect').value;
         if (videoUrl !== 'none') {
             document.getElementById('youtubeUrlInput').value = videoUrl;
             loadYouTubeVideo();
+        }
+
+        // 2. Avdio / Glasba
+        const audioUrl = document.getElementById('wizAudioSelect').value;
+        if (audioUrl !== 'none') {
+            document.getElementById('youtubeAudioUrlInput').value = audioUrl;
+            playYouTubeAudioOnly();
         }
 
         const progType = document.querySelector('input[name="wizProgramType"]:checked').value;
@@ -1488,7 +1544,142 @@
         alert(`Program 'Fat Burn Low Impact (20 min)' prilagojen za ${currentUser}!`);
     }
 
-    // SHRANJEVANJE IN NALAGANJE SKUPNIH YOUTUBE PROG Z IKONO
+    // --- SHRANJEVANJE IN NALAGANJE SKUPNIH YOUTUBE AVDIO SKLADB (BREZ VIDEA) ---
+    async function saveCurrentYouTubeAudio() {
+        const url = document.getElementById('youtubeAudioUrlInput').value.trim();
+        let name = document.getElementById('youtubeAudioTitleInput').value.trim();
+
+        if (!url) return alert("Vnesite veljaven YouTube URL pesmi ali podcasta!");
+        const videoId = extractYouTubeId(url);
+        if (!videoId) return alert("Neveljaven YouTube URL!");
+
+        if (!name) name = `Avdio skladba ${new Date().toLocaleDateString('sl-SI')}`;
+
+        const newAudio = {
+            id: Date.now(),
+            user_name: currentUser,
+            name: name,
+            audio_url: url
+        };
+
+        if (supabaseClient) {
+            try {
+                await supabaseClient.from('audio_tracks').insert(newAudio);
+            } catch (e) {
+                console.warn("Napaka pri shranjevanju avdia v Supabase:", e);
+            }
+        }
+
+        let localAudio = JSON.parse(localStorage.getItem('my_saved_yt_audio')) || [];
+        localAudio.unshift(newAudio);
+        localStorage.setItem('my_saved_yt_audio', JSON.stringify(localAudio));
+
+        alert(`Avdio skladba '${name}' je shranjena in dostopna za predvajanje!`);
+        document.getElementById('youtubeAudioTitleInput').value = '';
+        loadSavedYouTubeAudio();
+    }
+
+    async function loadSavedYouTubeAudio() {
+        let savedAudio = [];
+
+        if (supabaseClient) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('audio_tracks')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (data && data.length > 0) {
+                    savedAudio = data;
+                }
+            } catch (e) {
+                console.warn("Napaka pri nalaganju avdio skladb iz Supabase:", e);
+            }
+        }
+
+        if (savedAudio.length === 0) {
+            savedAudio = JSON.parse(localStorage.getItem('my_saved_yt_audio')) || [];
+        }
+
+        const container = document.getElementById('savedAudioContainer');
+        if (!container) return;
+
+        if (savedAudio.length === 0) {
+            container.innerHTML = `<div style="font-size: 0.8rem; color: var(--text-muted);">Ni shranjenih avdio skladb. Vnesite URL zgoraj in kliknite 'Shrani Avdio'.</div>`;
+            return;
+        }
+
+        container.innerHTML = savedAudio.map(item => {
+            const creator = item.user_name || item.user || 'Skupno';
+            const vidId = extractYouTubeId(item.audio_url);
+            const thumbUrl = vidId ? `https://img.youtube.com/vi/${vidId}/hqdefault.jpg` : null;
+
+            const iconHtml = thumbUrl ? `<img src="${thumbUrl}" class="video-thumb-icon" alt="Thumb">` : `<div class="video-thumb-icon">🎵</div>`;
+
+            return `
+            <div style="background: rgba(255,255,255,0.05); padding: 0.4rem 0.75rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.6rem; overflow: hidden;">
+                    ${iconHtml}
+                    <div style="display: flex; flex-direction: column; overflow: hidden;">
+                        <span style="font-size: 0.85rem; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">🎵 ${item.name}</span>
+                        <span style="font-size: 0.7rem; color: var(--accent-purple);">Dodat(-a): ${creator}</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.3rem; shrink: 0;">
+                    <button class="btn btn-purple" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="playSavedAudio('${item.audio_url}')">▶ Predvajaj</button>
+                    <button class="btn btn-danger" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" onclick="deleteSavedAudio(${item.id})">🗑</button>
+                </div>
+            </div>
+            `;
+        }).join('');
+    }
+
+    function playSavedAudio(url) {
+        document.getElementById('youtubeAudioUrlInput').value = url;
+        playYouTubeAudioOnly();
+    }
+
+    function deleteSavedAudio(id) {
+        if (confirm("Izbrišem to avdio skladbo?")) {
+            if (supabaseClient) {
+                supabaseClient.from('audio_tracks').delete().eq('id', id).then();
+            }
+            let localAudio = JSON.parse(localStorage.getItem('my_saved_yt_audio')) || [];
+            localAudio = localAudio.filter(a => a.id !== id);
+            localStorage.setItem('my_saved_yt_audio', JSON.stringify(localAudio));
+            loadSavedYouTubeAudio();
+        }
+    }
+
+    function playYouTubeAudioOnly() {
+        const url = document.getElementById('youtubeAudioUrlInput').value.trim();
+        if (!url) return alert("Vnesite veljaven YouTube URL za avdio.");
+
+        const videoId = extractYouTubeId(url);
+        if (!videoId) return alert("Neveljavna YouTube povezava.");
+
+        isYouTubeAudioActive = true;
+        document.getElementById('audioPlayingBadge').style.display = 'inline';
+
+        if (ytAudioPlayer) {
+            ytAudioPlayer.loadVideoById(videoId);
+        } else {
+            ytAudioPlayer = new YT.Player('youtubeAudioPlayer', {
+                height: '1',
+                width: '1',
+                videoId: videoId,
+                playerVars: { 'autoplay': 1, 'controls': 0, 'mute': 0 },
+                events: {
+                    'onReady': (evt) => {
+                        evt.target.unMute();
+                        evt.target.playVideo();
+                    }
+                }
+            });
+        }
+    }
+
+    // SHRANJEVANJE IN NALAGANJE SKUPNIH YOUTUBE PROG Z IKONO (VIDEO)
     async function saveCurrentYouTubeVideo() {
         const url = document.getElementById('youtubeUrlInput').value.trim();
         let name = document.getElementById('youtubeTitleInput').value.trim();
@@ -2209,6 +2400,10 @@
     function stopWorkout() {
         stopTimer();
         setTreadmillSpeed(0);
+
+        if (ytAudioPlayer && typeof ytAudioPlayer.pauseVideo === 'function') {
+            ytAudioPlayer.pauseVideo();
+        }
 
         if (treadmillDevice && treadmillDevice.gatt.connected) treadmillDevice.gatt.disconnect();
         if (hrDevice && hrDevice.gatt.connected) hrDevice.gatt.disconnect();
