@@ -499,7 +499,7 @@
         <div class="media-grid">
             <div class="card">
                 <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem;">
-                    <div class="card-title">🎬 Video Proge</div>
+                    <div class="card-title">🎬 Video Proge (Skupne za obadva)</div>
                     <div style="display: flex; gap: 0.4rem;">
                         <button class="btn btn-purple" style="padding: 0.45rem 0.75rem; font-size: 0.85rem;" onclick="toggleVideoFullscreen()" title="Celozaslonski video z HUD podatki steze">
                             📺 Video HUD Cel Zaslon
@@ -517,17 +517,17 @@
                     </div>
                     <div style="display: flex; gap: 0.5rem;">
                         <input type="text" id="youtubeTitleInput" placeholder="Ime moje proge (npr. Moja najljubša proga)..." style="flex: 1;">
-                        <button class="btn btn-primary" onclick="saveCurrentYouTubeVideo()">💾 Shrani v Moje Proge</button>
+                        <button class="btn btn-primary" onclick="saveCurrentYouTubeVideo()">💾 Shrani v Skupne Proge</button>
                     </div>
                 </div>
 
-                <!-- MOJI SHRANJENI YOUTUBE VIDEI -->
+                <!-- MOJI SHRANJENI YOUTUBE VIDEI (SKUPNI ZA MIHO IN VERONIKO) -->
                 <div style="margin-bottom: 0.85rem;">
                     <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.4rem; font-weight: 600;">
-                        ⭐ MOJI SHRANJENI YOUTUBE VIDEI (Supabase Oblak):
+                        ⭐ SKUPNE YOUTUBE PROGE (Dostopno Mihi in Veroniki v Supabase oblaku):
                     </div>
-                    <div id="savedVideosContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 150px; overflow-y: auto;">
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">Ni še shranjenih prog. Vnesite URL zgoraj in kliknite 'Shrani v Moje Proge'.</div>
+                    <div id="savedVideosContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 160px; overflow-y: auto;">
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Ni še shranjenih prog. Vnesite URL zgoraj in kliknite 'Shrani v Skupne Proge'.</div>
                     </div>
                 </div>
 
@@ -926,7 +926,7 @@
         alert(`Program 'Fat Burn Low Impact (20 min)' prilagojen za ${currentUser}!`);
     }
 
-    // SHRANJEVANJE IN NALAGANJE MOJIH YOUTUBE PROG
+    // SHRANJEVANJE IN NALAGANJE SKUPNIH YOUTUBE PROG (DELJENO MED MIHO IN VERONIKO)
     async function saveCurrentYouTubeVideo() {
         const url = document.getElementById('youtubeUrlInput').value.trim();
         let name = document.getElementById('youtubeTitleInput').value.trim();
@@ -956,7 +956,7 @@
         localRoutes.unshift(newRoute);
         localStorage.setItem('my_saved_yt_videos', JSON.stringify(localRoutes));
 
-        alert(`Proga '${name}' je uspešno shranjena!`);
+        alert(`Proga '${name}' je shranjena in deljena z obema uporabnikoma!`);
         document.getElementById('youtubeTitleInput').value = '';
         loadSavedYouTubeVideos();
     }
@@ -969,7 +969,6 @@
                 const { data, error } = await supabaseClient
                     .from('routes')
                     .select('*')
-                    .eq('user_name', currentUser)
                     .order('created_at', { ascending: false });
 
                 if (data && data.length > 0) {
@@ -981,27 +980,32 @@
         }
 
         if (savedVideos.length === 0) {
-            const allLocal = JSON.parse(localStorage.getItem('my_saved_yt_videos')) || [];
-            savedVideos = allLocal.filter(r => (r.user_name || r.user) === currentUser);
+            savedVideos = JSON.parse(localStorage.getItem('my_saved_yt_videos')) || [];
         }
 
         const container = document.getElementById('savedVideosContainer');
         if (!container) return;
 
         if (savedVideos.length === 0) {
-            container.innerHTML = `<div style="font-size: 0.8rem; color: var(--text-muted);">Ni še shranjenih prog. Vnesite URL zgoraj in kliknite 'Shrani v Moje Proge'.</div>`;
+            container.innerHTML = `<div style="font-size: 0.8rem; color: var(--text-muted);">Ni še shranjenih prog. Vnesite URL zgoraj in kliknite 'Shrani v Skupne Proge'.</div>`;
             return;
         }
 
-        container.innerHTML = savedVideos.map(item => `
+        container.innerHTML = savedVideos.map(item => {
+            const creator = item.user_name || item.user || 'Skupno';
+            return `
             <div style="background: rgba(255,255,255,0.05); padding: 0.4rem 0.75rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
-                <span style="font-size: 0.85rem; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">⭐ ${item.name}</span>
+                <div style="display: flex; flex-direction: column; overflow: hidden;">
+                    <span style="font-size: 0.85rem; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">⭐ ${item.name}</span>
+                    <span style="font-size: 0.7rem; color: var(--accent-cyan);">Dodat(-a): ${creator}</span>
+                </div>
                 <div style="display: flex; gap: 0.3rem; shrink: 0;">
                     <button class="btn btn-primary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="playSavedYouTube('${item.video_url}')">▶ Predvajaj</button>
                     <button class="btn btn-danger" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" onclick="deleteSavedYouTube(${item.id})">🗑</button>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     function playSavedYouTube(url) {
@@ -1010,7 +1014,7 @@
     }
 
     function deleteSavedYouTube(id) {
-        if (confirm("Izbrišem to shranjeno progo?")) {
+        if (confirm("Izbrišem to skupno progo za oba uporabnika?")) {
             if (supabaseClient) {
                 supabaseClient.from('routes').delete().eq('id', id).then();
             }
