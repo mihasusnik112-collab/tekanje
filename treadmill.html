@@ -1882,31 +1882,142 @@
         try {
             const { data, error } = await supabaseClient.from('profiles').select('*');
             if (data && data.length > 0) {
-                data.forEach(p => {
+                for (const p of data) {
                     const name = p.name;
-                    if (!name) return;
+                    if (!name) continue;
+
+                    const meta = await fetchProfileMetaFromSupabase(name);
 
                     if (!userProfiles[name]) {
                         userProfiles[name] = {
                             name: name,
-                            weightKg: p.weight_kg || 70,
-                            heightCm: name === 'Veronika' ? 168 : 182,
-                            birthdate: name === 'Veronika' ? '1995-09-21' : '1992-05-14',
-                            age: name === 'Veronika' ? 31 : 34,
-                            gender: name === 'Veronika' ? 'female' : 'male',
-                            maxHr: name === 'Veronika' ? 194 : 188,
-                            bmrFactor: name === 'Veronika' ? 0.92 : 1.0
+                            weightKg: p.weight_kg || meta?.weightKg || 70,
+                            heightCm: meta?.heightCm || (name === 'Veronika' ? 168 : 182),
+                            birthdate: meta?.birthdate || (name === 'Veronika' ? '1995-09-21' : '1992-05-14'),
+                            age: meta?.age || calcAgeFromBirthdate(meta?.birthdate) || (name === 'Veronika' ? 31 : 34),
+                            gender: meta?.gender || (name === 'Veronika' ? 'female' : 'male'),
+                            maxHr: meta?.maxHr || (name === 'Veronika' ? 194 : 188),
+                            bmrFactor: meta?.bmrFactor || (name === 'Veronika' ? 0.92 : 1.0)
                         };
                     } else {
-                        userProfiles[name].weightKg = p.weight_kg || userProfiles[name].weightKg;
+                        // Teža iz profiles + ostalo iz PROFILE_META (sinhronizacija med napravami)
+                        if (p.weight_kg != null) userProfiles[name].weightKg = p.weight_kg;
+                        if (meta) {
+                            if (meta.birthdate) userProfiles[name].birthdate = meta.birthdate;
+                            if (meta.heightCm != null) userProfiles[name].heightCm = meta.heightCm;
+                            if (meta.gender) userProfiles[name].gender = meta.gender;
+                            if (meta.age != null) userProfiles[name].age = meta.age;
+                            else if (meta.birthdate) userProfiles[name].age = calcAgeFromBirthdate(meta.birthdate);
+                            if (meta.maxHr != null) userProfiles[name].maxHr = meta.maxHr;
+                            if (meta.bmrFactor != null) userProfiles[name].bmrFactor = meta.bmrFactor;
+                            if (meta.weightKg != null && p.weight_kg == null) userProfiles[name].weightKg = meta.weightKg;
+                        }
+                        // Vedno uskladi starost z datumom rojstva
+                        if (userProfiles[name].birthdate) {
+                            const a = calcAgeFromBirthdate(userProfiles[name].birthdate);
+                            if (a) userProfiles[name].age = a;
+                            userProfiles[name].maxHr = 220 - userProfiles[name].age;
+                        }
                     }
-                });
+                }
 
                 localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
                 renderUserSwitcher();
             }
+
+            // Naloži tudi meta za lokalne profile, ki morda še niso v profiles tabeli
+            for (const name of Object.keys(userProfiles)) {
+                const meta = await fetchProfileMetaFromSupabase(name);
+                if (!meta) continue;
+                if (meta.birthdate) userProfiles[name].birthdate = meta.birthdate;
+                if (meta.heightCm != null) userProfiles[name].heightCm = meta.heightCm;
+                if (meta.gender) userProfiles[name].gender = meta.gender;
+                if (meta.birthdate) {
+                    const a = calcAgeFromBirthdate(meta.birthdate);
+                    if (a) userProfiles[name].age = a;
+                    userProfiles[name].maxHr = 220 - userProfiles[name].age;
+                }
+                if (meta.bmrFactor != null) userProfiles[name].bmrFactor = meta.bmrFactor;
+            }
+            localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
         } catch (e) {
             console.warn("Napaka pri sinhronizaciji profilov iz Supabase:", e);
+        }
+    }
+
+    function calcAgeFromBirthdate(bdateStr) {
+        if (!bdateStr) return null;
+        const bdate = new Date(bdateStr);
+        if (isNaN(bdate.getTime())) return null;
+        const today = new Date();
+        let age = today.getFullYear() - bdate.getFullYear();
+        const m = today.getMonth() - bdate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < bdate.getDate())) age--;
+        return age > 0 && age < 120 ? age : null;
+    }
+
+    function getProfileMetaRouteName(user = currentUser) {
+        return `PROFILE_META::${user}`;
+    }
+
+    async function fetchProfileMetaFromSupabase(user) {
+        if (!supabaseClient || !user) return null;
+        try {
+            const { data, error } = await supabaseClient
+                .from('routes')
+                .select('video_url,name')
+                .eq('name', getProfileMetaRouteName(user))
+                .maybeSingle();
+            if (error || !data) return null;
+            const raw = data.video_url;
+            if (!raw) return null;
+            if (typeof raw === 'object') return raw;
+            const text = String(raw).trim();
+            if (!text.startsWith('{')) return null;
+            return JSON.parse(text);
+        } catch (e) {
+            console.warn('Profile meta fetch:', e);
+            return null;
+        }
+    }
+
+    async function saveProfileMetaToSupabase(prof) {
+        if (!supabaseClient || !prof?.name) return false;
+        const payload = {
+            name: prof.name,
+            weightKg: prof.weightKg,
+            heightCm: prof.heightCm,
+            birthdate: prof.birthdate,
+            age: prof.age,
+            gender: prof.gender,
+            maxHr: prof.maxHr,
+            bmrFactor: prof.bmrFactor,
+            updated_at: new Date().toISOString()
+        };
+        const routeName = getProfileMetaRouteName(prof.name);
+        const json = JSON.stringify(payload);
+        try {
+            const { data: existing } = await supabaseClient
+                .from('routes')
+                .select('id')
+                .eq('name', routeName)
+                .maybeSingle();
+
+            // video_url = JSON meta (shema profiles nima stolpcev za datum rojstva)
+            if (existing?.id) {
+                const { error } = await supabaseClient.from('routes').update({ video_url: json }).eq('id', existing.id);
+                if (error) throw error;
+            } else {
+                const { error } = await supabaseClient.from('routes').insert({
+                    name: routeName,
+                    video_url: json
+                });
+                if (error) throw error;
+            }
+            return true;
+        } catch (e) {
+            console.warn('Profile meta save:', e);
+            return false;
         }
     }
 
@@ -2336,15 +2447,8 @@
 
     function updateAgeFromBirthdate() {
         const bdateStr = document.getElementById('profInputBirthdate').value;
-        if (!bdateStr) return;
-
-        const bdate = new Date(bdateStr);
-        const today = new Date();
-        let age = today.getFullYear() - bdate.getFullYear();
-        const m = today.getMonth() - bdate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < bdate.getDate())) age--;
-
-        if (age > 0 && age < 120) {
+        const age = calcAgeFromBirthdate(bdateStr);
+        if (age != null) {
             document.getElementById('profInputAge').value = age;
             calculateProfileMetrics();
         }
@@ -2396,6 +2500,7 @@
                     { name: cleanName, weight_kg: 68.0 },
                     { onConflict: 'name' }
                 );
+                await saveProfileMetaToSupabase(userProfiles[cleanName]);
             } catch (e) {
                 console.warn("Napaka pri ustvarjanju profila v Supabase:", e);
             }
@@ -2411,21 +2516,26 @@
         const weight = parseFloat(document.getElementById('profInputWeight').value);
         const height = parseInt(document.getElementById('profInputHeight').value);
         const birthdate = document.getElementById('profInputBirthdate').value;
-        const age = parseInt(document.getElementById('profInputAge').value);
+        let age = parseInt(document.getElementById('profInputAge').value);
         const gender = document.getElementById('profInputGender').value;
         const maxIncVal = parseFloat(document.getElementById('profInputMaxIncline').value);
 
         if (!newName) return alert("Ime ne more biti prazno!");
         if (isNaN(weight)) return alert("Vnesite veljavno težo!");
+        if (!birthdate) return alert("Vnesite datum rojstva!");
         if (!isNaN(maxIncVal)) setMaxInclineLimit(maxIncVal);
 
-        const prof = userProfiles[currentUser] || {};
+        const ageFromBirth = calcAgeFromBirthdate(birthdate);
+        if (ageFromBirth != null) age = ageFromBirth;
+
+        const oldName = currentUser;
+        const prof = { ...(userProfiles[currentUser] || {}) };
         delete userProfiles[currentUser];
 
         prof.name = newName;
         prof.weightKg = weight;
         prof.heightCm = height || 175;
-        prof.birthdate = birthdate || '1995-01-01';
+        prof.birthdate = birthdate;
         prof.age = age || 30;
         prof.gender = gender;
         prof.bmrFactor = gender === 'female' ? 0.92 : 1.0;
@@ -2437,20 +2547,35 @@
         localStorage.setItem('ble_active_user', newName);
         localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
 
+        let syncOk = true;
         if (supabaseClient) {
             try {
+                // Če je bil preimenovan, počisti star meta zapis
+                if (oldName && oldName !== newName) {
+                    await supabaseClient.from('routes').delete().eq('name', getProfileMetaRouteName(oldName));
+                    await supabaseClient.from('profiles').delete().eq('name', oldName);
+                }
                 const { error } = await supabaseClient.from('profiles').upsert(
                     { name: newName, weight_kg: weight },
                     { onConflict: 'name' }
                 );
-                if (error) console.warn("Supabase profile save error:", error);
+                if (error) {
+                    console.warn("Supabase profile save error:", error);
+                    syncOk = false;
+                }
+                const metaOk = await saveProfileMetaToSupabase(prof);
+                if (!metaOk) syncOk = false;
             } catch (e) {
                 console.warn("Napaka pri shranjevanju profila v Supabase:", e);
+                syncOk = false;
             }
         }
 
         await setUser(newName);
-        alert(`Profil '${newName}' je uspešno shranjen in sinhroniziran v Supabase!`);
+        populateProfileForm();
+        alert(syncOk
+            ? `Profil '${newName}' je shranjen. Datum rojstva (${birthdate}) in ostale nastavitve so sinhronizirane med napravami.`
+            : `Profil '${newName}' je shranjen lokalno. Sinhronizacija v oblak ni uspela — preveri Supabase povezavo.`);
     }
 
     async function deleteActiveProfile() {
@@ -2466,6 +2591,7 @@
         if (supabaseClient) {
             try {
                 await supabaseClient.from('profiles').delete().eq('name', nameToDelete);
+                await supabaseClient.from('routes').delete().eq('name', getProfileMetaRouteName(nameToDelete));
                 await supabaseClient.from('workouts').delete().eq('user_name', nameToDelete);
                 await supabaseClient.from('interval_programs').delete().eq('program_name', `${nameToDelete}_Program`);
             } catch (e) {
@@ -3190,9 +3316,11 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                         !item.name.startsWith('AUDIO::') &&
                         !item.name.startsWith('[AUDIO]') &&
                         !item.name.startsWith('WORKOUT_IMG::') &&
+                        !item.name.startsWith('PROFILE_META::') &&
                         item.video_url &&
                         String(item.video_url).trim() !== '' &&
-                        !String(item.video_url).startsWith('data:image')
+                        !String(item.video_url).startsWith('data:image') &&
+                        !String(item.video_url).trim().startsWith('{')
                     );
                 }
             } catch (e) {
@@ -4052,7 +4180,9 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                     !r.name.startsWith('AUDIO::') &&
                     !r.name.startsWith('[AUDIO]') &&
                     !r.name.startsWith('WORKOUT_IMG::') &&
-                    !(r.video_url && String(r.video_url).startsWith('data:image'))
+                    !r.name.startsWith('PROFILE_META::') &&
+                    !(r.video_url && String(r.video_url).startsWith('data:image')) &&
+                    !(r.video_url && String(r.video_url).trim().startsWith('{'))
                 );
                 const select = document.getElementById('supabaseRouteSelect');
                 select.innerHTML = '<option value="">-- Izberi progo iz Supabase baze --</option>';
