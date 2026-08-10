@@ -1075,17 +1075,24 @@
             <!-- GEMINI API — ključ je vgrajen (ni viden v UI) -->
             <div id="geminiKeyBox" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.35); padding: 0.85rem; border-radius: 0.85rem; margin-bottom: 1rem;">
                 <div style="font-size: 0.85rem; font-weight: 700; color: var(--accent-green); margin-bottom: 0.25rem;">
-                    🔑 Gemini API
+                    🔑 Gemini API <span id="appBuildBadge" style="font-weight:500;color:var(--text-muted);font-size:0.72rem;"></span>
                 </div>
                 <div id="geminiApiKeyStatus" style="font-size: 0.78rem; color: var(--text-muted);">
                     Ključ je nastavljen v ozadju.
                 </div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.55rem;">
+                    <button class="btn btn-primary" onclick="testGeminiConnection()">🔌 Testiraj Gemini povezavo</button>
+                </div>
                 <details style="margin-top: 0.5rem;">
                     <summary style="cursor:pointer;font-size:0.78rem;color:var(--text-muted);">Napredno: zamenjaj ključ</summary>
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.5rem;">
-                        <input type="password" id="geminiApiKeyInput" placeholder="Nov API ključ…" style="flex: 1; min-width: 200px;" autocomplete="off">
+                        <input type="password" id="geminiApiKeyInput" placeholder="Nov API ključ iz AI Studio (AQ.… ali AIza…)" style="flex: 1; min-width: 200px;" autocomplete="off">
                         <button class="btn btn-primary" onclick="saveGeminiApiKey()">💾 Shrani</button>
                         <button class="btn btn-secondary" onclick="clearGeminiApiKeyOverride()">↺ Privzeti</button>
+                        <button class="btn btn-secondary" onclick="window.open('https://aistudio.google.com/apikey','_blank')">🔗 AI Studio</button>
+                    </div>
+                    <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.35rem;line-height:1.4;">
+                        Če vidiš napako OAuth/401: ustvari <strong>nov</strong> ključ v AI Studio, omeji ga na <strong>Gemini API only</strong>, prilepi ga zgoraj in klikni Testiraj.
                     </div>
                 </details>
             </div>
@@ -2806,6 +2813,7 @@
     }
 
     // --- GEMINI AI VIRTUALNI ASISTENT, TRENER IN UVOZ SLIK ---
+    const APP_BUILD = 'v14';
     const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest'];
     // Ključ ni v plaintextu — XOR + razpršeni bajti (prepis v localStorage lahko preglasi)
     function _resolveEmbeddedGeminiKey() {
@@ -2819,9 +2827,33 @@
 
     function initGeminiApiKeyUi() {
         const input = document.getElementById('geminiApiKeyInput');
-        // Nikoli ne vpisuj ključa v polje (naj ostane skrit)
         if (input) input.value = '';
+        const badge = document.getElementById('appBuildBadge');
+        if (badge) badge.textContent = `(build ${APP_BUILD})`;
         updateGeminiApiKeyStatus();
+    }
+
+    async function testGeminiConnection() {
+        if (!requireGeminiApiKey()) return;
+        const out = document.getElementById('geminiOutputText');
+        const keyType = geminiApiKey.startsWith('AQ.') ? 'Auth (AQ.)' : (geminiApiKey.startsWith('AIza') ? 'Standard (AIza)' : 'neznan');
+        if (out) out.innerHTML = `<span style="color:var(--accent-cyan);">🔌 Testiram Gemini… (ključ: ${keyType}, build ${APP_BUILD})</span>`;
+        try {
+            const { text, model } = await callGeminiGenerate({
+                userText: 'Odgovori samo z eno besedo: DELA.',
+                temperature: 0.1
+            });
+            if (out) {
+                out.innerHTML = `<strong style="color:var(--accent-green);">✅ Gemini deluje</strong><br>
+                Model: ${model}<br>
+                Tip ključa: ${keyType}<br>
+                Odgovor: ${formatGeminiHtml(text)}`;
+            }
+            alert('✅ Gemini povezava deluje!');
+        } catch (e) {
+            setGeminiOutputError(e);
+            alert('❌ Gemini še ne deluje. Ustvari nov ključ v AI Studio (omeji na Gemini API only) in ga prilepi pod Napredno.');
+        }
     }
 
     function saveGeminiApiKey() {
@@ -2965,49 +2997,58 @@ OBVEZNO:
 
         let lastError = null;
         for (const model of GEMINI_MODELS) {
-            try {
-                // AQ. auth ključi: x-goog-api-key header (ne ?key= v URL)
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-goog-api-key': geminiApiKey
-                    },
-                    body: JSON.stringify(body)
-                });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok) {
-                    const msg = data?.error?.message || `HTTP ${res.status}`;
-                    lastError = new Error(`${model}: ${msg}`);
-                    // Auth napaka — nehaj (drugi modeli ne pomagajo)
-                    if (res.status === 401 || res.status === 403 || /api key|authentication|credential|permission|PERMISSION_DENIED/i.test(msg)) {
-                        throw lastError;
+            const attempts = [
+                {
+                    label: 'header',
+                    url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+                    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiApiKey }
+                },
+                {
+                    label: 'query',
+                    url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(geminiApiKey)}`,
+                    headers: { 'Content-Type': 'application/json' }
+                }
+            ];
+
+            let modelResolved = false;
+            for (const attempt of attempts) {
+                try {
+                    const res = await fetch(attempt.url, {
+                        method: 'POST',
+                        headers: attempt.headers,
+                        body: JSON.stringify(body)
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                        const msg = data?.error?.message || `HTTP ${res.status}`;
+                        lastError = new Error(`${model}: ${msg}`);
+                        if (res.status === 404 || /not found|not supported|deprecated|not available/i.test(msg)) {
+                            break; // naslednji model
+                        }
+                        // poskusi drugi auth način
+                        continue;
                     }
-                    // Poskusi naslednji model pri 404 / not found / unsupported
-                    if (res.status === 404 || /not found|not supported|deprecated|not available/i.test(msg)) continue;
-                    throw lastError;
-                }
-                const text = (data?.candidates || [])
-                    .flatMap(c => c?.content?.parts || [])
-                    .map(p => p.text || '')
-                    .join('')
-                    .trim();
-                if (!text) {
-                    const block = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
-                    lastError = new Error(`${model}: prazen odgovor${block ? ` (${block})` : ''}.`);
-                    continue;
-                }
-                return { text, model, raw: data };
-            } catch (e) {
-                lastError = e;
-                // Auth / hard fail — nehaj zanke
-                if (/api key|authentication|credential|permission|PERMISSION_DENIED|HTTP 401|HTTP 403/i.test(e?.message || '')) {
-                    break;
+                    const text = (data?.candidates || [])
+                        .flatMap(c => c?.content?.parts || [])
+                        .map(p => p.text || '')
+                        .join('')
+                        .trim();
+                    if (!text) {
+                        const block = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
+                        lastError = new Error(`${model}: prazen odgovor${block ? ` (${block})` : ''}.`);
+                        continue;
+                    }
+                    return { text, model, raw: data };
+                } catch (e) {
+                    lastError = e;
                 }
             }
+            if (modelResolved) break;
         }
-        throw lastError || new Error('Gemini API ni vrnil odgovora.');
+        const keyHint = geminiApiKey?.startsWith('AQ.')
+            ? ' Tvoj ključ je tipa AQ. — v AI Studio ustvari novega, omeji na Gemini API only, prilepi pod Napredno in klikni Testiraj.'
+            : '';
+        throw lastError || new Error('Gemini API ni vrnil odgovora.' + keyHint);
     }
 
     function setGeminiOutputLoading(msg) {
