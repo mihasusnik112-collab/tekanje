@@ -1392,6 +1392,10 @@
     let currentHr = 0;
     let currentDistance = 0.0;
     let totalCalories = 0.0;
+    let deviceReportsDistance = false;
+    let lastWorkoutTickMs = null;
+    let workoutTickInterval = null;
+    let fitshowStatusPollInterval = null;
 
     let gpxPoints = [];
     let gpxTotalLength = 0.0;
@@ -2876,20 +2880,149 @@
         const payload = data.slice(1, -2);
         const cmd = payload[0];
 
-        // SYS_STATUS (0x51): stanje + hitrost/naklon
+        // SYS_STATUS (0x51): stanje + hitrost/naklon/čas/razdalja
         if (cmd === 0x51 && payload.length >= 4) {
             const state = payload[1];
-            // 1=stop, 3=running, 4=stopping, 0x0A=pause
-            if (state === 0x01 || state === 0x03 || state === 0x04 || state === 0x0A) {
-                currentSpeed = (payload[2] || 0) / 10.0;
-                currentIncline = payload[3] || 0;
-                if (payload.length >= 8) {
-                    const distRaw = payload[6] | (payload[7] << 8);
-                    currentDistance = distRaw / 1000.0;
+            // 1=stop, 2=countdown, 3=running, 4=stopping, 0x0A=pause
+            if (state === 0x01 || state === 0x02 || state === 0x03 || state === 0x04 || state === 0x0A) {
+                // Standard: speed(B 0.1km/h), incline(B), time(W), distance(W 0.001km)
+                // High-speed: speed(W), incline(B), time(W), distance(W)
+                let speed = 0;
+                let incline = 0;
+                let distKm = null;
+                if (payload.length >= 12) {
+                    // Verjetno 2-byte hitrost
+                    speed = (payload[2] | (payload[3] << 8)) / 10.0;
+                    incline = payload[4] || 0;
+                    if (payload.length >= 9) {
+                        const distRaw = payload[7] | (payload[8] << 8);
+                        distKm = distRaw * 0.001;
+                    }
+                } else {
+                    speed = (payload[2] || 0) / 10.0;
+                    incline = payload[3] || 0;
+                    if (payload.length >= 8) {
+                        const distRaw = payload[6] | (payload[7] << 8);
+                        distKm = distRaw * 0.001;
+                    }
+                }
+
+                if (speed >= 0 && speed < 30) currentSpeed = speed;
+                if (incline >= 0 && incline <= 20) currentIncline = incline;
+                if (distKm != null && distKm >= 0 && distKm < 100) {
+                    deviceReportsDistance = true;
+                    currentDistance = distKm;
                 }
                 updateUI();
             }
         }
+    }
+
+    function startWorkoutMetricsTracking(resetDistance = true) {
+        if (resetDistance) {
+            currentDistance = 0.0;
+            totalCalories = 0.0;
+            deviceReportsDistance = false;
+            workoutLog = [];
+        }
+        lastWorkoutTickMs = Date.now();
+        if (workoutTickInterval) clearInterval(workoutTickInterval);
+        workoutTickInterval = setInterval(workoutMetricsTick, 1000);
+
+        // FitShow: aktivno povprašaj status (hitrost/razdalja), če notify ni zanesljiv
+        if (fitshowStatusPollInterval) clearInterval(fitshowStatusPollInterval);
+        if (treadmillProtocol === 'fitshow' && fitshowWriteChar) {
+            fitshowStatusPollInterval = setInterval(() => {
+                fitshowSend([0x51]).catch(() => {});
+            }, 1000);
+        }
+
+        updateUI();
+    }
+
+    function stopWorkoutMetricsTracking() {
+        if (workoutTickInterval) {
+            clearInterval(workoutTickInterval);
+            workoutTickInterval = null;
+        }
+        if (fitshowStatusPollInterval) {
+            clearInterval(fitshowStatusPollInterval);
+            fitshowStatusPollInterval = null;
+        }
+        lastWorkoutTickMs = null;
+    }
+
+    function getEffectiveSpeedKmh() {
+        if (currentSpeed > 0.2) return currentSpeed;
+        if ((isWorkoutActive || startTime) && treadmillBeltStarted && lastTargetSpeed > 0.2) {
+            return lastTargetSpeed;
+        }
+        return 0;
+    }
+
+    function workoutMetricsTick() {
+        if (!isWorkoutActive && !startTime) return;
+
+        const now = Date.now();
+        const dtSec = lastWorkoutTickMs ? Math.max(0.2, (now - lastWorkoutTickMs) / 1000) : 1;
+        lastWorkoutTickMs = now;
+
+        const spd = getEffectiveSpeedKmh();
+        // Če steza ne pošilja Total Distance, izračunaj iz hitrosti: km = (km/h) * h
+        if (!deviceReportsDistance && spd > 0.2) {
+            currentDistance += spd * (dtSec / 3600);
+        }
+
+        if (spd > 0.2) {
+            const bmrFactor = userProfiles[currentUser]?.bmrFactor || 1.0;
+            const met = spd * 1.1;
+            totalCalories += met * realWeightKg * bmrFactor * (dtSec / 3600);
+        }
+
+        // Posodobi prikaz (brez podvojene akumulacije kalorij)
+        refreshMetricDisplays();
+        syncVideoSpeed();
+
+        if (startTime) {
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            workoutLog.push({
+                time: elapsed,
+                speed: spd,
+                incline: currentIncline,
+                hr: currentHr,
+                distance: currentDistance
+            });
+            updateLiveChart(elapsed, spd, currentIncline, currentHr);
+        }
+
+        // GPX sledenje naklona glede na izračunano razdaljo
+        if (isGpxFollowingActive && gpxPoints.length > 0) {
+            const currentTargetPoint = gpxPoints.find(p => p.distKm >= currentDistance);
+            if (currentTargetPoint) {
+                const targetIncline = Math.min(currentTargetPoint.inclinePct, maxInclineLimit);
+                if (Math.abs(currentIncline - targetIncline) >= 0.5) {
+                    currentIncline = targetIncline;
+                    setTreadmillIncline(currentIncline);
+                }
+            }
+        }
+    }
+
+    function refreshMetricDisplays() {
+        const spd = getEffectiveSpeedKmh();
+        const speedEl = document.getElementById('valSpeed');
+        const inclineEl = document.getElementById('valIncline');
+        const distEl = document.getElementById('valDistance');
+        const calEl = document.getElementById('valCalories');
+        if (speedEl) speedEl.textContent = spd.toFixed(1);
+        if (inclineEl) inclineEl.textContent = currentIncline.toFixed(1);
+        if (distEl) distEl.textContent = currentDistance.toFixed(2);
+        if (calEl) calEl.textContent = Math.round(totalCalories);
+
+        if (document.getElementById('hudSpeed')) document.getElementById('hudSpeed').innerHTML = `${spd.toFixed(1)} <span style="font-size: 0.75rem;">km/h</span>`;
+        if (document.getElementById('hudIncline')) document.getElementById('hudIncline').innerHTML = `${currentIncline.toFixed(1)} <span style="font-size: 0.75rem;">%</span>`;
+        if (document.getElementById('hudHr')) document.getElementById('hudHr').innerHTML = `${currentHr > 0 ? currentHr : '--'} <span style="font-size: 0.75rem;">bpm</span>`;
+        if (document.getElementById('hudDistance')) document.getElementById('hudDistance').innerHTML = `${currentDistance.toFixed(2)} <span style="font-size: 0.75rem;">km</span>`;
     }
 
     async function startTreadmillBelt() {
@@ -3063,28 +3196,38 @@
         if (data.byteLength < 4) return;
 
         const flags = data.getUint16(0, true);
-        const rawSpeed = data.getUint16(2, true);
-        currentSpeed = rawSpeed / 100.0;
+        // Instantaneous Speed je obvezen, razen če je More Data (bit0) = 1
+        let offset = 2;
+        if ((flags & 0x01) === 0) {
+            if (data.byteLength >= 4) {
+                const rawSpeed = data.getUint16(2, true);
+                currentSpeed = rawSpeed / 100.0;
+            }
+            offset = 4;
+        }
 
-        let offset = 4;
-        if (flags & (1 << 1)) offset += 2;
+        if (flags & (1 << 1)) offset += 2; // Average Speed
 
         if (flags & (1 << 2)) {
+            // Total Distance: uint24, metri
             if (data.byteLength >= offset + 3) {
                 const b0 = data.getUint8(offset);
                 const b1 = data.getUint8(offset + 1);
                 const b2 = data.getUint8(offset + 2);
-                const rawDist = b0 | (b1 << 8) | (b2 << 16);
-                currentDistance = rawDist / 1000.0;
+                const rawDistMeters = b0 | (b1 << 8) | (b2 << 16);
+                deviceReportsDistance = true;
+                currentDistance = rawDistMeters / 1000.0;
             }
             offset += 3;
         }
 
         if (flags & (1 << 3)) {
+            // Inclination + Ramp Angle Setting (int16 + int16)
             if (data.byteLength >= offset + 2) {
                 const rawIncline = data.getInt16(offset, true);
                 currentIncline = rawIncline / 10.0;
             }
+            offset += 4;
         }
 
         // ZAZNAVANJE ROČNE USTAVITVE NA STEZI
@@ -3112,16 +3255,9 @@
     }
 
     function updateUI() {
-        document.getElementById('valSpeed').textContent = currentSpeed.toFixed(1);
-        document.getElementById('valIncline').textContent = currentIncline.toFixed(1);
-        document.getElementById('valDistance').textContent = currentDistance.toFixed(2);
+        refreshMetricDisplays();
 
-        if (document.getElementById('hudSpeed')) document.getElementById('hudSpeed').innerHTML = `${currentSpeed.toFixed(1)} <span style="font-size: 0.75rem;">km/h</span>`;
-        if (document.getElementById('hudIncline')) document.getElementById('hudIncline').innerHTML = `${currentIncline.toFixed(1)} <span style="font-size: 0.75rem;">%</span>`;
-        if (document.getElementById('hudHr')) document.getElementById('hudHr').innerHTML = `${currentHr > 0 ? currentHr : '--'} <span style="font-size: 0.75rem;">bpm</span>`;
-        if (document.getElementById('hudDistance')) document.getElementById('hudDistance').innerHTML = `${currentDistance.toFixed(2)} <span style="font-size: 0.75rem;">km</span>`;
-
-        // SAMODEJNO SPREMLJANJE GPX NAKLONA (samo po eksplicitnem zagonu GPX proge)
+        // GPX: tudi ob BLE update (tick pokrije primer brez BLE razdalje)
         if (isGpxFollowingActive && gpxPoints.length > 0) {
             const currentTargetPoint = gpxPoints.find(p => p.distKm >= currentDistance);
             if (currentTargetPoint) {
@@ -3134,25 +3270,7 @@
             }
         }
 
-        const bmrFactor = userProfiles[currentUser]?.bmrFactor || 1.0;
-        let met = currentSpeed > 0.5 ? (currentSpeed * 1.1) : 1.0;
-        totalCalories += (met * realWeightKg * bmrFactor * (0.5 / 3600));
-        document.getElementById('valCalories').textContent = Math.round(totalCalories);
-
         syncVideoSpeed();
-
-        if (startTime) {
-            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-            workoutLog.push({
-                time: elapsed,
-                speed: currentSpeed,
-                incline: currentIncline,
-                hr: currentHr,
-                distance: currentDistance
-            });
-
-            updateLiveChart(elapsed, currentSpeed, currentIncline, currentHr);
-        }
     }
 
     async function fetchSupabaseRoutes() {
@@ -3680,6 +3798,8 @@
 
     function startTimer() {
         if (timerInterval) clearInterval(timerInterval);
+        // Nov timer = nova seja → reset razdalje/kalorij in zagon izračuna
+        startWorkoutMetricsTracking(true);
         timerInterval = setInterval(() => {
             if (!startTime) return;
             const totalSec = Math.floor((Date.now() - startTime) / 1000);
@@ -3693,6 +3813,8 @@
 
     function stopTimer() {
         if (timerInterval) clearInterval(timerInterval);
+        timerInterval = null;
+        stopWorkoutMetricsTracking();
     }
 
     // UNIFICIRANA USTAVITEV VSEGA (VIDEO, AVDIO, MERJENJE & STEZA)
@@ -3725,6 +3847,11 @@
 
         showAiDiagnosticModal();
         saveWorkoutToHistory();
+
+        // Ponastavi sejo, da naslednji tek začne razdaljo od 0
+        startTime = null;
+        hasHadSpeedBefore = false;
+        treadmillBeltStarted = false;
     }
 
     function showAiDiagnosticModal() {
