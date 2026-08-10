@@ -315,6 +315,51 @@
             object-fit: cover;
         }
 
+        /* CELOZASLONSKI HEADING HUD OVERLAY ZA VIDEO */
+        .video-hud-overlay {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            z-index: 99;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .hud-chip {
+            background: rgba(8, 12, 20, 0.82);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            padding: 0.4rem 0.85rem;
+            border-radius: 0.75rem;
+            color: #fff;
+            font-weight: 700;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 75px;
+        }
+
+        .hud-label {
+            font-size: 0.62rem;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.1rem;
+        }
+
+        .hud-value {
+            font-size: 1.3rem;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+
         .chart-box {
             position: relative;
             height: 250px;
@@ -449,8 +494,13 @@
             <div class="card">
                 <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem;">
                     <div class="card-title">🎬 Video Proge</div>
-                    <input type="file" id="videoFileInput" accept="video/*" style="display: none;" onchange="loadUserVideo(event)">
-                    <button class="btn btn-secondary" onclick="document.getElementById('videoFileInput').click()">Naloži MP4</button>
+                    <div style="display: flex; gap: 0.4rem;">
+                        <button class="btn btn-purple" style="padding: 0.45rem 0.75rem; font-size: 0.85rem;" onclick="toggleVideoFullscreen()" title="Celozaslonski video z HUD podatki steze">
+                            📺 Video HUD Cel Zaslon
+                        </button>
+                        <input type="file" id="videoFileInput" accept="video/*" style="display: none;" onchange="loadUserVideo(event)">
+                        <button class="btn btn-secondary" onclick="document.getElementById('videoFileInput').click()">Naloži MP4</button>
+                    </div>
                 </div>
 
                 <!-- YOUTUBE VNOS & SHRANJEVANJE POVEZAV -->
@@ -475,7 +525,31 @@
                     </div>
                 </div>
 
-                <div class="video-container">
+                <!-- VIDEO VSEBNIK Z LEBEČIMI HUD PODATKI -->
+                <div class="video-container" id="videoContainerBox">
+                    <div class="video-hud-overlay" id="videoHudOverlay">
+                        <div class="hud-chip">
+                            <span class="hud-label">Hitrost</span>
+                            <span class="hud-value" id="hudSpeed" style="color: var(--accent-green);">0.0 <span style="font-size: 0.75rem;">km/h</span></span>
+                        </div>
+                        <div class="hud-chip">
+                            <span class="hud-label">Naklon</span>
+                            <span class="hud-value" id="hudIncline" style="color: var(--accent-cyan);">0.0 <span style="font-size: 0.75rem;">%</span></span>
+                        </div>
+                        <div class="hud-chip">
+                            <span class="hud-label">Utrip</span>
+                            <span class="hud-value" id="hudHr" style="color: var(--accent-red);">-- <span style="font-size: 0.75rem;">bpm</span></span>
+                        </div>
+                        <div class="hud-chip">
+                            <span class="hud-label">Čas</span>
+                            <span class="hud-value" id="hudTime">00:00</span>
+                        </div>
+                        <div class="hud-chip">
+                            <span class="hud-label">Razdalja</span>
+                            <span class="hud-value" id="hudDistance">0.00 <span style="font-size: 0.75rem;">km</span></span>
+                        </div>
+                    </div>
+
                     <video id="routeVideo" loop muted playsinline style="display: block;"></video>
                     <div id="youtubePlayerContainer" style="display: none; width: 100%; height: 100%;">
                         <div id="youtubePlayer"></div>
@@ -728,6 +802,23 @@
     function toggleFullScreen() {
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen().catch(err => alert(`Napaka celozaslonskega načina: ${err.message}`));
+        } else {
+            if (document.exitFullscreen) document.exitFullscreen();
+        }
+    }
+
+    function toggleVideoFullscreen() {
+        const box = document.getElementById('videoContainerBox');
+        if (!box) return;
+
+        if (!document.fullscreenElement) {
+            if (box.requestFullscreen) {
+                box.requestFullscreen();
+            } else if (box.webkitRequestFullscreen) {
+                box.webkitRequestFullscreen();
+            } else if (box.msRequestFullscreen) {
+                box.msRequestFullscreen();
+            }
         } else {
             if (document.exitFullscreen) document.exitFullscreen();
         }
@@ -1186,9 +1277,16 @@
     }
 
     function updateUI() {
+        // STANDARDNI PRIKAZ
         document.getElementById('valSpeed').textContent = currentSpeed.toFixed(1);
         document.getElementById('valIncline').textContent = currentIncline.toFixed(1);
         document.getElementById('valDistance').textContent = currentDistance.toFixed(2);
+
+        // HUD OVERLAY ZA CELOZASLONSKI VIDEO
+        if (document.getElementById('hudSpeed')) document.getElementById('hudSpeed').innerHTML = `${currentSpeed.toFixed(1)} <span style="font-size: 0.75rem;">km/h</span>`;
+        if (document.getElementById('hudIncline')) document.getElementById('hudIncline').innerHTML = `${currentIncline.toFixed(1)} <span style="font-size: 0.75rem;">%</span>`;
+        if (document.getElementById('hudHr')) document.getElementById('hudHr').innerHTML = `${currentHr > 0 ? currentHr : '--'} <span style="font-size: 0.75rem;">bpm</span>`;
+        if (document.getElementById('hudDistance')) document.getElementById('hudDistance').innerHTML = `${currentDistance.toFixed(2)} <span style="font-size: 0.75rem;">km</span>`;
 
         if (gpxPoints.length > 0) {
             const currentTargetPoint = gpxPoints.find(p => p.distKm >= currentDistance);
@@ -1560,7 +1658,9 @@
             const totalSec = Math.floor((Date.now() - startTime) / 1000);
             const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
             const s = (totalSec % 60).toString().padStart(2, '0');
-            document.getElementById('valTime').textContent = `${m}:${s}`;
+            const timeStr = `${m}:${s}`;
+            document.getElementById('valTime').textContent = timeStr;
+            if (document.getElementById('hudTime')) document.getElementById('hudTime').textContent = timeStr;
         }, 1000);
     }
 
