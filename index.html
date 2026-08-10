@@ -563,7 +563,7 @@
                 <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.85rem;">
                     <div style="display: flex; gap: 0.5rem;">
                         <input type="text" id="youtubeUrlInput" placeholder="Vnesite svoj YouTube URL posnetka..." style="flex: 1;">
-                        <button class="btn btn-red" onclick="loadYouTubeVideo()">▶ Predvajaj Video</button>
+                        <button class="btn btn-red" id="btnPlayVideoInput" onclick="togglePlayYouTubeVideo()">▶ Predvajaj Video</button>
                     </div>
                     <div style="display: flex; gap: 0.5rem;">
                         <input type="text" id="youtubeTitleInput" placeholder="Ime moje proge (npr. Moja najljubša proga)..." style="flex: 1;">
@@ -591,7 +591,7 @@
                     <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;">
                         <div style="display: flex; gap: 0.5rem;">
                             <input type="text" id="youtubeAudioUrlInput" placeholder="Vnesite YouTube URL za pesem / podcast..." style="flex: 1;">
-                            <button class="btn btn-purple" onclick="playYouTubeAudioOnly()">▶ Predvajaj Avdio</button>
+                            <button class="btn btn-purple" id="btnPlayAudioInput" onclick="togglePlayYouTubeAudioOnly()">▶ Predvajaj Avdio</button>
                         </div>
                         <div style="display: flex; gap: 0.5rem;">
                             <input type="text" id="youtubeAudioTitleInput" placeholder="Ime pesmi ali zvrsti (npr. Running Motivation Beats)..." style="flex: 1;">
@@ -1172,9 +1172,12 @@
 
     let ytPlayer = null;
     let isYouTubeActive = false;
+    let isVideoPlaying = false;
+    let currentPlayingVideoUrl = '';
 
     let ytAudioPlayer = null;
     let isYouTubeAudioActive = false;
+    let currentPlayingAudioUrl = '';
 
     let timerInterval = null;
     let liveChart = null;
@@ -1745,6 +1748,31 @@
         alert(`Program 'Fat Burn Low Impact (20 min)' prilagojen za ${currentUser}!`);
     }
 
+    // --- POSODABLJANJE STANJA GUMBOV PREDVAJAJ / USTAVI ZA MEDIJE ---
+    function updateMediaPlayButtonsState() {
+        const btnVid = document.getElementById('btnPlayVideoInput');
+        if (btnVid) {
+            if (isVideoPlaying) {
+                btnVid.innerHTML = '⏹ Ustavi Video';
+                btnVid.className = 'btn btn-danger';
+            } else {
+                btnVid.innerHTML = '▶ Predvajaj Video';
+                btnVid.className = 'btn btn-red';
+            }
+        }
+
+        const btnAud = document.getElementById('btnPlayAudioInput');
+        if (btnAud) {
+            if (isYouTubeAudioActive) {
+                btnAud.innerHTML = '⏹ Ustavi Avdio';
+                btnAud.className = 'btn btn-danger';
+            } else {
+                btnAud.innerHTML = '▶ Predvajaj Avdio';
+                btnAud.className = 'btn btn-purple';
+            }
+        }
+    }
+
     // --- ROBUSNO PRIDOBIVANJE IN SHRANJEVANJE VSEH YOUTUBE AVDIO IN VIDEO PROG Z SUPABASE BAZE ---
     async function fetchAllSavedVideos() {
         let videos = [];
@@ -1840,6 +1868,7 @@
             const vidId = extractYouTubeId(item.audio_url);
             const thumbUrl = vidId ? `https://img.youtube.com/vi/${vidId}/hqdefault.jpg` : null;
             const iconHtml = thumbUrl ? `<img src="${thumbUrl}" class="video-thumb-icon" alt="Thumb">` : `<div class="video-thumb-icon">🎵</div>`;
+            const isPlayingThis = (currentPlayingAudioUrl === item.audio_url && isYouTubeAudioActive);
 
             return `
             <div style="background: rgba(255,255,255,0.05); padding: 0.4rem 0.75rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
@@ -1850,7 +1879,7 @@
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.3rem; shrink: 0;">
-                    <button class="btn btn-purple" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="playSavedAudio('${item.audio_url}')">▶ Predvajaj</button>
+                    <button class="btn ${isPlayingThis ? 'btn-danger' : 'btn-purple'}" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="playSavedAudio('${item.audio_url}')">${isPlayingThis ? '⏹ Ustavi' : '▶ Predvajaj'}</button>
                     <button class="btn btn-danger" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" onclick="deleteSavedAudio('${item.id}')">🗑</button>
                 </div>
             </div>
@@ -1858,7 +1887,32 @@
         }).join('');
     }
 
+    function togglePlayYouTubeAudioOnly() {
+        if (isYouTubeAudioActive) {
+            stopAudio();
+        } else {
+            playYouTubeAudioOnly();
+        }
+    }
+
+    function stopAudio() {
+        isYouTubeAudioActive = false;
+        currentPlayingAudioUrl = '';
+        if (ytAudioPlayer && typeof ytAudioPlayer.pauseVideo === 'function') {
+            ytAudioPlayer.pauseVideo();
+        }
+        if (document.getElementById('audioPlayingBadge')) {
+            document.getElementById('audioPlayingBadge').style.display = 'none';
+        }
+        updateMediaPlayButtonsState();
+        loadSavedYouTubeAudio();
+    }
+
     function playSavedAudio(url) {
+        if (currentPlayingAudioUrl === url && isYouTubeAudioActive) {
+            stopAudio();
+            return;
+        }
         document.getElementById('youtubeAudioUrlInput').value = url;
         playYouTubeAudioOnly();
     }
@@ -1883,7 +1937,10 @@
         if (!videoId) return alert("Neveljavna YouTube povezava.");
 
         isYouTubeAudioActive = true;
-        document.getElementById('audioPlayingBadge').style.display = 'inline';
+        currentPlayingAudioUrl = url;
+        if (document.getElementById('audioPlayingBadge')) {
+            document.getElementById('audioPlayingBadge').style.display = 'inline';
+        }
 
         if (ytAudioPlayer) {
             ytAudioPlayer.loadVideoById(videoId);
@@ -1901,6 +1958,9 @@
                 }
             });
         }
+
+        updateMediaPlayButtonsState();
+        loadSavedYouTubeAudio();
     }
 
     // SHRANJEVANJE IN NALAGANJE SKUPNIH YOUTUBE PROG (VIDEO) V SUPABASE
@@ -1951,6 +2011,7 @@
             const vidId = extractYouTubeId(item.video_url);
             const thumbUrl = vidId ? `https://img.youtube.com/vi/${vidId}/hqdefault.jpg` : null;
             const iconHtml = thumbUrl ? `<img src="${thumbUrl}" class="video-thumb-icon" alt="Thumb">` : `<div class="video-thumb-icon">🎬</div>`;
+            const isPlayingThis = (currentPlayingVideoUrl === item.video_url && isVideoPlaying);
 
             return `
             <div style="background: rgba(255,255,255,0.05); padding: 0.4rem 0.75rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
@@ -1961,7 +2022,7 @@
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.3rem; shrink: 0;">
-                    <button class="btn btn-primary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="playSavedYouTube('${item.video_url}')">▶ Predvajaj</button>
+                    <button class="btn ${isPlayingThis ? 'btn-danger' : 'btn-primary'}" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="playSavedYouTube('${item.video_url}')">${isPlayingThis ? '⏹ Ustavi' : '▶ Predvajaj'}</button>
                     <button class="btn btn-danger" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" onclick="deleteSavedYouTube('${item.id}')">🗑</button>
                 </div>
             </div>
@@ -1969,7 +2030,31 @@
         }).join('');
     }
 
+    function togglePlayYouTubeVideo() {
+        if (isVideoPlaying) {
+            stopVideo();
+        } else {
+            loadYouTubeVideo();
+        }
+    }
+
+    function stopVideo() {
+        isVideoPlaying = false;
+        currentPlayingVideoUrl = '';
+        const localVideo = document.getElementById('routeVideo');
+        if (localVideo) localVideo.pause();
+        if (ytPlayer && typeof ytPlayer.pauseVideo === 'function') {
+            ytPlayer.pauseVideo();
+        }
+        updateMediaPlayButtonsState();
+        loadSavedYouTubeVideos();
+    }
+
     function playSavedYouTube(url) {
+        if (currentPlayingVideoUrl === url && isVideoPlaying) {
+            stopVideo();
+            return;
+        }
         document.getElementById('youtubeUrlInput').value = url;
         loadYouTubeVideo();
     }
@@ -2292,6 +2377,10 @@
             video.style.display = 'block';
             video.src = route.video_url;
             video.play();
+            isVideoPlaying = true;
+            currentPlayingVideoUrl = route.video_url;
+            updateMediaPlayButtonsState();
+            loadSavedYouTubeVideos();
         }
 
         if (route.gpx_data) {
@@ -2421,6 +2510,8 @@
         document.getElementById('routeVideo').style.display = 'none';
         document.getElementById('youtubePlayerContainer').style.display = 'block';
         isYouTubeActive = true;
+        isVideoPlaying = true;
+        currentPlayingVideoUrl = url;
 
         if (ytPlayer) {
             ytPlayer.loadVideoById(videoId);
@@ -2441,6 +2532,9 @@
                 }
             });
         }
+
+        updateMediaPlayButtonsState();
+        loadSavedYouTubeVideos();
     }
 
     function extractYouTubeId(url) {
@@ -2483,6 +2577,10 @@
         video.style.display = 'block';
         video.src = URL.createObjectURL(file);
         video.play();
+        isVideoPlaying = true;
+        currentPlayingVideoUrl = file.name;
+        updateMediaPlayButtonsState();
+        loadSavedYouTubeVideos();
     }
 
     function loadGpxFile(event) {
@@ -2631,22 +2729,11 @@
             activeProgramInterval = null;
         }
 
-        // 3. Ustavitev VIDEO predvajalnika (Lokalni ali YouTube)
-        const localVideo = document.getElementById('routeVideo');
-        if (localVideo) {
-            localVideo.pause();
-        }
-        if (ytPlayer && typeof ytPlayer.pauseVideo === 'function') {
-            ytPlayer.pauseVideo();
-        }
+        // 3. Ustavitev VIDEO predvajalnika
+        stopVideo();
 
         // 4. Ustavitev AVDIO predvajalnika
-        if (ytAudioPlayer && typeof ytAudioPlayer.pauseVideo === 'function') {
-            ytAudioPlayer.pauseVideo();
-        }
-        if (document.getElementById('audioPlayingBadge')) {
-            document.getElementById('audioPlayingBadge').style.display = 'none';
-        }
+        stopAudio();
 
         document.getElementById('btnStopWorkout').disabled = true;
 
