@@ -1264,10 +1264,61 @@
             <div class="card-header">
                 <div class="card-title">📜 Zgodovina Treningov za <span id="historyUserName">Miha</span></div>
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="syncWorkoutsBidirectional(true)">🔄 Sinhroniziraj</button>
                     <button class="btn btn-purple" onclick="exportWorkoutGPX()">📲 Izvozi GPX (Health Connect)</button>
                     <button class="btn btn-secondary" onclick="exportHistoryCSV()">Izvozi CSV</button>
                     <button class="btn btn-danger" onclick="clearHistory()">Počisti</button>
                 </div>
+            </div>
+            <div id="historySyncStatus" style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                Sinhronizacija prek Supabase za vsak profil (računalnik, tablica, telefoni).
+            </div>
+
+            <!-- ROČNI VNOS VADBE + SCREENSHOT URE -->
+            <div style="background: rgba(6,182,212,0.08); border: 1px solid rgba(6,182,212,0.35); padding: 1rem; border-radius: 0.85rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.95rem; font-weight: 700; color: var(--accent-cyan); margin-bottom: 0.65rem;">
+                    ✍️ Ročni vnos vadbe (npr. iz ure / zunaj)
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.5rem; margin-bottom: 0.65rem;">
+                    <div>
+                        <label style="font-size:0.72rem;color:var(--text-muted);">Datum</label>
+                        <input type="datetime-local" id="manualWorkoutDate" style="width:100%;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.72rem;color:var(--text-muted);">Trajanje (min)</label>
+                        <input type="number" id="manualWorkoutMinutes" min="1" step="1" placeholder="45" style="width:100%;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.72rem;color:var(--text-muted);">Razdalja (km)</label>
+                        <input type="number" id="manualWorkoutDistance" min="0" step="0.01" placeholder="5.20" style="width:100%;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.72rem;color:var(--text-muted);">Kalorije</label>
+                        <input type="number" id="manualWorkoutCalories" min="0" step="1" placeholder="320" style="width:100%;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.72rem;color:var(--text-muted);">Povp. HR</label>
+                        <input type="number" id="manualWorkoutHr" min="0" step="1" placeholder="138" style="width:100%;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.72rem;color:var(--text-muted);">Teža (kg)</label>
+                        <input type="number" id="manualWorkoutWeight" min="30" step="0.1" style="width:100%;">
+                    </div>
+                </div>
+                <input type="text" id="manualWorkoutNotes" placeholder="Opomba (npr. Tek na prostem, Huawei Health)…" style="width:100%; margin-bottom: 0.65rem;">
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin-bottom:0.65rem;">
+                    <input type="file" id="manualWorkoutImageInput" accept="image/*" style="display:none;" onchange="handleManualWorkoutImage(event)">
+                    <button class="btn btn-purple" onclick="document.getElementById('manualWorkoutImageInput').click()">📷 Screenshot ure</button>
+                    <button class="btn btn-secondary" onclick="clearManualWorkoutImage()">🗑 Odstrani sliko</button>
+                    <button class="btn btn-primary" onclick="fillManualWorkoutFromGeminiImage()" id="btnGeminiFillManual" title="Gemini prebere vrednosti s slike">✨ Gemini preberi sliko</button>
+                    <span id="manualWorkoutImageName" style="font-size:0.78rem;color:var(--text-muted);">Ni slike</span>
+                </div>
+                <div id="manualWorkoutImagePreviewWrap" style="display:none; margin-bottom:0.65rem;">
+                    <img id="manualWorkoutImagePreview" alt="Screenshot" style="max-height:140px;border-radius:0.5rem;border:1px solid var(--card-border);">
+                </div>
+                <button class="btn btn-huge-start" style="font-size:0.95rem;padding:0.65rem 1.1rem;" onclick="saveManualWorkout()">
+                    💾 Shrani vadbo (sinhronizirano)
+                </button>
             </div>
 
             <div class="table-responsive">
@@ -1275,16 +1326,18 @@
                     <thead>
                         <tr>
                             <th>Datum</th>
+                            <th>Vir</th>
                             <th>Trajanje</th>
                             <th>Razdalja</th>
                             <th>Teža</th>
                             <th>Kalorije</th>
                             <th>Povp. HR</th>
+                            <th>Slika</th>
                             <th>Akcija</th>
                         </tr>
                     </thead>
                     <tbody id="historyTableBody">
-                        <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Ni še zabeleženih aktivnosti.</td></tr>
+                        <tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Ni še zabeleženih aktivnosti.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1800,7 +1853,11 @@
         document.getElementById(secId).classList.add('active');
 
         if (secId === 'secProfiles') populateProfileForm();
-        if (secId === 'secHistory') renderHistoryTable();
+        if (secId === 'secHistory') {
+            initManualWorkoutForm();
+            renderHistoryTable();
+            syncWorkoutsBidirectional(false);
+        }
         if (secId === 'secStats') loadStats();
         if (secId === 'secGemini') initGeminiApiKeyUi();
     }
@@ -1872,7 +1929,9 @@
         realWeightKg = prof.weightKg;
         populateProfileForm();
         updateLiveMusicBarVisibility();
+        initManualWorkoutForm();
         await fetchIntervalPrograms();
+        await syncWorkoutsBidirectional(false);
         await renderHistoryTable();
         loadStats();
         await loadSavedYouTubeVideos();
@@ -3130,8 +3189,10 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                         item.name &&
                         !item.name.startsWith('AUDIO::') &&
                         !item.name.startsWith('[AUDIO]') &&
+                        !item.name.startsWith('WORKOUT_IMG::') &&
                         item.video_url &&
-                        String(item.video_url).trim() !== ''
+                        String(item.video_url).trim() !== '' &&
+                        !String(item.video_url).startsWith('data:image')
                     );
                 }
             } catch (e) {
@@ -3989,7 +4050,9 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 const routeData = data.filter(r =>
                     r.name &&
                     !r.name.startsWith('AUDIO::') &&
-                    !r.name.startsWith('[AUDIO]')
+                    !r.name.startsWith('[AUDIO]') &&
+                    !r.name.startsWith('WORKOUT_IMG::') &&
+                    !(r.video_url && String(r.video_url).startsWith('data:image'))
                 );
                 const select = document.getElementById('supabaseRouteSelect');
                 select.innerHTML = '<option value="">-- Izberi progo iz Supabase baze --</option>';
@@ -4752,48 +4815,440 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
     }
 
     // SHRANJEVANJE VADBE V SUPABASE S POPOLNOMA NATANČNO SHEMO
+    let manualWorkoutImageDataUrl = null;
+
+    function getLocalHistoryAll() {
+        return JSON.parse(localStorage.getItem('ble_history_v4')) || [];
+    }
+
+    function setLocalHistoryAll(arr) {
+        localStorage.setItem('ble_history_v4', JSON.stringify(arr || []));
+    }
+
+    function getWorkoutImagesMap() {
+        return JSON.parse(localStorage.getItem('ble_workout_imgs_v1')) || {};
+    }
+
+    function setWorkoutImagesMap(map) {
+        localStorage.setItem('ble_workout_imgs_v1', JSON.stringify(map || {}));
+    }
+
+    function encodeManualGpxName({ notes = '', imageRef = '', source = 'manual' } = {}) {
+        // gpx_name uporabljamo kot metapodatke (brez spremembe sheme)
+        const safeNotes = String(notes || '').replace(/\|/g, '/').slice(0, 180);
+        return `${source}|${safeNotes}|${imageRef || ''}`;
+    }
+
+    function parseWorkoutMeta(gpxName) {
+        if (!gpxName) return { source: 'steza', notes: '', imageRef: '' };
+        if (String(gpxName).startsWith('manual|') || String(gpxName).startsWith('steza|')) {
+            const parts = String(gpxName).split('|');
+            return { source: parts[0] || 'manual', notes: parts[1] || '', imageRef: parts[2] || '' };
+        }
+        return { source: 'gpx', notes: String(gpxName), imageRef: '' };
+    }
+
+    function initManualWorkoutForm() {
+        const dateEl = document.getElementById('manualWorkoutDate');
+        if (dateEl && !dateEl.value) {
+            const d = new Date();
+            d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+            dateEl.value = d.toISOString().slice(0, 16);
+        }
+        const wEl = document.getElementById('manualWorkoutWeight');
+        if (wEl && !wEl.value) wEl.value = (realWeightKg || userProfiles[currentUser]?.weightKg || 70).toFixed(1);
+        const nameEl = document.getElementById('historyUserName');
+        if (nameEl) nameEl.textContent = currentUser;
+    }
+
+    function compressImageToDataUrl(file, maxSide = 960, quality = 0.72) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error('Branje slike ni uspelo.'));
+            reader.onload = () => {
+                const img = new Image();
+                img.onload = () => {
+                    let w = img.width, h = img.height;
+                    const scale = Math.min(1, maxSide / Math.max(w, h));
+                    w = Math.round(w * scale);
+                    h = Math.round(h * scale);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
+                };
+                img.onerror = () => reject(new Error('Neveljavna slika.'));
+                img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function handleManualWorkoutImage(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        try {
+            manualWorkoutImageDataUrl = await compressImageToDataUrl(file);
+            const prev = document.getElementById('manualWorkoutImagePreview');
+            const wrap = document.getElementById('manualWorkoutImagePreviewWrap');
+            const name = document.getElementById('manualWorkoutImageName');
+            if (prev) prev.src = manualWorkoutImageDataUrl;
+            if (wrap) wrap.style.display = 'block';
+            if (name) name.textContent = file.name;
+        } catch (e) {
+            alert(e.message || 'Napaka pri nalaganju slike.');
+            manualWorkoutImageDataUrl = null;
+        }
+    }
+
+    function clearManualWorkoutImage() {
+        manualWorkoutImageDataUrl = null;
+        const input = document.getElementById('manualWorkoutImageInput');
+        if (input) input.value = '';
+        const wrap = document.getElementById('manualWorkoutImagePreviewWrap');
+        if (wrap) wrap.style.display = 'none';
+        const name = document.getElementById('manualWorkoutImageName');
+        if (name) name.textContent = 'Ni slike';
+    }
+
+    async function uploadWorkoutScreenshot(dataUrl, workoutId) {
+        if (!dataUrl || !supabaseClient) return '';
+        const refName = `WORKOUT_IMG::${currentUser}::${workoutId}`;
+        try {
+            // Posodobi ali vstavi v routes (skupna shramba slik med napravami)
+            const { data: existing } = await supabaseClient.from('routes').select('id').eq('name', refName).maybeSingle();
+            if (existing?.id) {
+                await supabaseClient.from('routes').update({ video_url: dataUrl }).eq('id', existing.id);
+            } else {
+                await supabaseClient.from('routes').insert({ name: refName, video_url: dataUrl });
+            }
+            return refName;
+        } catch (e) {
+            console.warn('Upload screenshot:', e);
+            return '';
+        }
+    }
+
+    async function fetchWorkoutScreenshot(imageRef) {
+        if (!imageRef) return null;
+        const localMap = getWorkoutImagesMap();
+        if (localMap[imageRef]) return localMap[imageRef];
+        if (!supabaseClient) return null;
+        try {
+            const { data } = await supabaseClient.from('routes').select('video_url').eq('name', imageRef).maybeSingle();
+            if (data?.video_url) {
+                localMap[imageRef] = data.video_url;
+                setWorkoutImagesMap(localMap);
+                return data.video_url;
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    async function fillManualWorkoutFromGeminiImage() {
+        if (!manualWorkoutImageDataUrl) return alert('Najprej naloži screenshot ure.');
+        if (!requireGeminiApiKey()) return;
+        const status = document.getElementById('historySyncStatus');
+        if (status) status.textContent = '⏳ Gemini bere screenshot ure…';
+        try {
+            const prompt = `${buildGeminiUserContext()}
+
+Naloga: Preberi metrike vadbe s priloženega screenshota pametne ure / Huawei Health / Garmin / Samsung Health.
+Vrni SAMO JSON (brez markdown):
+{"duration_min":null,"distance_km":null,"calories":null,"avg_hr":null,"notes":"kratko"}
+Uporabi null, če vrednosti ni.`;
+            const { text } = await callGeminiGenerate({
+                userText: prompt,
+                imageDataUrl: manualWorkoutImageDataUrl,
+                jsonMode: true,
+                temperature: 0.2
+            });
+            let parsed = null;
+            try { parsed = JSON.parse(text); } catch (_) {
+                const m = text.match(/\{[\s\S]*\}/);
+                if (m) parsed = JSON.parse(m[0]);
+            }
+            if (!parsed) throw new Error('Gemini ni vrnil JSON meritev.');
+            if (parsed.duration_min != null) document.getElementById('manualWorkoutMinutes').value = Number(parsed.duration_min);
+            if (parsed.distance_km != null) document.getElementById('manualWorkoutDistance').value = Number(parsed.distance_km);
+            if (parsed.calories != null) document.getElementById('manualWorkoutCalories').value = Math.round(Number(parsed.calories));
+            if (parsed.avg_hr != null) document.getElementById('manualWorkoutHr').value = Math.round(Number(parsed.avg_hr));
+            if (parsed.notes) document.getElementById('manualWorkoutNotes').value = parsed.notes;
+            if (status) status.textContent = '✅ Gemini je izpolnil polja s slike. Preveri in shrani.';
+        } catch (e) {
+            if (status) status.textContent = '❌ Gemini ni mogel prebrati slike.';
+            alert(e.message || 'Gemini napaka.');
+        }
+    }
+
+    async function insertWorkoutToSupabase(payload) {
+        if (!supabaseClient) return null;
+        const { data, error } = await supabaseClient.from('workouts').insert(payload).select('*').single();
+        if (error) {
+            console.warn('Supabase workout insert:', error);
+            throw error;
+        }
+        return data;
+    }
+
+    async function saveManualWorkout() {
+        initManualWorkoutForm();
+        const minutes = parseFloat(document.getElementById('manualWorkoutMinutes').value);
+        const distance = parseFloat(document.getElementById('manualWorkoutDistance').value);
+        const calories = parseFloat(document.getElementById('manualWorkoutCalories').value);
+        const avgHr = parseFloat(document.getElementById('manualWorkoutHr').value);
+        const weight = parseFloat(document.getElementById('manualWorkoutWeight').value) || realWeightKg || 70;
+        const notes = (document.getElementById('manualWorkoutNotes').value || '').trim();
+        const dateVal = document.getElementById('manualWorkoutDate').value;
+
+        if (!minutes || minutes <= 0) return alert('Vnesi trajanje v minutah.');
+        if (isNaN(distance) || distance < 0) return alert('Vnesi razdaljo (km).');
+
+        const durationSec = Math.round(minutes * 60);
+        const createdAt = dateVal ? new Date(dateVal).toISOString() : new Date().toISOString();
+        const localId = `local_${Date.now()}`;
+        let imageRef = '';
+
+        if (manualWorkoutImageDataUrl) {
+            imageRef = `WORKOUT_IMG::${currentUser}::${localId}`;
+            const map = getWorkoutImagesMap();
+            map[imageRef] = manualWorkoutImageDataUrl;
+            setWorkoutImagesMap(map);
+        }
+
+        const gpxName = encodeManualGpxName({ notes, imageRef, source: 'manual' });
+        const payload = {
+            user_name: currentUser,
+            duration_sec: durationSec,
+            distance_km: parseFloat(distance.toFixed(2)),
+            gravity_pct: 100,
+            effective_weight_kg: weight,
+            impact_saved_kg: 0,
+            calories: Math.round(calories || 0),
+            avg_hr: Math.round(avgHr || 0) || 0,
+            gpx_name: gpxName,
+            created_at: createdAt
+        };
+
+        let cloudRow = null;
+        const status = document.getElementById('historySyncStatus');
+        try {
+            if (supabaseClient) {
+                cloudRow = await insertWorkoutToSupabase(payload);
+                if (manualWorkoutImageDataUrl && cloudRow?.id) {
+                    const finalRef = await uploadWorkoutScreenshot(manualWorkoutImageDataUrl, cloudRow.id);
+                    if (finalRef && finalRef !== imageRef) {
+                        await supabaseClient.from('workouts').update({
+                            gpx_name: encodeManualGpxName({ notes, imageRef: finalRef, source: 'manual' })
+                        }).eq('id', cloudRow.id);
+                        const map = getWorkoutImagesMap();
+                        map[finalRef] = manualWorkoutImageDataUrl;
+                        setWorkoutImagesMap(map);
+                        imageRef = finalRef;
+                    }
+                }
+                if (status) status.innerHTML = `<span style="color:var(--accent-green);">✅ Vadba shranjena in sinhronizirana za profil ${currentUser}.</span>`;
+            } else if (status) {
+                status.textContent = '⚠️ Supabase ni povezan — shranjeno lokalno.';
+            }
+        } catch (e) {
+            if (status) status.innerHTML = `<span style="color:var(--accent-red);">⚠️ Oblak: ${e.message || e}. Shranjeno lokalno.</span>`;
+        }
+
+        const record = {
+            id: cloudRow?.id || localId,
+            supabase_id: cloudRow?.id || null,
+            synced: !!cloudRow,
+            user_name: currentUser,
+            date: new Date(createdAt).toLocaleString('sl-SI'),
+            created_at: createdAt,
+            duration_sec: durationSec,
+            distance_km: parseFloat(distance.toFixed(2)),
+            user_weight_kg: weight,
+            effective_weight_kg: weight,
+            calories: Math.round(calories || 0),
+            avg_hr: Math.round(avgHr || 0) || 0,
+            gpx_name: encodeManualGpxName({ notes, imageRef, source: 'manual' }),
+            source: 'manual'
+        };
+
+        const history = getLocalHistoryAll();
+        history.unshift(record);
+        setLocalHistoryAll(history);
+
+        // Počisti formo (razen teže)
+        document.getElementById('manualWorkoutMinutes').value = '';
+        document.getElementById('manualWorkoutDistance').value = '';
+        document.getElementById('manualWorkoutCalories').value = '';
+        document.getElementById('manualWorkoutHr').value = '';
+        document.getElementById('manualWorkoutNotes').value = '';
+        clearManualWorkoutImage();
+        initManualWorkoutForm();
+        await renderHistoryTable();
+        loadStats();
+        alert('Vadba je shranjena' + (cloudRow ? ' in sinhronizirana med napravami.' : ' lokalno.'));
+    }
+
+    async function syncWorkoutsBidirectional(showAlert = false) {
+        const status = document.getElementById('historySyncStatus');
+        if (!supabaseClient) {
+            if (status) status.textContent = '⚠️ Supabase ni povezan — samo lokalni podatki.';
+            if (showAlert) alert('Supabase ni povezan.');
+            return;
+        }
+        if (status) status.textContent = '🔄 Sinhroniziram zgodovino…';
+
+        try {
+            const { data: cloud, error } = await supabaseClient
+                .from('workouts')
+                .select('*')
+                .eq('user_name', currentUser)
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+
+            let local = getLocalHistoryAll();
+            const userLocal = local.filter(i => (i.user || i.user_name) === currentUser && !i.synced && !i.supabase_id);
+
+            // Potisni lokalne ne-sinhronizirane vadbe v oblak
+            for (const item of userLocal) {
+                const dur = item.duration_sec || item.durationSec || 0;
+                const dist = item.distance_km || item.distanceKm || 0;
+                const match = (cloud || []).find(c =>
+                    Math.abs((c.duration_sec || 0) - dur) <= 2 &&
+                    Math.abs((c.distance_km || 0) - dist) < 0.051 &&
+                    Math.abs((c.calories || 0) - (item.calories || 0)) <= 2
+                );
+                if (match) {
+                    item.supabase_id = match.id;
+                    item.id = match.id;
+                    item.synced = true;
+                    continue;
+                }
+                try {
+                    const meta = parseWorkoutMeta(item.gpx_name);
+                    const inserted = await insertWorkoutToSupabase({
+                        user_name: currentUser,
+                        duration_sec: dur,
+                        distance_km: dist,
+                        gravity_pct: 100,
+                        effective_weight_kg: item.effective_weight_kg || item.user_weight_kg || realWeightKg || 70,
+                        impact_saved_kg: 0,
+                        calories: item.calories || 0,
+                        avg_hr: item.avg_hr || item.avgHr || 0,
+                        gpx_name: item.gpx_name || encodeManualGpxName({ notes: item.notes || '', source: item.source || 'steza' }),
+                        created_at: item.created_at || undefined
+                    });
+                    if (inserted?.id) {
+                        item.supabase_id = inserted.id;
+                        item.id = inserted.id;
+                        item.synced = true;
+                        // Če obstaja lokalna slika, naloži
+                        const imgMap = getWorkoutImagesMap();
+                        const oldRef = meta.imageRef;
+                        if (oldRef && imgMap[oldRef]) {
+                            const finalRef = await uploadWorkoutScreenshot(imgMap[oldRef], inserted.id);
+                            if (finalRef) {
+                                await supabaseClient.from('workouts').update({
+                                    gpx_name: encodeManualGpxName({ notes: meta.notes, imageRef: finalRef, source: meta.source || 'manual' })
+                                }).eq('id', inserted.id);
+                            }
+                        }
+                    }
+                } catch (pushErr) {
+                    console.warn('Push local workout failed:', pushErr);
+                }
+            }
+
+            // Osveži lokalni cache iz oblaka (source of truth)
+            const { data: cloudFresh } = await supabaseClient
+                .from('workouts')
+                .select('*')
+                .eq('user_name', currentUser)
+                .order('created_at', { ascending: false });
+
+            const otherUsers = getLocalHistoryAll().filter(i => (i.user || i.user_name) !== currentUser);
+            const syncedUser = (cloudFresh || []).map(c => ({
+                ...c,
+                synced: true,
+                supabase_id: c.id,
+                user_name: c.user_name,
+                date: c.created_at ? new Date(c.created_at).toLocaleString('sl-SI') : '-'
+            }));
+            setLocalHistoryAll([...syncedUser, ...otherUsers]);
+
+            // Prednaloži slike
+            for (const row of syncedUser.slice(0, 20)) {
+                const meta = parseWorkoutMeta(row.gpx_name);
+                if (meta.imageRef) await fetchWorkoutScreenshot(meta.imageRef);
+            }
+
+            if (status) {
+                status.innerHTML = `<span style="color:var(--accent-green);">✅ Sinhronizirano: ${syncedUser.length} vadb za ${currentUser} (vse naprave).</span>`;
+            }
+            await renderHistoryTable();
+            loadStats();
+            if (showAlert) alert(`Sinhronizacija OK: ${syncedUser.length} vadb za ${currentUser}.`);
+        } catch (e) {
+            console.warn(e);
+            if (status) status.innerHTML = `<span style="color:var(--accent-red);">❌ Sync napaka: ${e.message || e}</span>`;
+            if (showAlert) alert('Sinhronizacija ni uspela: ' + (e.message || e));
+        }
+    }
+
     async function saveWorkoutToHistory() {
         if (!startTime || workoutLog.length === 0) return;
         const durationSec = Math.floor((Date.now() - startTime) / 1000);
         if (durationSec < 5) return;
 
         const hrs = workoutLog.filter(d => d.hr > 0).map(d => d.hr);
-        const avgHr = hrs.length > 0 ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 135;
+        const avgHr = hrs.length > 0 ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 0;
 
-        const record = {
-            id: Date.now(),
+        const payload = {
             user_name: currentUser,
-            date: new Date().toLocaleString('sl-SI'),
             duration_sec: durationSec,
             distance_km: parseFloat(currentDistance.toFixed(2)),
-            user_weight_kg: realWeightKg,
+            gravity_pct: 100,
+            effective_weight_kg: realWeightKg,
+            impact_saved_kg: 0,
             calories: Math.round(totalCalories),
-            avg_hr: avgHr
+            avg_hr: avgHr,
+            gpx_name: encodeManualGpxName({ notes: isGpxFollowingActive ? (document.getElementById('gpxName')?.textContent || 'GPX') : '', source: isGpxFollowingActive ? 'gpx' : 'steza' })
         };
 
+        let cloudRow = null;
         if (supabaseClient) {
             try {
-                const { error } = await supabaseClient.from('workouts').insert({
-                    user_name: currentUser,
-                    duration_sec: durationSec,
-                    distance_km: parseFloat(currentDistance.toFixed(2)),
-                    effective_weight_kg: realWeightKg,
-                    impact_saved_kg: 0,
-                    calories: Math.round(totalCalories),
-                    avg_hr: avgHr
-                });
-                if (error) console.warn("Supabase workout save error:", error);
-                else console.log("Vadba uspešno shranjena v Supabase!");
+                cloudRow = await insertWorkoutToSupabase(payload);
+                console.log('Vadba uspešno shranjena v Supabase!');
             } catch (e) {
-                console.warn("Napaka pri pošiljanju v Supabase workouts:", e);
+                console.warn('Napaka pri pošiljanju v Supabase workouts:', e);
             }
         }
 
-        const history = JSON.parse(localStorage.getItem('ble_history_v4')) || [];
+        const record = {
+            id: cloudRow?.id || Date.now(),
+            supabase_id: cloudRow?.id || null,
+            synced: !!cloudRow,
+            user_name: currentUser,
+            date: new Date().toLocaleString('sl-SI'),
+            created_at: cloudRow?.created_at || new Date().toISOString(),
+            duration_sec: durationSec,
+            distance_km: parseFloat(currentDistance.toFixed(2)),
+            user_weight_kg: realWeightKg,
+            effective_weight_kg: realWeightKg,
+            calories: Math.round(totalCalories),
+            avg_hr: avgHr,
+            gpx_name: payload.gpx_name
+        };
+
+        const history = getLocalHistoryAll();
         history.unshift(record);
-        localStorage.setItem('ble_history_v4', JSON.stringify(history));
+        setLocalHistoryAll(history);
 
         renderHistoryTable();
+        loadStats();
     }
 
     async function renderHistoryTable() {
@@ -4807,70 +5262,122 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                     .eq('user_name', currentUser)
                     .order('created_at', { ascending: false });
 
-                if (data && data.length > 0) {
+                if (!error && data) {
                     userHistory = data;
+                    // osveži lokalni cache za ta profil
+                    const other = getLocalHistoryAll().filter(i => (i.user || i.user_name) !== currentUser);
+                    setLocalHistoryAll([
+                        ...data.map(c => ({ ...c, synced: true, supabase_id: c.id, user_name: c.user_name })),
+                        ...other
+                    ]);
                 }
             } catch (e) {
-                console.warn("Napaka pri branju iz Supabase workouts:", e);
+                console.warn('Napaka pri branju iz Supabase workouts:', e);
             }
         }
 
         if (userHistory.length === 0) {
-            const allHistory = JSON.parse(localStorage.getItem('ble_history_v4')) || [];
-            userHistory = allHistory.filter(i => (i.user || i.user_name) === currentUser);
+            userHistory = getLocalHistoryAll().filter(i => (i.user || i.user_name) === currentUser);
         }
 
         const tbody = document.getElementById('historyTableBody');
+        const nameEl = document.getElementById('historyUserName');
+        if (nameEl) nameEl.textContent = currentUser;
 
         if (userHistory.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Ni še zabeleženih aktivnosti.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Ni še zabeleženih aktivnosti.</td></tr>`;
             return;
         }
 
         tbody.innerHTML = '';
-        userHistory.forEach(item => {
+        for (const item of userHistory) {
             const dur = item.duration_sec || item.durationSec || 0;
-            const dist = item.distance_km || item.distanceKm || 0;
+            const dist = Number(item.distance_km || item.distanceKm || 0);
             const cals = item.calories || 0;
             const hr = item.avg_hr || item.avgHr || '--';
-            const weight = item.effective_weight_kg || item.user_weight_kg || 78;
+            const weight = item.effective_weight_kg || item.user_weight_kg || realWeightKg || 78;
             const dateStr = item.created_at ? new Date(item.created_at).toLocaleString('sl-SI') : (item.date || '-');
             const min = Math.floor(dur / 60);
             const sec = dur % 60;
+            const meta = parseWorkoutMeta(item.gpx_name);
+            const sourceLabel = meta.source === 'manual' ? '✍️ Ročno' : (meta.source === 'gpx' ? '🗺️ GPX' : '🏃 Steza');
+            const rowId = `histimg_${String(item.id).replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
             tbody.innerHTML += `
                 <tr>
-                    <td>${dateStr}</td>
+                    <td>${dateStr}${meta.notes ? `<div style="font-size:0.7rem;color:var(--text-muted);">${meta.notes}</div>` : ''}</td>
+                    <td>${sourceLabel}</td>
                     <td>${min}m ${sec}s</td>
                     <td>${dist.toFixed(2)} km</td>
                     <td>${weight} kg</td>
                     <td>${cals} kcal</td>
-                    <td>${hr} BPM</td>
+                    <td>${hr}${hr !== '--' ? ' BPM' : ''}</td>
+                    <td id="${rowId}" style="min-width:56px;">${meta.imageRef ? '…' : '—'}</td>
                     <td><button class="btn btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="deleteHistoryItem('${item.id}')">Izbriši</button>
                 </tr>
             `;
-        });
-    }
 
-    function deleteHistoryItem(id) {
-        if (supabaseClient) {
-            supabaseClient.from('workouts').delete().eq('id', id).then();
+            if (meta.imageRef) {
+                fetchWorkoutScreenshot(meta.imageRef).then(url => {
+                    const cell = document.getElementById(rowId);
+                    if (!cell) return;
+                    if (url) {
+                        cell.innerHTML = `<img src="${url}" alt="shot" style="height:44px;width:44px;object-fit:cover;border-radius:0.35rem;cursor:pointer;border:1px solid var(--card-border);" onclick="window.open('${url}','_blank')">`;
+                    } else {
+                        cell.textContent = '—';
+                    }
+                });
+            }
         }
-        let history = JSON.parse(localStorage.getItem('ble_history_v4')) || [];
-        history = history.filter(item => item.id != id);
-        localStorage.setItem('ble_history_v4', JSON.stringify(history));
-        renderHistoryTable();
     }
 
-    function clearHistory() {
+    async function deleteHistoryItem(id) {
+        if (!confirm('Izbrišem to vadbo?')) return;
+        if (supabaseClient && id) {
+            try {
+                const { data: row } = await supabaseClient.from('workouts').select('gpx_name').eq('id', id).maybeSingle();
+                const meta = parseWorkoutMeta(row?.gpx_name);
+                await supabaseClient.from('workouts').delete().eq('id', id);
+                if (meta.imageRef && String(meta.imageRef).startsWith('WORKOUT_IMG::')) {
+                    await supabaseClient.from('routes').delete().eq('name', meta.imageRef);
+                }
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+        let history = getLocalHistoryAll();
+        history = history.filter(item => item.id != id && item.supabase_id != id);
+        setLocalHistoryAll(history);
+        const map = getWorkoutImagesMap();
+        Object.keys(map).forEach(k => {
+            if (k.includes(String(id))) delete map[k];
+        });
+        setWorkoutImagesMap(map);
+        await renderHistoryTable();
+        loadStats();
+    }
+
+    async function clearHistory() {
         if (confirm(`Izbrišem zgodovino za ${currentUser}?`)) {
             if (supabaseClient) {
-                supabaseClient.from('workouts').delete().eq('user_name', currentUser).then();
+                try {
+                    await supabaseClient.from('workouts').delete().eq('user_name', currentUser);
+                    // Počisti screenshot zapise tega uporabnika
+                    const { data: imgs } = await supabaseClient.from('routes').select('id,name').like('name', `WORKOUT_IMG::${currentUser}::%`);
+                    if (imgs?.length) {
+                        for (const img of imgs) {
+                            await supabaseClient.from('routes').delete().eq('id', img.id);
+                        }
+                    }
+                } catch (e) {
+                    console.warn(e);
+                }
             }
-            let history = JSON.parse(localStorage.getItem('ble_history_v4')) || [];
+            let history = getLocalHistoryAll();
             history = history.filter(i => (i.user || i.user_name) !== currentUser);
-            localStorage.setItem('ble_history_v4', JSON.stringify(history));
-            renderHistoryTable();
+            setLocalHistoryAll(history);
+            await renderHistoryTable();
+            loadStats();
         }
     }
 
@@ -4926,13 +5433,13 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
     }
 
     function exportHistoryCSV() {
-        const allHistory = JSON.parse(localStorage.getItem('ble_history_v4')) || [];
-        const userHistory = allHistory.filter(i => (i.user || i.user_name) === currentUser);
+        const userHistory = getLocalHistoryAll().filter(i => (i.user || i.user_name) === currentUser);
         if (userHistory.length === 0) return alert("Ni podatkov.");
 
-        let csv = "data:text/csv;charset=utf-8,Uporabnik,Datum,Trajanje_s,Razdalja_km,Teza_kg,Kalorije_kcal\n";
+        let csv = "data:text/csv;charset=utf-8,Uporabnik,Datum,Vir,Trajanje_s,Razdalja_km,Teza_kg,Kalorije_kcal,Povp_HR,Opomba\n";
         userHistory.forEach(r => {
-            csv += `"${r.user || r.user_name}","${r.date}",${r.duration_sec || r.durationSec},${r.distance_km || r.distanceKm},${r.user_weight_kg || 62},${r.calories}\n`;
+            const meta = parseWorkoutMeta(r.gpx_name);
+            csv += `"${r.user || r.user_name}","${r.date || r.created_at || ''}","${meta.source}",${r.duration_sec || r.durationSec || 0},${r.distance_km || r.distanceKm || 0},${r.effective_weight_kg || r.user_weight_kg || 62},${r.calories || 0},${r.avg_hr || ''},"${(meta.notes || '').replace(/"/g, "'")}"\n`;
         });
 
         const encodedUri = encodeURI(csv);
