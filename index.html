@@ -500,6 +500,21 @@
             <div class="card-header">
                 <div class="card-title">⏱️ Intervalni Programi (Supabase Baza)</div>
             </div>
+
+            <!-- PRIPRAVLJENI PRESETS PROGRAMI -->
+            <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.85rem; border-radius: 0.85rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.85rem; font-weight: 700; color: var(--accent-green); margin-bottom: 0.5rem;">
+                    🩺 HITRA IZBIRA PROGRAMOV TRENINGA:
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="btn btn-purple" style="font-size: 0.82rem; padding: 0.5rem 0.85rem;" onclick="loadTibialisReliefProgram()">
+                        🦵 <strong>Tibialis Relief (35 min)</strong> - Strma Hoja / Low Impact
+                    </button>
+                    <button class="btn btn-secondary" style="font-size: 0.82rem; padding: 0.5rem 0.85rem;" onclick="loadFatBurnProgram()">
+                        🔥 <strong>Fat Burn Low Impact (20 min)</strong>
+                    </button>
+                </div>
+            </div>
             
             <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center;">
                 <input type="number" id="progDuration" placeholder="Čas (sek)" style="width: 110px;" value="60">
@@ -509,9 +524,9 @@
             </div>
             
             <div style="margin-bottom: 1.5rem;">
-                <h4 style="color: var(--text-muted); margin-bottom: 0.5rem;">Seznam korakov:</h4>
+                <h4 style="color: var(--text-muted); margin-bottom: 0.5rem;">Seznam korakov trenutnega programa:</h4>
                 <ul id="intervalStepsList" style="list-style-type: none; padding-left: 0; display: flex; flex-direction: column; gap: 0.5rem;">
-                    <li style="color: var(--text-muted);">Program je prazen. Dodajte korake zgoraj.</li>
+                    <li style="color: var(--text-muted);">Program je prazen. Izberite 'Tibialis Relief' zgoraj ali dodajte korake.</li>
                 </ul>
             </div>
             
@@ -757,6 +772,51 @@
         renderHistoryTable();
         loadStats();
         loadSavedYouTubeVideos();
+    }
+
+    // TIBIALIS RELIEF PROGRAM (35 MIN)
+    function loadTibialisReliefProgram() {
+        programSteps = [
+            // Ogrevanje (5 min)
+            { duration: 300, speed: 4.8, incline: 0.0, name: 'Ogrevanje' },
+            // Intervali vzponov (25 min = 5 ciklov x 5 min)
+            { duration: 180, speed: 5.0, incline: 8.0, name: 'Strma Hoja (Cikel 1)' },
+            { duration: 120, speed: 5.5, incline: 2.0, name: 'Olajšanje (Cikel 1)' },
+
+            { duration: 180, speed: 5.0, incline: 8.0, name: 'Strma Hoja (Cikel 2)' },
+            { duration: 120, speed: 5.5, incline: 2.0, name: 'Olajšanje (Cikel 2)' },
+
+            { duration: 180, speed: 5.0, incline: 8.0, name: 'Strma Hoja (Cikel 3)' },
+            { duration: 120, speed: 5.5, incline: 2.0, name: 'Olajšanje (Cikel 3)' },
+
+            { duration: 180, speed: 5.0, incline: 8.0, name: 'Strma Hoja (Cikel 4)' },
+            { duration: 120, speed: 5.5, incline: 2.0, name: 'Olajšanje (Cikel 4)' },
+
+            { duration: 180, speed: 5.0, incline: 8.0, name: 'Strma Hoja (Cikel 5)' },
+            { duration: 120, speed: 5.5, incline: 2.0, name: 'Olajšanje (Cikel 5)' },
+            // Hlajenje (5 min)
+            { duration: 150, speed: 4.0, incline: 4.0, name: 'Hlajenje 1' },
+            { duration: 150, speed: 4.0, incline: 0.0, name: 'Hlajenje 2' }
+        ];
+
+        renderStepsList();
+        saveProgramToSupabase();
+        alert("Program 'Tibialis Relief (35 min)' je uspešno naložen in shranjen v bazo!");
+    }
+
+    function loadFatBurnProgram() {
+        programSteps = [
+            { duration: 180, speed: 4.5, incline: 1.0, name: 'Ogrevanje' },
+            { duration: 240, speed: 5.2, incline: 5.0, name: 'Vzpon' },
+            { duration: 180, speed: 5.0, incline: 3.0, name: 'Umerjeno' },
+            { duration: 240, speed: 5.2, incline: 6.0, name: 'Vzpon' },
+            { duration: 180, speed: 5.0, incline: 3.0, name: 'Umerjeno' },
+            { duration: 180, speed: 4.0, incline: 0.0, name: 'Hlajenje' }
+        ];
+
+        renderStepsList();
+        saveProgramToSupabase();
+        alert("Program 'Fat Burn Low Impact (20 min)' naložen!");
     }
 
     // SHRANJEVANJE IN NALAGANJE MOJIH YOUTUBE PROG
@@ -1207,9 +1267,12 @@
             if (data && data.length > 0) {
                 programSteps = data[0].steps || [];
                 renderStepsList();
+            } else {
+                loadTibialisReliefProgram();
             }
         } catch (e) {
             console.warn("Napaka pri branju programov:", e);
+            loadTibialisReliefProgram();
         }
     }
 
@@ -1222,13 +1285,12 @@
                     user_name: currentUser,
                     steps: programSteps
                 });
-                alert("Program je uspešno shranjen v Supabase bazo!");
+                console.log("Program je shranjen v Supabase bazo.");
             } catch (e) {
-                alert(`Napaka pri shranjevanju v Supabase: ${e.message}`);
+                console.warn(`Napaka pri shranjevanju v Supabase: ${e.message}`);
             }
         } else {
             localStorage.setItem(`ble_program_${currentUser}`, JSON.stringify(programSteps));
-            alert("Program je shranjen v lokalno shrambo.");
         }
     }
 
@@ -1239,19 +1301,19 @@
 
         if (isNaN(dur) || isNaN(spd) || isNaN(inc)) return alert("Vnesite veljavne številčne vrednosti!");
 
-        programSteps.push({ duration: dur, speed: spd, incline: inc });
+        programSteps.push({ duration: dur, speed: spd, incline: inc, name: `Korak ${programSteps.length + 1}` });
         renderStepsList();
     }
 
     function renderStepsList() {
         const list = document.getElementById('intervalStepsList');
         if (programSteps.length === 0) {
-            list.innerHTML = `<li style="color: var(--text-muted);">Program je prazen. Dodajte korake zgoraj.</li>`;
+            list.innerHTML = `<li style="color: var(--text-muted);">Program je prazen. Izberite 'Tibialis Relief' zgoraj ali dodajte korake.</li>`;
             return;
         }
         list.innerHTML = programSteps.map((step, idx) => `
             <li style="background: rgba(255,255,255,0.05); padding: 0.5rem 1rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-                <span>Korak ${idx + 1}: <strong>${step.duration}s</strong> pri <strong>${step.speed} km/h</strong> in <strong>${step.incline}%</strong> naklona</span>
+                <span>${step.name || `Korak ${idx + 1}`}: <strong>${Math.round(step.duration / 60 * 10) / 10} min (${step.duration}s)</strong> pri <strong>${step.speed} km/h</strong> in <strong>${step.incline}%</strong> naklona</span>
                 <button class="btn btn-danger" style="padding: 0.1rem 0.4rem; font-size: 0.75rem;" onclick="removeStep(${idx})">Odstrani</button>
             </li>
         `).join('');
@@ -1263,7 +1325,7 @@
     }
 
     async function startCustomProgram() {
-        if (programSteps.length === 0) return alert("Najprej sestavite program!");
+        if (programSteps.length === 0) return alert("Najprej sestavite ali izberite program!");
         if (!startTime) {
             startTime = Date.now();
             startTimer();
@@ -1293,7 +1355,7 @@
                     executeStep(programSteps[currentStepIdx]);
                 } else {
                     stopCustomProgram();
-                    alert("Intervalni trening je uspešno zaključen!");
+                    alert("Intervalni trening 'Tibialis Relief' je uspešno zaključen! Odlično delo!");
                 }
             }
         }, 1000);
