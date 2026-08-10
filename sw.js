@@ -1,4 +1,4 @@
-const CACHE_NAME = 'treadmill-pro-v7';
+const CACHE_NAME = 'treadmill-pro-v8';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

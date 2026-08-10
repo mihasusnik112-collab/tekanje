@@ -746,10 +746,11 @@
                 <div class="badge" style="border-color: var(--accent-pink);"><span id="textGenderBadge">👨 Moški profil</span></div>
             </div>
 
-            <!-- HITRA GLASBA MED TEKOM — OSEBNA PLAYLISTA -->
+            <!-- HITRA GLASBA MED TEKOM — OSEBNA / SKUPNA PLAYLISTA -->
             <div class="live-music-bar" id="liveMusicBar">
                 <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent-pink);">
-                    🎵 Moja playlista — <span id="liveMusicOwnerLabel">profil</span> (vidna samo tebi)
+                    🎵 Playlista — <span id="liveMusicOwnerLabel">profil</span>
+                    <span id="liveMusicScopeHint" style="font-weight: 500; color: var(--text-muted); font-size: 0.78rem;"></span>
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     <input type="text" id="liveMusicUrlInput" placeholder="Prilepi YouTube povezavo pesmi..." style="flex: 1; min-width: 180px;">
@@ -758,23 +759,55 @@
                     <button class="btn btn-primary" onclick="saveLiveMusicToPlaylist()">💾 V playlista</button>
                     <button class="btn btn-secondary" onclick="stopAudio()">⏹ Ustavi</button>
                 </div>
+                <div id="liveMusicVisibilityRow" style="display: none; gap: 1rem; flex-wrap: wrap; align-items: center; font-size: 0.82rem;">
+                    <span style="color: var(--text-muted); font-weight: 600;">Shrani kot:</span>
+                    <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;">
+                        <input type="radio" name="liveMusicVisibility" value="private" checked> 🔒 Samo zase (Miha)
+                    </label>
+                    <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;">
+                        <input type="radio" name="liveMusicVisibility" value="shared"> 🌍 Vsem profilom
+                    </label>
+                </div>
                 <select id="liveMusicSelect" style="width: 100%;" onchange="playFromLiveSelect(this)">
-                    <option value="">— Izberi skladbo iz svoje playliste —</option>
+                    <option value="">— Izberi skladbo iz playliste —</option>
                 </select>
+                <div id="savedAudioContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 140px; overflow-y: auto;"></div>
                 <div style="font-size: 0.75rem; color: var(--text-muted);">
-                    Med tekom lahko kadarkoli zamenjaš skladbo. Playlista je vezana na tvoj profil.
+                    Med tekom lahko kadarkoli zamenjaš skladbo. Pri Mihi lahko izbereš, ali gre skladba samo zase ali vsem.
                 </div>
             </div>
         </div>
 
-        <!-- Video samo, ko je izbran v čarovniku (brez celozaslonskega HUD) -->
-        <div class="card live-video-card" id="liveVideoCard">
+        <!-- SKUPNE YOUTUBE VIDEO PROGE (vidne vsem profilom) -->
+        <div class="card" id="liveVideoLibraryCard">
             <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem;">
-                <div class="card-title">🎬 Video proga</div>
-                <button class="btn btn-purple" style="padding: 0.45rem 0.75rem; font-size: 0.85rem;" onclick="toggleVideoFullscreen()" title="Celozaslonski video z HUD podatki steze">
-                    📺 Video HUD Cel Zaslon
-                </button>
+                <div class="card-title">🎬 Video Proge (Skupne za vse)</div>
+                <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                    <button class="btn btn-purple" style="padding: 0.45rem 0.75rem; font-size: 0.85rem;" onclick="toggleVideoFullscreen()" title="Celozaslonski video z HUD podatki steze">
+                        📺 Video HUD Cel Zaslon
+                    </button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('videoFileInput').click()">Naloži MP4</button>
+                </div>
             </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.85rem;">
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <input type="text" id="youtubeUrlInput" placeholder="Vnesite svoj YouTube URL posnetka..." style="flex: 1; min-width: 180px;">
+                    <button class="btn btn-red" id="btnPlayVideoInput" onclick="togglePlayYouTubeVideo(); showLiveVideoCardOnly();">▶ Predvajaj Video</button>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <input type="text" id="youtubeTitleInput" placeholder="Ime moje proge (npr. Moja najljubša proga)..." style="flex: 1; min-width: 180px;">
+                    <button class="btn btn-primary" onclick="saveCurrentYouTubeVideo()">💾 Shrani v Skupne Proge</button>
+                </div>
+            </div>
+
+            <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.4rem; font-weight: 600;">
+                ⭐ SKUPNE YOUTUBE PROGE (dostopno vsem profilom):
+            </div>
+            <div id="savedVideosContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 160px; overflow-y: auto; margin-bottom: 0.85rem;">
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Nalaganje prog iz Supabase baze...</div>
+            </div>
+
             <div id="liveVideoHost">
                 <div class="video-container" id="videoContainerBox">
                     <div class="video-hud-overlay" id="videoHudOverlay">
@@ -816,10 +849,8 @@
             </div>
         </div>
 
-        <!-- Skriti vnosi za video/avdio (čarovnik + shranjevanje) -->
+        <!-- Skriti vnosi za avdio (čarovnik + live barra jih polnita) -->
         <div id="hiddenMediaInputs" style="position:absolute;width:1px;height:1px;opacity:0.01;overflow:hidden;pointer-events:none;">
-            <input type="text" id="youtubeUrlInput">
-            <input type="text" id="youtubeTitleInput">
             <input type="text" id="youtubeAudioUrlInput">
             <input type="text" id="youtubeAudioTitleInput">
             <input type="file" id="videoFileInput" accept="video/*" onchange="loadUserVideo(event)">
@@ -828,9 +859,7 @@
             </div>
             <span id="playlistOwnerLabel"></span>
             <span id="audioPlayingBadge"></span>
-            <button id="btnPlayVideoInput"></button>
             <button id="btnPlayAudioInput"></button>
-            <div id="savedAudioContainer"></div>
         </div>
     </div>
 
@@ -1207,30 +1236,6 @@
 
             <div class="chart-box">
                 <canvas id="gpxProfileChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Upravljanje skupnih video prog (izbor je v čarovniku ZAČNI TEK) -->
-        <div class="card">
-            <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem;">
-                <div class="card-title">🎬 Video Proge (Skupne za vse)</div>
-                <button class="btn btn-secondary" onclick="document.getElementById('videoFileInput').click()">Naloži MP4</button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.85rem;">
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <input type="text" id="gpxPageYoutubeUrl" placeholder="YouTube URL posnetka..." style="flex: 1; min-width: 180px;" oninput="document.getElementById('youtubeUrlInput').value=this.value">
-                    <button class="btn btn-red" onclick="document.getElementById('youtubeUrlInput').value=document.getElementById('gpxPageYoutubeUrl').value; togglePlayYouTubeVideo(); showLiveVideoCardOnly();">▶ Predvajaj</button>
-                </div>
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <input type="text" id="gpxPageYoutubeTitle" placeholder="Ime proge..." style="flex: 1; min-width: 180px;" oninput="document.getElementById('youtubeTitleInput').value=this.value">
-                    <button class="btn btn-primary" onclick="document.getElementById('youtubeTitleInput').value=document.getElementById('gpxPageYoutubeTitle').value; document.getElementById('youtubeUrlInput').value=document.getElementById('gpxPageYoutubeUrl').value; saveCurrentYouTubeVideo();">💾 Shrani v Skupne Proge</button>
-                </div>
-            </div>
-            <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.4rem; font-weight: 600;">
-                ⭐ SKUPNE YOUTUBE PROGE (Dostopno vsem):
-            </div>
-            <div id="savedVideosContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 220px; overflow-y: auto;">
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Nalaganje prog iz Supabase baze...</div>
             </div>
         </div>
     </div>
@@ -1857,13 +1862,28 @@
     function updateLiveMusicBarVisibility() {
         const bar = document.getElementById('liveMusicBar');
         if (!bar) return;
-        // Vidno za vse profile (osebna playlista) — še posebej med tekom
         bar.classList.add('visible');
         const owner = currentUser || 'profil';
         const liveLabel = document.getElementById('liveMusicOwnerLabel');
         const listLabel = document.getElementById('playlistOwnerLabel');
         if (liveLabel) liveLabel.textContent = owner;
         if (listLabel) listLabel.textContent = owner;
+
+        const visRow = document.getElementById('liveMusicVisibilityRow');
+        const scopeHint = document.getElementById('liveMusicScopeHint');
+        const isMiha = currentUser === 'Miha';
+        if (visRow) visRow.style.display = isMiha ? 'flex' : 'none';
+        if (scopeHint) {
+            scopeHint.textContent = isMiha
+                ? ' — lahko shraniš samo zase ali vsem'
+                : ' — tvoje zasebne + skupne skladbe';
+        }
+    }
+
+    function getSelectedAudioVisibility() {
+        if (currentUser !== 'Miha') return 'private';
+        const checked = document.querySelector('input[name="liveMusicVisibility"]:checked');
+        return checked?.value === 'shared' ? 'shared' : 'private';
     }
 
     function playLiveMusicNow() {
@@ -1895,10 +1915,11 @@
         const select = document.getElementById('liveMusicSelect');
         if (!select) return;
         const tracks = await fetchPersonalPlaylist();
-        select.innerHTML = '<option value="">— Izberi skladbo iz svoje playliste —</option>';
+        select.innerHTML = '<option value="">— Izberi skladbo iz playliste —</option>';
         tracks.forEach(item => {
             const safeUrl = String(item.audio_url).replace(/"/g, '&quot;');
-            select.innerHTML += `<option value="${safeUrl}" data-title="${String(item.name).replace(/"/g, '&quot;')}">🎵 ${item.name}</option>`;
+            const prefix = item.shared ? '🌍 ' : '🔒 ';
+            select.innerHTML += `<option value="${safeUrl}" data-title="${String(item.name).replace(/"/g, '&quot;')}">${prefix}${item.name}</option>`;
         });
     }
 
@@ -1906,26 +1927,32 @@
         return `my_playlist_v1_${user}`;
     }
 
-    function encodePersonalAudioName(title, user = currentUser) {
+    function encodePersonalAudioName(title, user = currentUser, { shared = false } = {}) {
+        if (shared) return `AUDIO::SHARED::${title}`;
         return `AUDIO::${user}::${title}`;
     }
 
     function parsePersonalAudioName(rawName) {
         if (!rawName) return null;
-        // Nov format: AUDIO::{user}::{title}
+        // Nov format: AUDIO::{user}::{title} ali AUDIO::SHARED::{title}
         if (rawName.startsWith('AUDIO::')) {
             const rest = rawName.slice('AUDIO::'.length);
             const sep = rest.indexOf('::');
             if (sep > 0) {
-                return { user: rest.slice(0, sep), title: rest.slice(sep + 2) };
+                const userOrScope = rest.slice(0, sep);
+                const title = rest.slice(sep + 2);
+                if (userOrScope === 'SHARED') {
+                    return { user: null, title, shared: true };
+                }
+                return { user: userOrScope, title, shared: false };
             }
             // Stari format: AUDIO::title (user)
             const m = rest.match(/^(.*) \(([^)]+)\)$/);
-            if (m) return { user: m[2], title: m[1] };
-            return { user: null, title: rest };
+            if (m) return { user: m[2], title: m[1], shared: false };
+            return { user: null, title: rest, shared: false };
         }
         if (rawName.startsWith('[AUDIO]')) {
-            return { user: null, title: rawName.replace('[AUDIO]', '').trim() };
+            return { user: null, title: rawName.replace('[AUDIO]', '').trim(), shared: true };
         }
         return null;
     }
@@ -1951,14 +1978,25 @@
                         .map(item => {
                             const parsed = parsePersonalAudioName(item.name);
                             if (!parsed) return null;
-                            // Samo skladbe trenutnega profila
+                            // Skupne skladbe (vsem)
+                            if (parsed.shared) {
+                                return {
+                                    id: item.id,
+                                    name: parsed.title,
+                                    user_name: 'SHARED',
+                                    shared: true,
+                                    audio_url: item.video_url,
+                                    raw_name: item.name
+                                };
+                            }
+                            // Zasebne: samo trenutni profil
                             if (parsed.user && parsed.user !== user) return null;
-                            // Stari zapisi brez uporabnika: ne prikaži (razen lokalne migracije)
                             if (!parsed.user) return null;
                             return {
                                 id: item.id,
                                 name: parsed.title,
                                 user_name: parsed.user,
+                                shared: false,
                                 audio_url: item.video_url,
                                 raw_name: item.name
                             };
@@ -1967,8 +2005,9 @@
 
                     // Migracija starega formata AUDIO::title (User) → AUDIO::{user}::{title}
                     for (const track of audioTracks) {
+                        if (track.shared) continue;
                         if (track.raw_name && track.raw_name.startsWith('AUDIO::') && !track.raw_name.includes('::', 7)) {
-                            const newName = encodePersonalAudioName(track.name, user);
+                            const newName = encodePersonalAudioName(track.name, user, { shared: false });
                             try {
                                 await supabaseClient.from('routes').update({ name: newName }).eq('id', track.id);
                             } catch (migErr) {
@@ -1986,7 +2025,15 @@
         const local = JSON.parse(localStorage.getItem(getPersonalPlaylistStorageKey(user))) || [];
         local.forEach(loc => {
             if (!audioTracks.some(a => a.audio_url === loc.audio_url || a.name === loc.name)) {
-                audioTracks.push({ ...loc, user_name: user });
+                audioTracks.push({ ...loc, user_name: loc.shared ? 'SHARED' : user, shared: !!loc.shared });
+            }
+        });
+
+        // Skupna lokalna shramba
+        const sharedLocal = JSON.parse(localStorage.getItem('my_playlist_shared_v1')) || [];
+        sharedLocal.forEach(loc => {
+            if (!audioTracks.some(a => a.audio_url === loc.audio_url || a.name === loc.name)) {
+                audioTracks.push({ ...loc, user_name: 'SHARED', shared: true });
             }
         });
 
@@ -1994,9 +2041,9 @@
         const legacy = JSON.parse(localStorage.getItem('my_saved_yt_audio')) || [];
         legacy.forEach(loc => {
             if (loc.user_name && loc.user_name !== user) return;
-            if (!loc.user_name) return; // ne prevzemi tujih/starih skupnih
+            if (!loc.user_name) return;
             if (!audioTracks.some(a => a.audio_url === loc.audio_url || a.name === loc.name)) {
-                audioTracks.push({ ...loc, user_name: user });
+                audioTracks.push({ ...loc, user_name: user, shared: false });
             }
         });
 
@@ -2017,7 +2064,8 @@
         if (!videoId) return alert("Neveljaven YouTube URL!");
 
         if (!name) name = `Skladba ${new Date().toLocaleDateString('sl-SI')}`;
-        const fullAudioTitle = encodePersonalAudioName(name, currentUser);
+        const shared = getSelectedAudioVisibility() === 'shared';
+        const fullAudioTitle = encodePersonalAudioName(name, currentUser, { shared });
 
         if (supabaseClient) {
             try {
@@ -2031,11 +2079,20 @@
             }
         }
 
-        let localAudio = JSON.parse(localStorage.getItem(getPersonalPlaylistStorageKey())) || [];
-        localAudio.unshift({ id: Date.now(), name: name, user_name: currentUser, audio_url: url });
-        localStorage.setItem(getPersonalPlaylistStorageKey(), JSON.stringify(localAudio));
+        const entry = { id: Date.now(), name: name, user_name: shared ? 'SHARED' : currentUser, shared, audio_url: url };
+        if (shared) {
+            let sharedLocal = JSON.parse(localStorage.getItem('my_playlist_shared_v1')) || [];
+            sharedLocal.unshift(entry);
+            localStorage.setItem('my_playlist_shared_v1', JSON.stringify(sharedLocal));
+        } else {
+            let localAudio = JSON.parse(localStorage.getItem(getPersonalPlaylistStorageKey())) || [];
+            localAudio.unshift(entry);
+            localStorage.setItem(getPersonalPlaylistStorageKey(), JSON.stringify(localAudio));
+        }
 
-        alert(`Skladba '${name}' je shranjena v playlista profila ${currentUser}.`);
+        alert(shared
+            ? `Skladba '${name}' je shranjena za VSE profile.`
+            : `Skladba '${name}' je shranjena samo za profil ${currentUser}.`);
         document.getElementById('youtubeAudioTitleInput').value = '';
         const liveTitle = document.getElementById('liveMusicTitleInput');
         if (liveTitle) liveTitle.value = '';
@@ -2049,7 +2106,7 @@
         if (!container) return;
 
         if (savedAudio.length === 0) {
-            container.innerHTML = `<div style="font-size: 0.8rem; color: var(--text-muted);">Playlista profila <strong>${currentUser}</strong> je prazna. Dodaj YouTube skladbo zgoraj.</div>`;
+            container.innerHTML = `<div style="font-size: 0.8rem; color: var(--text-muted);">Playlista je prazna. Dodaj YouTube skladbo zgoraj.</div>`;
             await refreshLiveMusicSelect();
             return;
         }
@@ -2061,6 +2118,10 @@
             const isPlayingThis = (currentPlayingAudioUrl === item.audio_url && isYouTubeAudioActive);
             const safeUrl = String(item.audio_url).replace(/'/g, "\\'");
             const safeName = String(item.name).replace(/'/g, "\\'");
+            const scopeBadge = item.shared
+                ? `<span style="font-size:0.65rem;color:var(--accent-cyan);">🌍 vsem</span>`
+                : `<span style="font-size:0.65rem;color:var(--text-muted);">🔒 zasebno</span>`;
+            const canDelete = item.shared ? (currentUser === 'Miha') : true;
 
             return `
             <div style="background: rgba(255,255,255,0.05); padding: 0.4rem 0.75rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
@@ -2068,11 +2129,12 @@
                     ${iconHtml}
                     <div style="display: flex; flex-direction: column; overflow: hidden;">
                         <span style="font-size: 0.85rem; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">🎵 ${item.name}</span>
+                        ${scopeBadge}
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.3rem; shrink: 0;">
                     <button class="btn ${isPlayingThis ? 'btn-danger' : 'btn-purple'}" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="playSavedAudio('${safeUrl}', '${safeName}')">${isPlayingThis ? '⏹ Ustavi' : '▶ Predvajaj'}</button>
-                    <button class="btn btn-danger" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" onclick="deleteSavedAudio('${item.id}')">🗑</button>
+                    ${canDelete ? `<button class="btn btn-danger" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" onclick="deleteSavedAudio('${item.id}', ${item.shared ? 'true' : 'false'})">🗑</button>` : ''}
                 </div>
             </div>
             `;
@@ -2117,14 +2179,23 @@
         playYouTubeAudioOnly(title);
     }
 
-    async function deleteSavedAudio(id) {
-        if (confirm("Izbrišem to skladbo iz tvoje playliste?")) {
+    async function deleteSavedAudio(id, shared = false) {
+        if (shared && currentUser !== 'Miha') {
+            return alert('Skupne skladbe lahko briše samo Miha.');
+        }
+        if (confirm(shared ? "Izbrišem to skupno skladbo za vse?" : "Izbrišem to skladbo iz tvoje playliste?")) {
             if (supabaseClient && id) {
                 await supabaseClient.from('routes').delete().eq('id', id);
             }
-            let localAudio = JSON.parse(localStorage.getItem(getPersonalPlaylistStorageKey())) || [];
-            localAudio = localAudio.filter(a => a.id != id);
-            localStorage.setItem(getPersonalPlaylistStorageKey(), JSON.stringify(localAudio));
+            if (shared) {
+                let sharedLocal = JSON.parse(localStorage.getItem('my_playlist_shared_v1')) || [];
+                sharedLocal = sharedLocal.filter(a => a.id != id);
+                localStorage.setItem('my_playlist_shared_v1', JSON.stringify(sharedLocal));
+            } else {
+                let localAudio = JSON.parse(localStorage.getItem(getPersonalPlaylistStorageKey())) || [];
+                localAudio = localAudio.filter(a => a.id != id);
+                localStorage.setItem(getPersonalPlaylistStorageKey(), JSON.stringify(localAudio));
+            }
             await loadSavedYouTubeAudio();
         }
     }
@@ -2391,8 +2462,6 @@
 
     function showLiveVideoCardOnly() {
         parkVideoContainer();
-        const card = document.getElementById('liveVideoCard');
-        if (card) card.classList.add('visible');
         switchSection('secLive', { currentTarget: document.querySelectorAll('.selector-btn')[0] });
     }
 
@@ -2406,13 +2475,11 @@
         const videoPanel = document.getElementById('fsHudVideoPanel');
         const fsHost = document.getElementById('fsHudVideoHost');
         const box = document.getElementById('videoContainerBox');
-        const liveCard = document.getElementById('liveVideoCard');
 
         if (withVideo && box && fsHost) {
             fsHost.appendChild(box);
             if (videoPanel) videoPanel.style.display = 'block';
             overlay.classList.add('with-video');
-            if (liveCard) liveCard.classList.remove('visible');
         } else {
             parkVideoContainer();
             if (videoPanel) videoPanel.style.display = 'none';
@@ -2436,8 +2503,6 @@
         parkVideoContainer();
         const videoPanel = document.getElementById('fsHudVideoPanel');
         if (videoPanel) videoPanel.style.display = 'none';
-        const liveCard = document.getElementById('liveVideoCard');
-        if (liveCard && !workoutDisplayMode.video) liveCard.classList.remove('visible');
     }
 
     function updateFullscreenHudEffortBg() {
@@ -2485,8 +2550,6 @@
                 showLiveVideoCardOnly();
             }
         } else {
-            const liveCard = document.getElementById('liveVideoCard');
-            if (liveCard) liveCard.classList.remove('visible');
             parkVideoContainer();
         }
 
@@ -2867,8 +2930,6 @@
             return;
         }
         document.getElementById('youtubeUrlInput').value = url;
-        const gpxUrl = document.getElementById('gpxPageYoutubeUrl');
-        if (gpxUrl) gpxUrl.value = url;
         loadYouTubeVideo();
         const hud = document.getElementById('fullscreenHudOverlay');
         if (!hud || !hud.classList.contains('active')) {
@@ -4296,8 +4357,6 @@
         hideHudProgramProgress();
         closeFullscreenHud();
         workoutDisplayMode = { video: false, fullscreenHud: false };
-        const liveCard = document.getElementById('liveVideoCard');
-        if (liveCard) liveCard.classList.remove('visible');
 
         stopTimer();
         releaseWorkoutWakeLock();
