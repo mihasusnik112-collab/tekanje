@@ -4,6 +4,7 @@
   "description": "Profesionalna aplikacija za upravljanje tekalne steze, izračun kalorij, spletno progo in Gemini AI trenerja.",
   "start_url": "./index.html",
   "display": "fullscreen",
+  "orientation": "any",
   "background_color": "#080c14",
   "theme_color": "#080c14",
   "icons": [

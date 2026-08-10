@@ -1,11 +1,10 @@
-const CACHE_NAME = 'treadmill-pro-v2';
+const CACHE_NAME = 'treadmill-pro-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './treadmill.html',
   './manifest.json',
-  './icon-192.png',
-  './icon-512.png'
+  './icon.svg'
 ];
 
 self.addEventListener('install', (event) => {

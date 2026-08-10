@@ -323,8 +323,98 @@
             gap: 1rem;
         }
 
+        .program-builder {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 0.85rem;
+        }
+
+        .program-field label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            margin-bottom: 0.3rem;
+        }
+
+        .program-field .hint {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .program-field input {
+            width: 100%;
+        }
+
+        .live-music-bar {
+            display: none;
+            background: rgba(236, 72, 153, 0.1);
+            border: 1px solid rgba(236, 72, 153, 0.45);
+            border-radius: 0.85rem;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            gap: 0.5rem;
+            flex-direction: column;
+        }
+
+        .live-music-bar.visible {
+            display: flex;
+        }
+
+        .rotate-lock-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: rgba(8, 12, 20, 0.96);
+            color: #fff;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .rotate-lock-overlay.show {
+            display: flex;
+        }
+
         @media (max-width: 768px) {
             .media-grid { grid-template-columns: 1fr; }
+            .program-builder { grid-template-columns: 1fr; }
+            .metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .clean-header { flex-wrap: wrap; }
+            .brand-title { font-size: 1.05rem; }
+            .btn-huge-start { width: 100%; font-size: 1rem; }
+        }
+
+        /* Telefon pokončno — kompaktno */
+        @media (max-width: 900px) and (orientation: portrait) {
+            body { padding: 0.5rem; }
+            .media-grid { grid-template-columns: 1fr; }
+            .chart-box { height: 180px; }
+            .hud-chip { min-width: 58px; padding: 0.3rem 0.5rem; }
+            .hud-value { font-size: 1rem; }
+        }
+
+        /* Telefon / tablica ležeče — širša mreža */
+        @media (orientation: landscape) and (max-height: 520px) {
+            body { padding: 0.4rem; }
+            .clean-header { padding: 0.5rem 0.85rem; }
+            .metrics-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+            .metric-card { padding: 0.45rem; }
+            .metric-value { font-size: 1.35rem; }
+            .chart-box { height: 140px; }
+        }
+
+        /* Tablica ležeče */
+        @media (min-width: 900px) and (orientation: landscape) {
+            .app-container { max-width: 1280px; }
+            .media-grid { grid-template-columns: 1.2fr 0.8fr; }
+            .metrics-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
         }
 
         .video-container {
@@ -473,6 +563,7 @@
                 <!-- DINAMIČNO NAPOLNJENI UPORABNIKI -->
             </div>
             <button class="fullscreen-btn" onclick="toggleFullScreen()" title="Celozaslonski način (Skrije uro in spodnje 3 gumbe telefona)">⛶ Cel Zaslon</button>
+            <button class="fullscreen-btn" onclick="requestCloseApp()" title="Zapri aplikacijo" style="border-color: rgba(239,68,68,0.45); color: #fca5a5;">✕ Zapri</button>
         </div>
     </header>
 
@@ -508,6 +599,24 @@
                 <div class="badge"><span class="dot" id="dotHr"></span> Ura: <span id="textHr">Ni povezano</span></div>
                 <div class="badge"><span class="dot" id="dotSupabase"></span> Supabase: <span id="textSupabase">Lokalno</span></div>
                 <div class="badge" style="border-color: var(--accent-pink);"><span id="textGenderBadge">👨 Moški profil</span></div>
+            </div>
+
+            <!-- HITRA GLASBA MED TEKOM (predvsem Veronika) -->
+            <div class="live-music-bar" id="liveMusicBar">
+                <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent-pink);">
+                    🎵 Glasba za tek — izberi ali zamenjaj YouTube med tekom
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <input type="text" id="liveMusicUrlInput" placeholder="Prilepi YouTube povezavo pesmi..." style="flex: 1; min-width: 180px;">
+                    <button class="btn btn-purple" onclick="playLiveMusicNow()">▶ Predvajaj</button>
+                    <button class="btn btn-secondary" onclick="stopAudio()">⏹ Ustavi</button>
+                </div>
+                <select id="liveMusicSelect" style="width: 100%;" onchange="if(this.value) playSavedAudio(this.value)">
+                    <option value="">— Hitra izbira shranjene glasbe —</option>
+                </select>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">
+                    Med tekom lahko kadarkoli zamenjaš skladbo. Glasba se shrani za naslednjič.
+                </div>
             </div>
 
             <!-- Merilna mreža -->
@@ -583,19 +692,22 @@
 
                 <!-- SKUPNA YOUTUBE GLASBA / PODCASTI (SAMO AVDIO) -->
                 <div style="background: rgba(139, 92, 246, 0.08); border: 1px solid var(--accent-purple); padding: 0.85rem; border-radius: 0.85rem; margin-bottom: 0.85rem;">
-                    <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent-purple); margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-                        <span>🎵 YouTube Avdio & Glasba (Brez Videa)</span>
+                    <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent-purple); margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.35rem;">
+                        <span>🎵 YouTube Glasba za tek (Veronika & vsi)</span>
                         <span id="audioPlayingBadge" style="font-size: 0.75rem; color: var(--accent-green); display: none;">▶ Predvaja se avdio</span>
+                    </div>
+                    <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.55rem;">
+                        Prilepi YouTube povezavo svoje pesmi. Med tekom jo lahko zamenjaš — shranjene skladbe ostanejo v seznamu.
                     </div>
 
                     <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <div style="display: flex; gap: 0.5rem;">
-                            <input type="text" id="youtubeAudioUrlInput" placeholder="Vnesite YouTube URL za pesem / podcast..." style="flex: 1;">
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <input type="text" id="youtubeAudioUrlInput" placeholder="YouTube URL pesmi / podcasta..." style="flex: 1; min-width: 160px;">
                             <button class="btn btn-purple" id="btnPlayAudioInput" onclick="togglePlayYouTubeAudioOnly()">▶ Predvajaj Avdio</button>
                         </div>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <input type="text" id="youtubeAudioTitleInput" placeholder="Ime pesmi ali zvrsti (npr. Running Motivation Beats)..." style="flex: 1;">
-                            <button class="btn btn-primary" onclick="saveCurrentYouTubeAudio()">💾 Shrani Avdio</button>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <input type="text" id="youtubeAudioTitleInput" placeholder="Ime pesmi (npr. Moja tek playlist)..." style="flex: 1; min-width: 160px;">
+                            <button class="btn btn-primary" onclick="saveCurrentYouTubeAudio()">💾 Shrani Glasbo</button>
                         </div>
                     </div>
 
@@ -850,8 +962,9 @@
     <!-- SEKCIJA 2: INTERVALNI PROGRAMI -->
     <div id="secPrograms" class="section-view">
         <div class="card">
-            <div class="card-header">
-                <div class="card-title">⏱️ Intervalni Programi (Supabase Baza)</div>
+            <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem;">
+                <div class="card-title">⏱️ Intervalni Programi</div>
+                <button class="btn btn-secondary" onclick="createNewIntervalProgram()">✨ Nov prazen program</button>
             </div>
 
             <!-- PRIPRAVLJENI PRESETS PROGRAMI -->
@@ -868,24 +981,55 @@
                     </button>
                 </div>
             </div>
-            
-            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center;">
-                <input type="number" id="progDuration" placeholder="Čas (sek)" style="width: 110px;" value="60">
-                <input type="number" id="progSpeed" placeholder="Hitrost (km/h)" step="0.5" style="width: 130px;" value="8.0">
-                <input type="number" id="progIncline" placeholder="Naklon (%)" step="0.5" style="width: 110px;" value="1.0">
-                <button class="btn btn-primary" onclick="addIntervalStep()">➕ Dodaj Korak</button>
+
+            <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.35); padding: 1rem; border-radius: 0.85rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.95rem; font-weight: 800; color: var(--accent-cyan); margin-bottom: 0.35rem;">
+                    🛠️ Ustvari svoj program (korak za korakom)
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.85rem;">
+                    Za vsak korak vpiši: <strong>minute</strong>, <strong>hitrost (km/h)</strong> in <strong>naklon (%)</strong>. Privzeto je čas v minutah.
+                </div>
+
+                <div style="margin-bottom: 0.75rem;">
+                    <label style="font-size: 0.78rem; font-weight: 700; color: var(--accent-cyan); display: block; margin-bottom: 0.3rem;">Ime programa</label>
+                    <input type="text" id="progNameInput" placeholder="npr. Moja jutranja hoja" style="width: 100%;" value="Moj program">
+                </div>
+
+                <div class="program-builder">
+                    <div class="program-field">
+                        <label>⏱️ Trajanje (minute)</label>
+                        <input type="number" id="progDuration" min="0.5" step="0.5" value="2">
+                        <div class="hint">npr. 2 = dve minuti</div>
+                    </div>
+                    <div class="program-field">
+                        <label>⚡ Hitrost (km/h)</label>
+                        <input type="number" id="progSpeed" min="0.5" max="20" step="0.1" value="5.0">
+                        <div class="hint">npr. 5.0 km/h</div>
+                    </div>
+                    <div class="program-field">
+                        <label>📐 Naklon (%)</label>
+                        <input type="number" id="progIncline" min="0" max="15" step="0.5" value="1.0">
+                        <div class="hint">npr. 8.0 % vzpon</div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.35rem;">
+                    <input type="text" id="progStepName" placeholder="Ime koraka (npr. Ogrevanje)" style="flex: 1; min-width: 160px;">
+                    <button class="btn btn-primary" onclick="addIntervalStep()">➕ Dodaj korak v program</button>
+                </div>
             </div>
             
             <div style="margin-bottom: 1.5rem;">
-                <h4 style="color: var(--text-muted); margin-bottom: 0.5rem;">Seznam korakov trenutnega programa:</h4>
+                <h4 style="color: var(--text-muted); margin-bottom: 0.5rem;">Seznam korakov: <span id="progCurrentNameLabel" style="color: var(--accent-cyan);">Moj program</span></h4>
                 <ul id="intervalStepsList" style="list-style-type: none; padding-left: 0; display: flex; flex-direction: column; gap: 0.5rem;">
-                    <li style="color: var(--text-muted);">Program je prazen. Izberite program zgoraj ali dodajte korake.</li>
+                    <li style="color: var(--text-muted);">Program je prazen. Dodaj korake zgoraj ali izberi pripravljen program.</li>
                 </ul>
+                <div id="progTotalDuration" style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.5rem;"></div>
             </div>
             
             <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                 <button class="btn btn-purple" style="flex: 1;" onclick="startCustomProgram()">🚀 ZAŽENI PROGRAM NA STEZI</button>
-                <button class="btn btn-primary" onclick="saveProgramToSupabase()">💾 Shrani v Supabase</button>
+                <button class="btn btn-primary" onclick="saveProgramToSupabase()">💾 Shrani program</button>
                 <button class="btn btn-danger" onclick="stopCustomProgram()">⏹ Prekini Program</button>
             </div>
         </div>
@@ -1073,6 +1217,15 @@
     </div>
 </div>
 
+<!-- TABLICA: SAMO LEŽEČI NAČIN -->
+<div class="rotate-lock-overlay" id="tabletRotateOverlay">
+    <div style="font-size: 3rem;">🔄</div>
+    <div style="font-size: 1.35rem; font-weight: 800;">Obrnite tablico v ležeči položaj</div>
+    <div style="font-size: 0.95rem; color: #94a3b8; max-width: 360px;">
+        Aplikacija na tablici deluje samo vodoravno (landscape), da so hitrost, naklon in video jasno vidni.
+    </div>
+</div>
+
 <script>
     // PWA REGISTRACIJA SERVICE WORKER-JA IN NAMESTITVENI DOGODEK
     if ('serviceWorker' in navigator) {
@@ -1256,6 +1409,8 @@
 
     window.addEventListener('DOMContentLoaded', async () => {
         checkPwaInstalledState();
+        setupAppLifecycleGuards();
+        setupOrientationHandling();
         initSupabase();
         await syncProfilesFromSupabase();
         renderUserSwitcher();
@@ -1264,12 +1419,122 @@
         fetchSupabaseRoutes();
         await loadSavedYouTubeVideos();
         await loadSavedYouTubeAudio();
+        updateLiveMusicBarVisibility();
 
         const inputInc = document.getElementById('profInputMaxIncline');
         if (inputInc) inputInc.value = maxInclineLimit;
         const textInc = document.getElementById('gpxMaxIncLimitText');
         if (textInc) textInc.textContent = `${maxInclineLimit.toFixed(1)}%`;
+
+        // Poskusi samodejno povezati že dovoljeno stezo (Chrome getDevices)
+        setTimeout(() => tryAutoConnectTreadmill({ silent: true }), 800);
     });
+
+    function isLikelyTabletDevice() {
+        const minSide = Math.min(screen.width, screen.height);
+        const maxSide = Math.max(screen.width, screen.height);
+        // Tablica: večja diagonala / min stranica, a ne ozek telefon
+        return minSide >= 600 && maxSide >= 900;
+    }
+
+    function setupOrientationHandling() {
+        const overlay = document.getElementById('tabletRotateOverlay');
+        const update = () => {
+            if (!overlay) return;
+            const portrait = window.matchMedia('(orientation: portrait)').matches;
+            if (isLikelyTabletDevice() && portrait) {
+                overlay.classList.add('show');
+            } else {
+                overlay.classList.remove('show');
+            }
+
+            // Tablica: poskusi zakleniti landscape
+            if (isLikelyTabletDevice() && screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(() => {});
+            }
+        };
+        update();
+        window.addEventListener('resize', update);
+        window.addEventListener('orientationchange', update);
+    }
+
+    let wakeLockSentinel = null;
+    let allowAppExit = false;
+
+    async function requestWorkoutWakeLock() {
+        try {
+            if ('wakeLock' in navigator) {
+                wakeLockSentinel = await navigator.wakeLock.request('screen');
+                wakeLockSentinel.addEventListener('release', () => {
+                    wakeLockSentinel = null;
+                });
+            }
+        } catch (e) {
+            console.warn('Wake Lock ni na voljo:', e.message);
+        }
+    }
+
+    function releaseWorkoutWakeLock() {
+        if (wakeLockSentinel) {
+            wakeLockSentinel.release().catch(() => {});
+            wakeLockSentinel = null;
+        }
+    }
+
+    function setupAppLifecycleGuards() {
+        // Pomanjšanje / ozadje = NE ustavi treninga
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'hidden') {
+                // Ostane v ozadju — intervali in BLE se nadaljujejo, kolikor OS dovoljuje
+                console.log('Aplikacija v ozadju — trening se nadaljuje.');
+            } else if (document.visibilityState === 'visible' && isWorkoutActive) {
+                await requestWorkoutWakeLock();
+                await tryAutoConnectTreadmill({ silent: true });
+            }
+        });
+
+        // Potrditev pred zapiranjem zavihka / PWA
+        window.addEventListener('beforeunload', (e) => {
+            if (allowAppExit) return;
+            if (isWorkoutActive || startTime) {
+                e.preventDefault();
+                e.returnValue = 'Ali želite zapreti aplikacijo? Aktivni trening se bo ustavil.';
+                return e.returnValue;
+            }
+        });
+
+        // Android / PWA: gumb Nazaj → vprašaj pred zaprtjem
+        history.pushState({ appGuard: 1 }, '', location.href);
+        window.addEventListener('popstate', () => {
+            if (allowAppExit) return;
+            history.pushState({ appGuard: 1 }, '', location.href);
+            requestCloseApp();
+        });
+    }
+
+    function requestCloseApp() {
+        const msg = isWorkoutActive
+            ? 'Ali želite zapreti aplikacijo? Aktivni tek se bo ustavil.'
+            : 'Ali želite zapreti aplikacijo Tekalna Steza Pro?';
+        if (!confirm(msg)) return;
+
+        allowAppExit = true;
+        if (isWorkoutActive) stopWorkout('app_close');
+        releaseWorkoutWakeLock();
+
+        // Poskusi zapreti PWA / okno
+        setTimeout(() => {
+            window.close();
+            // Če brskalnik ne dovoli close, pokažemo navodilo
+            document.body.innerHTML = `
+                <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#080c14;color:#f8fafc;font-family:Outfit,sans-serif;padding:2rem;text-align:center;">
+                    <div>
+                        <div style="font-size:1.5rem;font-weight:800;margin-bottom:0.75rem;">Aplikacija je pripravljena za zaprtje</div>
+                        <div style="color:#94a3b8;">Zaprite zavihek ali odstranite aplikacijo iz nedavnih (Recent apps).</div>
+                    </div>
+                </div>`;
+        }, 150);
+    }
 
     // CELOZASLONSKI NAČIN (SKRIJE ZGORNJO URO / SISTEMSKE IKONE IN SPODNJE 3 GUMBE TELEFONA)
     function toggleFullScreen() {
@@ -1392,11 +1657,37 @@
 
         realWeightKg = prof.weightKg;
         populateProfileForm();
+        updateLiveMusicBarVisibility();
         await fetchIntervalPrograms();
         await renderHistoryTable();
         loadStats();
         await loadSavedYouTubeVideos();
         await loadSavedYouTubeAudio();
+    }
+
+    function updateLiveMusicBarVisibility() {
+        const bar = document.getElementById('liveMusicBar');
+        if (!bar) return;
+        // Vedno vidno med tekom; sicer posebej poudarjeno za Veroniko
+        const show = isWorkoutActive || (userProfiles[currentUser]?.gender === 'female') || currentUser === 'Veronika';
+        bar.classList.toggle('visible', !!show);
+    }
+
+    function playLiveMusicNow() {
+        const url = (document.getElementById('liveMusicUrlInput')?.value || '').trim();
+        if (!url) return alert('Prilepi YouTube povezavo pesmi.');
+        document.getElementById('youtubeAudioUrlInput').value = url;
+        playYouTubeAudioOnly();
+    }
+
+    async function refreshLiveMusicSelect() {
+        const select = document.getElementById('liveMusicSelect');
+        if (!select) return;
+        const tracks = await fetchAllSavedAudio();
+        select.innerHTML = '<option value="">— Hitra izbira shranjene glasbe —</option>';
+        tracks.forEach(item => {
+            select.innerHTML += `<option value="${item.audio_url}">🎵 ${item.name}</option>`;
+        });
     }
 
     // --- UREJANJE, DODAJANJE IN IZBRIS PROFILOV Z SUPABASE SINHRONIZACIJO ---
@@ -1604,14 +1895,17 @@
     async function executeStartWorkoutWizard() {
         closeWizardModal();
 
-        if (!isTreadmillControllable()) {
-            alert("⚠️ Steza še ni povezana ali ne sprejema ukazov.\n\nNajprej kliknite '🔌 Poveži Stezo (FTMS)', nato znova zaženite tek.");
+        const connected = await ensureTreadmillConnected();
+        if (!connected) {
+            alert("⚠️ Steza še ni povezana. Tek se ne more zagnati.");
             return;
         }
 
         isWorkoutActive = true;
         hasHadSpeedBefore = false;
         treadmillBeltStarted = false;
+        updateLiveMusicBarVisibility();
+        await requestWorkoutWakeLock();
 
         // 1. Video
         const videoUrl = document.getElementById('wizVideoSelect').value;
@@ -1641,19 +1935,21 @@
             else generateAndApplyAiWorkout();
 
             await startCustomProgram();
-        } else {
-            const ok = await applyTreadmillTargets(5.0, 2.0, { start: true });
-            if (!ok) {
-                alert("Ukazi za hitrost/naklon niso bili sprejeti. Preverite Bluetooth povezavo s stezo.");
-                return;
-            }
-            currentSpeed = 5.0;
-            currentIncline = Math.min(2.0, maxInclineLimit);
-            updateUI();
+            return;
         }
 
+        const ok = await applyTreadmillTargets(5.0, 2.0, { start: true });
+        if (!ok) {
+            isWorkoutActive = false;
+            alert("Ukazi za hitrost/naklon niso bili sprejeti. Preverite Bluetooth povezavo s stezo.");
+            return;
+        }
+        currentSpeed = 5.0;
+        currentIncline = Math.min(2.0, maxInclineLimit);
+        updateUI();
+
         document.getElementById('btnStopWorkout').disabled = false;
-        alert("▶ TEK SE JE PRIČEL! Steza samodejno nastavlja hitrost in naklon.");
+        alert("▶ TEK SE JE PRIČEL! Steza samodejno nastavlja hitrost in naklon. Glasbo lahko med tekom zamenjaš zgoraj.");
     }
 
     // --- GEMINI AI VIRTUALNI ASISTENT, TRENER IN UVOZ SLIK ---
@@ -1959,6 +2255,7 @@
 
         if (savedAudio.length === 0) {
             container.innerHTML = `<div style="font-size: 0.8rem; color: var(--text-muted);">Ni shranjenih avdio skladb. Vnesite URL zgoraj in kliknite 'Shrani Avdio'.</div>`;
+            await refreshLiveMusicSelect();
             return;
         }
 
@@ -1983,6 +2280,7 @@
             </div>
             `;
         }).join('');
+        await refreshLiveMusicSelect();
     }
 
     function togglePlayYouTubeAudioOnly() {
@@ -2170,17 +2468,33 @@
         }
     }
 
-    async function connectTreadmillBLE() {
+    function getBleOptionalServices() {
+        return [
+            FTMS_SERVICE_UUID,
+            FITSHOW_SERVICE_UUID,
+            TREADMILL_DATA_CHAR_UUID,
+            TREADMILL_CONTROL_POINT_CHAR_UUID_1,
+            TREADMILL_CONTROL_POINT_CHAR_UUID_2,
+            FITSHOW_NOTIFY_UUID,
+            FITSHOW_WRITE_UUID,
+            '0000fe59-0000-1000-8000-00805f9b34fb'
+        ];
+    }
+
+    async function connectTreadmillBLE(options = {}) {
+        const { silent = false, device: presetDevice = null } = options;
         const txtEl = document.getElementById('textTreadmill');
         const dotEl = document.getElementById('dotTreadmill');
 
         if (!navigator.bluetooth) {
-            alert('Vaš mobilni brskalnik žal ne podpira Web Bluetooth API. Preverite, da uporabljate Google Chrome ali Microsoft Edge.');
+            if (!silent) {
+                alert('Vaš mobilni brskalnik žal ne podpira Web Bluetooth API. Preverite, da uporabljate Google Chrome ali Microsoft Edge.');
+            }
             txtEl.textContent = 'Brez podpore za BLE';
-            return;
+            return false;
         }
 
-        txtEl.textContent = 'Iščem tekalno stezo...';
+        if (!silent) txtEl.textContent = 'Iščem tekalno stezo...';
         treadmillProtocol = null;
         controlPointChar = null;
         fitshowWriteChar = null;
@@ -2189,114 +2503,199 @@
         treadmillBeltStarted = false;
 
         try {
-            const optionalServices = [
-                FTMS_SERVICE_UUID,
-                FITSHOW_SERVICE_UUID,
-                TREADMILL_DATA_CHAR_UUID,
-                TREADMILL_CONTROL_POINT_CHAR_UUID_1,
-                TREADMILL_CONTROL_POINT_CHAR_UUID_2,
-                FITSHOW_NOTIFY_UUID,
-                FITSHOW_WRITE_UUID,
-                '0000fe59-0000-1000-8000-00805f9b34fb'
-            ];
+            const optionalServices = getBleOptionalServices();
+            let device = presetDevice;
 
-            let device = null;
-            try {
-                device = await navigator.bluetooth.requestDevice({
-                    filters: [
-                        { services: [FTMS_SERVICE_UUID] },
-                        { services: [FITSHOW_SERVICE_UUID] },
-                        { namePrefix: 'Kubi' },
-                        { namePrefix: 'Fit' },
-                        { namePrefix: 'GB' },
-                        { namePrefix: 'FS' }
-                    ],
-                    optionalServices: optionalServices
-                });
-            } catch (err1) {
-                device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: optionalServices
-                });
-            }
-
-            treadmillDevice = device;
-            txtEl.textContent = 'Povezovanje z ' + (treadmillDevice.name || 'stezo') + '...';
-
-            const server = await treadmillDevice.gatt.connect();
-
-            // 1) Poskusi standardni FTMS
-            let ftmsService = null;
-            try {
-                ftmsService = await server.getPrimaryService(FTMS_SERVICE_UUID);
-            } catch (e) {}
-
-            if (ftmsService) {
+            if (!device) {
                 try {
-                    treadmillChar = await ftmsService.getCharacteristic(TREADMILL_DATA_CHAR_UUID);
-                    await treadmillChar.startNotifications();
-                    treadmillChar.addEventListener('characteristicvaluechanged', handleTreadmillData);
-                } catch (e) {
-                    console.warn('FTMS data char ni na voljo:', e);
-                }
-
-                try {
-                    controlPointChar = await ftmsService.getCharacteristic(TREADMILL_CONTROL_POINT_CHAR_UUID_2);
-                } catch (e1) {
-                    try {
-                        controlPointChar = await ftmsService.getCharacteristic(TREADMILL_CONTROL_POINT_CHAR_UUID_1);
-                    } catch (e2) {}
-                }
-
-                if (controlPointChar) {
-                    try {
-                        if (controlPointChar.properties.indicate || controlPointChar.properties.notify) {
-                            await controlPointChar.startNotifications();
-                        }
-                    } catch (e) {}
-                    treadmillProtocol = 'ftms';
-                    await bleWrite(controlPointChar, new Uint8Array([0x00]));
-                    await sleepMs(150);
+                    device = await navigator.bluetooth.requestDevice({
+                        filters: [
+                            { services: [FTMS_SERVICE_UUID] },
+                            { services: [FITSHOW_SERVICE_UUID] },
+                            { namePrefix: 'Kubi' },
+                            { namePrefix: 'Fit' },
+                            { namePrefix: 'GB' },
+                            { namePrefix: 'FS' }
+                        ],
+                        optionalServices: optionalServices
+                    });
+                } catch (err1) {
+                    if (silent) return false;
+                    device = await navigator.bluetooth.requestDevice({
+                        acceptAllDevices: true,
+                        optionalServices: optionalServices
+                    });
                 }
             }
 
-            // 2) FitShow (FFF0/FFF1/FFF2) — če FTMS control ni na voljo
-            if (!controlPointChar) {
-                let fsService = null;
-                try {
-                    fsService = await server.getPrimaryService(FITSHOW_SERVICE_UUID);
-                } catch (e) {}
-
-                if (fsService) {
-                    try {
-                        fitshowNotifyChar = await fsService.getCharacteristic(FITSHOW_NOTIFY_UUID);
-                        await fitshowNotifyChar.startNotifications();
-                        fitshowNotifyChar.addEventListener('characteristicvaluechanged', handleFitshowNotify);
-                    } catch (e) {
-                        console.warn('FitShow notify ni na voljo:', e);
-                    }
-
-                    try {
-                        fitshowWriteChar = await fsService.getCharacteristic(FITSHOW_WRITE_UUID);
-                        treadmillProtocol = 'fitshow';
-                    } catch (e) {
-                        console.warn('FitShow write ni na voljo:', e);
-                    }
-                }
-            }
-
-            if (!isTreadmillControllable()) {
-                throw new Error('Steza je povezana, a ne najdem control/write karakteristike (FTMS 2AD9 ali FitShow FFF2).');
-            }
-
-            dotEl.classList.add('connected');
-            const modeLabel = treadmillProtocol === 'fitshow' ? 'FitShow' : 'FTMS';
-            txtEl.textContent = `${treadmillDevice.name || 'Povezano'} (${modeLabel})`;
+            return await bindTreadmillDevice(device, { silent });
         } catch (e) {
             console.error("BLE error:", e);
             txtEl.textContent = `Povezava spodletela: ${e.message}`;
-            alert(`Povezovanje s stezo spodletelo:\n${e.message}\n\nREŠITEV:\n1. Preverite, ali je Bluetooth na telefonu vklopljen.\n2. Odklopite aplikacijo FitShow na telefonu, če teče v ozadju.\n3. V nastavitvah telefona pod Chrome dovolite 'Naprave v bližini'.`);
+            if (!silent) {
+                alert(`Povezovanje s stezo spodletelo:\n${e.message}\n\nREŠITEV:\n1. Preverite, ali je Bluetooth na telefonu vklopljen.\n2. Odklopite aplikacijo FitShow na telefonu, če teče v ozadju.\n3. V nastavitvah telefona pod Chrome dovolite 'Naprave v bližini'.`);
+            }
+            return false;
         }
+    }
+
+    async function bindTreadmillDevice(device, { silent = false } = {}) {
+        const txtEl = document.getElementById('textTreadmill');
+        const dotEl = document.getElementById('dotTreadmill');
+
+        treadmillDevice = device;
+        if (!silent) txtEl.textContent = 'Povezovanje z ' + (treadmillDevice.name || 'stezo') + '...';
+        else txtEl.textContent = 'Samodejna povezava...';
+
+        if (treadmillDevice.gatt.connected) {
+            try { await treadmillDevice.gatt.disconnect(); } catch (e) {}
+            await sleepMs(200);
+        }
+
+        const server = await treadmillDevice.gatt.connect();
+
+        // 1) Poskusi standardni FTMS
+        let ftmsService = null;
+        try {
+            ftmsService = await server.getPrimaryService(FTMS_SERVICE_UUID);
+        } catch (e) {}
+
+        if (ftmsService) {
+            try {
+                treadmillChar = await ftmsService.getCharacteristic(TREADMILL_DATA_CHAR_UUID);
+                await treadmillChar.startNotifications();
+                treadmillChar.addEventListener('characteristicvaluechanged', handleTreadmillData);
+            } catch (e) {
+                console.warn('FTMS data char ni na voljo:', e);
+            }
+
+            try {
+                controlPointChar = await ftmsService.getCharacteristic(TREADMILL_CONTROL_POINT_CHAR_UUID_2);
+            } catch (e1) {
+                try {
+                    controlPointChar = await ftmsService.getCharacteristic(TREADMILL_CONTROL_POINT_CHAR_UUID_1);
+                } catch (e2) {}
+            }
+
+            if (controlPointChar) {
+                try {
+                    if (controlPointChar.properties.indicate || controlPointChar.properties.notify) {
+                        await controlPointChar.startNotifications();
+                    }
+                } catch (e) {}
+                treadmillProtocol = 'ftms';
+                await bleWrite(controlPointChar, new Uint8Array([0x00]));
+                await sleepMs(150);
+            }
+        }
+
+        // 2) FitShow (FFF0/FFF1/FFF2) — če FTMS control ni na voljo
+        if (!controlPointChar) {
+            let fsService = null;
+            try {
+                fsService = await server.getPrimaryService(FITSHOW_SERVICE_UUID);
+            } catch (e) {}
+
+            if (fsService) {
+                try {
+                    fitshowNotifyChar = await fsService.getCharacteristic(FITSHOW_NOTIFY_UUID);
+                    await fitshowNotifyChar.startNotifications();
+                    fitshowNotifyChar.addEventListener('characteristicvaluechanged', handleFitshowNotify);
+                } catch (e) {
+                    console.warn('FitShow notify ni na voljo:', e);
+                }
+
+                try {
+                    fitshowWriteChar = await fsService.getCharacteristic(FITSHOW_WRITE_UUID);
+                    treadmillProtocol = 'fitshow';
+                } catch (e) {
+                    console.warn('FitShow write ni na voljo:', e);
+                }
+            }
+        }
+
+        if (!isTreadmillControllable()) {
+            throw new Error('Steza je povezana, a ne najdem control/write karakteristike (FTMS 2AD9 ali FitShow FFF2).');
+        }
+
+        // Shrani ime za naslednji samodejni reconnect
+        if (treadmillDevice.name) {
+            localStorage.setItem('ble_last_treadmill_name', treadmillDevice.name);
+        }
+        try {
+            treadmillDevice.addEventListener('gattserverdisconnected', () => {
+                const t = document.getElementById('textTreadmill');
+                const d = document.getElementById('dotTreadmill');
+                if (t) t.textContent = 'Prekinjeno — ponovno povezujem...';
+                if (d) d.classList.remove('connected');
+                controlPointChar = null;
+                fitshowWriteChar = null;
+                treadmillProtocol = null;
+                treadmillBeltStarted = false;
+                setTimeout(() => tryAutoConnectTreadmill({ silent: true }), 1000);
+            });
+        } catch (e) {}
+
+        dotEl.classList.add('connected');
+        const modeLabel = treadmillProtocol === 'fitshow' ? 'FitShow' : 'FTMS';
+        txtEl.textContent = `${treadmillDevice.name || 'Povezano'} (${modeLabel})`;
+        return true;
+    }
+
+    async function tryAutoConnectTreadmill({ silent = true } = {}) {
+        if (isTreadmillControllable() && treadmillDevice?.gatt?.connected) return true;
+        if (!navigator.bluetooth) return false;
+
+        try {
+            // Chrome: že dovoljene naprave brez pickerja
+            if (typeof navigator.bluetooth.getDevices === 'function') {
+                const devices = await navigator.bluetooth.getDevices();
+                const preferred = localStorage.getItem('ble_last_treadmill_name') || '';
+                const sorted = [...devices].sort((a, b) => {
+                    const aScore = preferred && a.name === preferred ? 0 : 1;
+                    const bScore = preferred && b.name === preferred ? 0 : 1;
+                    return aScore - bScore;
+                });
+
+                for (const device of sorted) {
+                    try {
+                        const ok = await bindTreadmillDevice(device, { silent: true });
+                        if (ok) return true;
+                    } catch (e) {
+                        console.warn('Auto-connect kandidat spodletel:', device.name, e.message);
+                    }
+                }
+            }
+
+            // Če imamo še vedno referenco na device iz te seje
+            if (treadmillDevice) {
+                try {
+                    return await bindTreadmillDevice(treadmillDevice, { silent: true });
+                } catch (e) {}
+            }
+        } catch (e) {
+            console.warn('tryAutoConnectTreadmill:', e);
+        }
+
+        if (!silent) {
+            const t = document.getElementById('textTreadmill');
+            if (t && !isTreadmillControllable()) t.textContent = 'Ni povezano — kliknite Poveži Stezo';
+        }
+        return false;
+    }
+
+    async function ensureTreadmillConnected() {
+        if (isTreadmillControllable() && treadmillDevice?.gatt?.connected) return true;
+
+        const autoOk = await tryAutoConnectTreadmill({ silent: true });
+        if (autoOk) return true;
+
+        // Prvič / brez dovoljenja: odpri picker (zahteva uporabniški klik)
+        const manual = confirm(
+            'Steza še ni povezana.\n\nŽelite zdaj poiskati in povezati tekalno stezo?\n\n(Naslednjič se bo povezala samodejno.)'
+        );
+        if (!manual) return false;
+        return await connectTreadmillBLE({ silent: false });
     }
 
     function isTreadmillControllable() {
@@ -2699,46 +3098,112 @@
     async function saveProgramToSupabase() {
         if (programSteps.length === 0) return alert("Sestavite program pred shranjevanjem.");
 
+        const customName = (document.getElementById('progNameInput')?.value || '').trim() || 'Moj program';
+        const progName = `${currentUser}_${customName}`.replace(/\s+/g, '_');
+
         if (supabaseClient) {
             try {
-                const progName = `${currentUser}_Program`;
                 const { error } = await supabaseClient.from('interval_programs').upsert(
                     { program_name: progName, steps: programSteps },
                     { onConflict: 'program_name' }
                 );
+                // Ohrani tudi privzeti slot uporabnika
+                await supabaseClient.from('interval_programs').upsert(
+                    { program_name: `${currentUser}_Program`, steps: programSteps },
+                    { onConflict: 'program_name' }
+                );
                 if (error) console.warn("Supabase program save error:", error);
-                else console.log("Program uspešno shranjen v Supabase bazo.");
+                else alert(`Program '${customName}' je shranjen.`);
             } catch (e) {
                 console.warn(`Napaka pri shranjevanju v Supabase: ${e.message}`);
             }
         } else {
             localStorage.setItem(`ble_program_${currentUser}`, JSON.stringify(programSteps));
+            localStorage.setItem(`ble_program_name_${currentUser}`, customName);
+            alert(`Program '${customName}' je shranjen lokalno.`);
         }
     }
 
+    function createNewIntervalProgram() {
+        const name = prompt('Ime novega programa:', 'Moj program');
+        if (name === null) return;
+        programSteps = [];
+        const nameEl = document.getElementById('progNameInput');
+        if (nameEl) nameEl.value = name.trim() || 'Moj program';
+        const label = document.getElementById('progCurrentNameLabel');
+        if (label) label.textContent = nameEl?.value || 'Moj program';
+        document.getElementById('progDuration').value = 2;
+        document.getElementById('progSpeed').value = 5.0;
+        document.getElementById('progIncline').value = 1.0;
+        document.getElementById('progStepName').value = 'Ogrevanje';
+        renderStepsList();
+        alert(`Nov program '${nameEl?.value}' je pripravljen. Dodaj korake (minute, hitrost, naklon).`);
+    }
+
     function addIntervalStep() {
-        const dur = parseInt(document.getElementById('progDuration').value);
+        const minutes = parseFloat(document.getElementById('progDuration').value);
         const spd = parseFloat(document.getElementById('progSpeed').value);
         const inc = parseFloat(document.getElementById('progIncline').value);
+        let stepName = (document.getElementById('progStepName')?.value || '').trim();
 
-        if (isNaN(dur) || isNaN(spd) || isNaN(inc)) return alert("Vnesite veljavne številčne vrednosti!");
+        if (isNaN(minutes) || minutes <= 0) return alert('Vnesi veljavno trajanje v MINUTAH (npr. 2).');
+        if (isNaN(spd) || spd < 0) return alert('Vnesi veljavno HITROST v km/h (npr. 5.0).');
+        if (isNaN(inc) || inc < 0) return alert('Vnesi veljaven NAKLON v % (npr. 8.0).');
 
-        programSteps.push({ duration: dur, speed: spd, incline: inc, name: `Korak ${programSteps.length + 1}` });
+        const durationSec = Math.round(minutes * 60);
+        if (!stepName) stepName = `Korak ${programSteps.length + 1}`;
+
+        programSteps.push({
+            duration: durationSec,
+            speed: spd,
+            incline: inc,
+            name: stepName,
+            minutes: minutes
+        });
+
+        const nameInput = document.getElementById('progNameInput');
+        const label = document.getElementById('progCurrentNameLabel');
+        if (label && nameInput) label.textContent = nameInput.value || 'Moj program';
+
+        // Predlagaj naslednji korak
+        const nextEl = document.getElementById('progStepName');
+        if (nextEl) nextEl.value = `Korak ${programSteps.length + 1}`;
+
         renderStepsList();
     }
 
     function renderStepsList() {
         const list = document.getElementById('intervalStepsList');
         if (programSteps.length === 0) {
-            list.innerHTML = `<li style="color: var(--text-muted);">Program je prazen. Izberite program zgoraj ali dodajte korake.</li>`;
+            list.innerHTML = `<li style="color: var(--text-muted);">Program je prazen. Dodaj korake zgoraj ali izberi pripravljen program.</li>`;
+            const totalEl = document.getElementById('progTotalDuration');
+            if (totalEl) totalEl.textContent = '';
             return;
         }
-        list.innerHTML = programSteps.map((step, idx) => `
-            <li style="background: rgba(255,255,255,0.05); padding: 0.5rem 1rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-                <span>${step.name || `Korak ${idx + 1}`}: <strong>${Math.round(step.duration / 60 * 10) / 10} min (${step.duration}s)</strong> pri <strong>${step.speed} km/h</strong> in <strong>${step.incline}%</strong> naklona</span>
-                <button class="btn btn-danger" style="padding: 0.1rem 0.4rem; font-size: 0.75rem;" onclick="removeStep(${idx})">Odstrani</button>
-            </li>
-        `).join('');
+
+        const totalSec = programSteps.reduce((s, step) => s + (step.duration || 0), 0);
+        const totalMin = Math.round((totalSec / 60) * 10) / 10;
+
+        list.innerHTML = programSteps.map((step, idx) => {
+            const mins = step.minutes != null ? step.minutes : Math.round((step.duration / 60) * 10) / 10;
+            return `
+            <li style="background: rgba(255,255,255,0.05); padding: 0.65rem 1rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <span>
+                    <strong style="color: var(--accent-cyan);">${idx + 1}. ${step.name || `Korak ${idx + 1}`}</strong><br>
+                    <span style="font-size: 0.85rem;">
+                        ⏱️ <strong>${mins} min</strong> &nbsp;|&nbsp;
+                        ⚡ <strong>${step.speed} km/h</strong> &nbsp;|&nbsp;
+                        📐 <strong>${step.incline}%</strong> naklon
+                    </span>
+                </span>
+                <button class="btn btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="removeStep(${idx})">Odstrani</button>
+            </li>`;
+        }).join('');
+
+        const totalEl = document.getElementById('progTotalDuration');
+        if (totalEl) {
+            totalEl.innerHTML = `Skupaj: <strong style="color: var(--accent-green);">${totalMin} min</strong> (${programSteps.length} korakov)`;
+        }
     }
 
     function removeStep(idx) {
@@ -2749,8 +3214,9 @@
     async function startCustomProgram() {
         if (programSteps.length === 0) return alert("Najprej sestavite ali izberite program!");
 
-        if (!isTreadmillControllable()) {
-            return alert("⚠️ Steza ni povezana. Najprej kliknite '🔌 Poveži Stezo (FTMS)', nato znova zaženite program.");
+        const connected = await ensureTreadmillConnected();
+        if (!connected) {
+            return alert("⚠️ Steza ni povezana. Program se ne more zagnati.");
         }
 
         if (!startTime) {
@@ -2762,6 +3228,8 @@
         hasHadSpeedBefore = false;
         treadmillBeltStarted = false;
         currentStepIdx = 0;
+        updateLiveMusicBarVisibility();
+        await requestWorkoutWakeLock();
         await executeStep(programSteps[currentStepIdx], true);
         document.getElementById('btnStopWorkout').disabled = false;
     }
@@ -2973,14 +3441,17 @@
             return alert("Najprej izberite ali naložite GPX progo!");
         }
 
-        if (!isTreadmillControllable()) {
-            return alert("⚠️ Steza ni povezana. Najprej kliknite '🔌 Poveži Stezo (FTMS)'.");
+        const connected = await ensureTreadmillConnected();
+        if (!connected) {
+            return alert("⚠️ Steza ni povezana. GPX proge ni mogoče zagnati.");
         }
 
         isGpxFollowingActive = true;
         isWorkoutActive = true;
         hasHadSpeedBefore = false;
         treadmillBeltStarted = false;
+        updateLiveMusicBarVisibility();
+        await requestWorkoutWakeLock();
 
         if (!startTime) {
             startTime = Date.now();
@@ -3099,6 +3570,8 @@
         isGpxFollowingActive = false;
 
         stopTimer();
+        releaseWorkoutWakeLock();
+        updateLiveMusicBarVisibility();
 
         // 1. Ustavitev steze (FTMS Stop ali FitShow Stop)
         stopTreadmillBelt();
