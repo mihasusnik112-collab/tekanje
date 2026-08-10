@@ -478,6 +478,32 @@
             line-height: 1.1;
         }
 
+        .hud-track-title {
+            position: absolute;
+            bottom: 14px;
+            left: 18px;
+            right: 18px;
+            z-index: 100;
+            pointer-events: none;
+            text-align: center;
+            color: #ffffff;
+            opacity: 0.45;
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            background: none;
+            border: none;
+            box-shadow: none;
+            text-shadow: 0 1px 10px rgba(0, 0, 0, 0.65);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .hud-track-title:empty {
+            display: none;
+        }
+
         .chart-box {
             position: relative;
             height: 250px;
@@ -601,21 +627,23 @@
                 <div class="badge" style="border-color: var(--accent-pink);"><span id="textGenderBadge">👨 Moški profil</span></div>
             </div>
 
-            <!-- HITRA GLASBA MED TEKOM (predvsem Veronika) -->
+            <!-- HITRA GLASBA MED TEKOM — OSEBNA PLAYLISTA -->
             <div class="live-music-bar" id="liveMusicBar">
                 <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent-pink);">
-                    🎵 Glasba za tek — izberi ali zamenjaj YouTube med tekom
+                    🎵 Moja playlista — <span id="liveMusicOwnerLabel">profil</span> (vidna samo tebi)
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     <input type="text" id="liveMusicUrlInput" placeholder="Prilepi YouTube povezavo pesmi..." style="flex: 1; min-width: 180px;">
+                    <input type="text" id="liveMusicTitleInput" placeholder="Ime skladbe..." style="flex: 0.7; min-width: 120px;">
                     <button class="btn btn-purple" onclick="playLiveMusicNow()">▶ Predvajaj</button>
+                    <button class="btn btn-primary" onclick="saveLiveMusicToPlaylist()">💾 V playlista</button>
                     <button class="btn btn-secondary" onclick="stopAudio()">⏹ Ustavi</button>
                 </div>
-                <select id="liveMusicSelect" style="width: 100%;" onchange="if(this.value) playSavedAudio(this.value)">
-                    <option value="">— Hitra izbira shranjene glasbe —</option>
+                <select id="liveMusicSelect" style="width: 100%;" onchange="playFromLiveSelect(this)">
+                    <option value="">— Izberi skladbo iz svoje playliste —</option>
                 </select>
                 <div style="font-size: 0.75rem; color: var(--text-muted);">
-                    Med tekom lahko kadarkoli zamenjaš skladbo. Glasba se shrani za naslednjič.
+                    Med tekom lahko kadarkoli zamenjaš skladbo. Playlista je vezana na tvoj profil.
                 </div>
             </div>
 
@@ -690,14 +718,14 @@
                     </div>
                 </div>
 
-                <!-- SKUPNA YOUTUBE GLASBA / PODCASTI (SAMO AVDIO) -->
+                <!-- OSEBNA YOUTUBE PLAYLISTA (SAMO TRENUTNI PROFIL) -->
                 <div style="background: rgba(139, 92, 246, 0.08); border: 1px solid var(--accent-purple); padding: 0.85rem; border-radius: 0.85rem; margin-bottom: 0.85rem;">
                     <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent-purple); margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.35rem;">
-                        <span>🎵 YouTube Glasba za tek (Veronika & vsi)</span>
-                        <span id="audioPlayingBadge" style="font-size: 0.75rem; color: var(--accent-green); display: none;">▶ Predvaja se avdio</span>
+                        <span>🎵 Moja playlista — <span id="playlistOwnerLabel">profil</span></span>
+                        <span id="audioPlayingBadge" style="font-size: 0.75rem; color: var(--accent-green); display: none;">▶ Predvaja se</span>
                     </div>
                     <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.55rem;">
-                        Prilepi YouTube povezavo svoje pesmi. Med tekom jo lahko zamenjaš — shranjene skladbe ostanejo v seznamu.
+                        Vsak profil ima svojo playlista. Skladbe vidiš samo ti. Med tekom jih lahko zamenjaš.
                     </div>
 
                     <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;">
@@ -706,13 +734,13 @@
                             <button class="btn btn-purple" id="btnPlayAudioInput" onclick="togglePlayYouTubeAudioOnly()">▶ Predvajaj Avdio</button>
                         </div>
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                            <input type="text" id="youtubeAudioTitleInput" placeholder="Ime pesmi (npr. Moja tek playlist)..." style="flex: 1; min-width: 160px;">
-                            <button class="btn btn-primary" onclick="saveCurrentYouTubeAudio()">💾 Shrani Glasbo</button>
+                            <input type="text" id="youtubeAudioTitleInput" placeholder="Ime skladbe..." style="flex: 1; min-width: 160px;">
+                            <button class="btn btn-primary" onclick="saveCurrentYouTubeAudio()">💾 Shrani v mojo playlista</button>
                         </div>
                     </div>
 
-                    <div id="savedAudioContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 130px; overflow-y: auto;">
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">Nalaganje avdio skladb iz Supabase baze...</div>
+                    <div id="savedAudioContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 160px; overflow-y: auto;">
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Nalaganje tvoje playliste...</div>
                     </div>
 
                     <!-- SKRITI PREDVAJALNIK ZA YOUTUBE AVDIO -->
@@ -745,6 +773,7 @@
                             <span class="hud-value" id="hudDistance">0.00 <span style="font-size: 0.75rem;">km</span></span>
                         </div>
                     </div>
+                    <div class="hud-track-title" id="hudTrackTitle"></div>
 
                     <video id="routeVideo" loop muted playsinline style="display: block;"></video>
                     <div id="youtubePlayerContainer" style="display: none; width: 100%; height: 100%;">
@@ -1382,6 +1411,7 @@
     let ytAudioPlayer = null;
     let isYouTubeAudioActive = false;
     let currentPlayingAudioUrl = '';
+    let currentPlayingAudioTitle = '';
 
     let timerInterval = null;
     let liveChart = null;
@@ -1668,26 +1698,298 @@
     function updateLiveMusicBarVisibility() {
         const bar = document.getElementById('liveMusicBar');
         if (!bar) return;
-        // Vedno vidno med tekom; sicer posebej poudarjeno za Veroniko
-        const show = isWorkoutActive || (userProfiles[currentUser]?.gender === 'female') || currentUser === 'Veronika';
-        bar.classList.toggle('visible', !!show);
+        // Vidno za vse profile (osebna playlista) — še posebej med tekom
+        bar.classList.add('visible');
+        const owner = currentUser || 'profil';
+        const liveLabel = document.getElementById('liveMusicOwnerLabel');
+        const listLabel = document.getElementById('playlistOwnerLabel');
+        if (liveLabel) liveLabel.textContent = owner;
+        if (listLabel) listLabel.textContent = owner;
     }
 
     function playLiveMusicNow() {
         const url = (document.getElementById('liveMusicUrlInput')?.value || '').trim();
         if (!url) return alert('Prilepi YouTube povezavo pesmi.');
+        const title = (document.getElementById('liveMusicTitleInput')?.value || '').trim();
         document.getElementById('youtubeAudioUrlInput').value = url;
-        playYouTubeAudioOnly();
+        if (title) document.getElementById('youtubeAudioTitleInput').value = title;
+        playYouTubeAudioOnly(title || null);
+    }
+
+    function playFromLiveSelect(selectEl) {
+        if (!selectEl || !selectEl.value) return;
+        const opt = selectEl.selectedOptions[0];
+        const title = opt?.dataset?.title || opt?.textContent?.replace(/^🎵\s*/, '') || null;
+        playSavedAudio(selectEl.value, title);
+    }
+
+    async function saveLiveMusicToPlaylist() {
+        const url = (document.getElementById('liveMusicUrlInput')?.value || '').trim();
+        const title = (document.getElementById('liveMusicTitleInput')?.value || '').trim();
+        if (!url) return alert('Prilepi YouTube povezavo pesmi.');
+        document.getElementById('youtubeAudioUrlInput').value = url;
+        document.getElementById('youtubeAudioTitleInput').value = title || `Skladba ${new Date().toLocaleDateString('sl-SI')}`;
+        await saveCurrentYouTubeAudio();
     }
 
     async function refreshLiveMusicSelect() {
         const select = document.getElementById('liveMusicSelect');
         if (!select) return;
-        const tracks = await fetchAllSavedAudio();
-        select.innerHTML = '<option value="">— Hitra izbira shranjene glasbe —</option>';
+        const tracks = await fetchPersonalPlaylist();
+        select.innerHTML = '<option value="">— Izberi skladbo iz svoje playliste —</option>';
         tracks.forEach(item => {
-            select.innerHTML += `<option value="${item.audio_url}">🎵 ${item.name}</option>`;
+            const safeUrl = String(item.audio_url).replace(/"/g, '&quot;');
+            select.innerHTML += `<option value="${safeUrl}" data-title="${String(item.name).replace(/"/g, '&quot;')}">🎵 ${item.name}</option>`;
         });
+    }
+
+    function getPersonalPlaylistStorageKey(user = currentUser) {
+        return `my_playlist_v1_${user}`;
+    }
+
+    function encodePersonalAudioName(title, user = currentUser) {
+        return `AUDIO::${user}::${title}`;
+    }
+
+    function parsePersonalAudioName(rawName) {
+        if (!rawName) return null;
+        // Nov format: AUDIO::{user}::{title}
+        if (rawName.startsWith('AUDIO::')) {
+            const rest = rawName.slice('AUDIO::'.length);
+            const sep = rest.indexOf('::');
+            if (sep > 0) {
+                return { user: rest.slice(0, sep), title: rest.slice(sep + 2) };
+            }
+            // Stari format: AUDIO::title (user)
+            const m = rest.match(/^(.*) \(([^)]+)\)$/);
+            if (m) return { user: m[2], title: m[1] };
+            return { user: null, title: rest };
+        }
+        if (rawName.startsWith('[AUDIO]')) {
+            return { user: null, title: rawName.replace('[AUDIO]', '').trim() };
+        }
+        return null;
+    }
+
+    function updateHudTrackTitle(title) {
+        currentPlayingAudioTitle = title || '';
+        const el = document.getElementById('hudTrackTitle');
+        if (el) el.textContent = currentPlayingAudioTitle ? `♪ ${currentPlayingAudioTitle}` : '';
+    }
+
+    async function fetchPersonalPlaylist() {
+        let audioTracks = [];
+        const user = currentUser;
+
+        if (supabaseClient) {
+            try {
+                const { data } = await supabaseClient.from('routes').select('*');
+                if (data && data.length > 0) {
+                    audioTracks = data
+                        .map(item => {
+                            const parsed = parsePersonalAudioName(item.name);
+                            if (!parsed) return null;
+                            // Samo skladbe trenutnega profila
+                            if (parsed.user && parsed.user !== user) return null;
+                            // Stare skupne brez userja ne prikaži drugim (samo lokalna migracija)
+                            if (!parsed.user) return null;
+                            return {
+                                id: item.id,
+                                name: parsed.title,
+                                user_name: parsed.user,
+                                audio_url: item.video_url
+                            };
+                        })
+                        .filter(Boolean);
+                }
+            } catch (e) {
+                console.warn("Napaka pri pridobivanju osebne playliste:", e);
+            }
+        }
+
+        // Lokalna playlista profila
+        const local = JSON.parse(localStorage.getItem(getPersonalPlaylistStorageKey(user))) || [];
+        local.forEach(loc => {
+            if (!audioTracks.some(a => a.audio_url === loc.audio_url || a.name === loc.name)) {
+                audioTracks.push({ ...loc, user_name: user });
+            }
+        });
+
+        // Migracija stare skupne shrambe → samo vnose tega uporabnika
+        const legacy = JSON.parse(localStorage.getItem('my_saved_yt_audio')) || [];
+        legacy.forEach(loc => {
+            if (loc.user_name && loc.user_name !== user) return;
+            if (!loc.user_name) return; // ne prevzemi tujih/starih skupnih
+            if (!audioTracks.some(a => a.audio_url === loc.audio_url || a.name === loc.name)) {
+                audioTracks.push({ ...loc, user_name: user });
+            }
+        });
+
+        return audioTracks;
+    }
+
+    // Alias za združljivost s čarovnikom / starimi klici
+    async function fetchAllSavedAudio() {
+        return fetchPersonalPlaylist();
+    }
+
+    async function saveCurrentYouTubeAudio() {
+        const url = document.getElementById('youtubeAudioUrlInput').value.trim();
+        let name = document.getElementById('youtubeAudioTitleInput').value.trim();
+
+        if (!url) return alert("Vnesite veljaven YouTube URL pesmi ali podcasta!");
+        const videoId = extractYouTubeId(url);
+        if (!videoId) return alert("Neveljaven YouTube URL!");
+
+        if (!name) name = `Skladba ${new Date().toLocaleDateString('sl-SI')}`;
+        const fullAudioTitle = encodePersonalAudioName(name, currentUser);
+
+        if (supabaseClient) {
+            try {
+                const { error } = await supabaseClient.from('routes').insert({
+                    name: fullAudioTitle,
+                    video_url: url
+                });
+                if (error) console.error("Supabase audio save error:", error);
+            } catch (e) {
+                console.warn("Napaka pri shranjevanju avdia v Supabase:", e);
+            }
+        }
+
+        let localAudio = JSON.parse(localStorage.getItem(getPersonalPlaylistStorageKey())) || [];
+        localAudio.unshift({ id: Date.now(), name: name, user_name: currentUser, audio_url: url });
+        localStorage.setItem(getPersonalPlaylistStorageKey(), JSON.stringify(localAudio));
+
+        alert(`Skladba '${name}' je shranjena v playlista profila ${currentUser}.`);
+        document.getElementById('youtubeAudioTitleInput').value = '';
+        const liveTitle = document.getElementById('liveMusicTitleInput');
+        if (liveTitle) liveTitle.value = '';
+        await loadSavedYouTubeAudio();
+    }
+
+    async function loadSavedYouTubeAudio() {
+        updateLiveMusicBarVisibility();
+        const savedAudio = await fetchPersonalPlaylist();
+        const container = document.getElementById('savedAudioContainer');
+        if (!container) return;
+
+        if (savedAudio.length === 0) {
+            container.innerHTML = `<div style="font-size: 0.8rem; color: var(--text-muted);">Playlista profila <strong>${currentUser}</strong> je prazna. Dodaj YouTube skladbo zgoraj.</div>`;
+            await refreshLiveMusicSelect();
+            return;
+        }
+
+        container.innerHTML = savedAudio.map(item => {
+            const vidId = extractYouTubeId(item.audio_url);
+            const thumbUrl = vidId ? `https://img.youtube.com/vi/${vidId}/hqdefault.jpg` : null;
+            const iconHtml = thumbUrl ? `<img src="${thumbUrl}" class="video-thumb-icon" alt="Thumb">` : `<div class="video-thumb-icon">🎵</div>`;
+            const isPlayingThis = (currentPlayingAudioUrl === item.audio_url && isYouTubeAudioActive);
+            const safeUrl = String(item.audio_url).replace(/'/g, "\\'");
+            const safeName = String(item.name).replace(/'/g, "\\'");
+
+            return `
+            <div style="background: rgba(255,255,255,0.05); padding: 0.4rem 0.75rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.6rem; overflow: hidden;">
+                    ${iconHtml}
+                    <div style="display: flex; flex-direction: column; overflow: hidden;">
+                        <span style="font-size: 0.85rem; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">🎵 ${item.name}</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.3rem; shrink: 0;">
+                    <button class="btn ${isPlayingThis ? 'btn-danger' : 'btn-purple'}" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="playSavedAudio('${safeUrl}', '${safeName}')">${isPlayingThis ? '⏹ Ustavi' : '▶ Predvajaj'}</button>
+                    <button class="btn btn-danger" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" onclick="deleteSavedAudio('${item.id}')">🗑</button>
+                </div>
+            </div>
+            `;
+        }).join('');
+        await refreshLiveMusicSelect();
+    }
+
+    function togglePlayYouTubeAudioOnly() {
+        if (isYouTubeAudioActive) {
+            stopAudio();
+        } else {
+            playYouTubeAudioOnly();
+        }
+    }
+
+    function stopAudio() {
+        isYouTubeAudioActive = false;
+        currentPlayingAudioUrl = '';
+        updateHudTrackTitle('');
+        if (ytAudioPlayer && typeof ytAudioPlayer.pauseVideo === 'function') {
+            ytAudioPlayer.pauseVideo();
+        }
+        if (document.getElementById('audioPlayingBadge')) {
+            document.getElementById('audioPlayingBadge').style.display = 'none';
+        }
+        updateMediaPlayButtonsState();
+        loadSavedYouTubeAudio();
+    }
+
+    function playSavedAudio(url, title = null) {
+        if (currentPlayingAudioUrl === url && isYouTubeAudioActive) {
+            stopAudio();
+            return;
+        }
+        document.getElementById('youtubeAudioUrlInput').value = url;
+        if (title) document.getElementById('youtubeAudioTitleInput').value = title;
+        // Select iz live bara
+        const sel = document.getElementById('liveMusicSelect');
+        if (sel && sel.selectedOptions?.[0]?.dataset?.title) {
+            title = title || sel.selectedOptions[0].dataset.title;
+        }
+        playYouTubeAudioOnly(title);
+    }
+
+    async function deleteSavedAudio(id) {
+        if (confirm("Izbrišem to skladbo iz tvoje playliste?")) {
+            if (supabaseClient && id) {
+                await supabaseClient.from('routes').delete().eq('id', id);
+            }
+            let localAudio = JSON.parse(localStorage.getItem(getPersonalPlaylistStorageKey())) || [];
+            localAudio = localAudio.filter(a => a.id != id);
+            localStorage.setItem(getPersonalPlaylistStorageKey(), JSON.stringify(localAudio));
+            await loadSavedYouTubeAudio();
+        }
+    }
+
+    function playYouTubeAudioOnly(forcedTitle = null) {
+        const url = document.getElementById('youtubeAudioUrlInput').value.trim();
+        if (!url) return alert("Vnesite veljaven YouTube URL za avdio.");
+
+        const videoId = extractYouTubeId(url);
+        if (!videoId) return alert("Neveljavna YouTube povezava.");
+
+        const titleFromInput = (document.getElementById('youtubeAudioTitleInput')?.value || '').trim();
+        const title = forcedTitle || titleFromInput || 'YouTube skladba';
+
+        isYouTubeAudioActive = true;
+        currentPlayingAudioUrl = url;
+        updateHudTrackTitle(title);
+        if (document.getElementById('audioPlayingBadge')) {
+            document.getElementById('audioPlayingBadge').style.display = 'inline';
+        }
+
+        if (ytAudioPlayer) {
+            ytAudioPlayer.loadVideoById(videoId);
+        } else {
+            ytAudioPlayer = new YT.Player('youtubeAudioPlayer', {
+                height: '1',
+                width: '1',
+                videoId: videoId,
+                playerVars: { 'autoplay': 1, 'controls': 0, 'mute': 0 },
+                events: {
+                    'onReady': (evt) => {
+                        evt.target.unMute();
+                        evt.target.playVideo();
+                    }
+                }
+            });
+        }
+
+        updateMediaPlayButtonsState();
+        loadSavedYouTubeAudio();
     }
 
     // --- UREJANJE, DODAJANJE IN IZBRIS PROFILOV Z SUPABASE SINHRONIZACIJO ---
@@ -2187,176 +2489,6 @@
             }
         });
         return videos;
-    }
-
-    async function fetchAllSavedAudio() {
-        let audioTracks = [];
-        if (supabaseClient) {
-            try {
-                const { data } = await supabaseClient.from('routes').select('*');
-                if (data && data.length > 0) {
-                    audioTracks = data
-                        .filter(item => item.name && (item.name.startsWith('AUDIO::') || item.name.startsWith('[AUDIO]')))
-                        .map(item => ({
-                            id: item.id,
-                            name: item.name.replace('AUDIO::', '').replace('[AUDIO] ', ''),
-                            audio_url: item.video_url
-                        }));
-                }
-            } catch (e) {
-                console.warn("Napaka pri pridobivanju avdio skladb iz Supabase:", e);
-            }
-        }
-        const local = JSON.parse(localStorage.getItem('my_saved_yt_audio')) || [];
-        local.forEach(loc => {
-            if (!audioTracks.some(a => a.audio_url === loc.audio_url || a.name === loc.name)) {
-                audioTracks.push(loc);
-            }
-        });
-        return audioTracks;
-    }
-
-    async function saveCurrentYouTubeAudio() {
-        const url = document.getElementById('youtubeAudioUrlInput').value.trim();
-        let name = document.getElementById('youtubeAudioTitleInput').value.trim();
-
-        if (!url) return alert("Vnesite veljaven YouTube URL pesmi ali podcasta!");
-        const videoId = extractYouTubeId(url);
-        if (!videoId) return alert("Neveljaven YouTube URL!");
-
-        if (!name) name = `Avdio skladba ${new Date().toLocaleDateString('sl-SI')}`;
-        const fullAudioTitle = `AUDIO::${name} (${currentUser})`;
-
-        if (supabaseClient) {
-            try {
-                const { error } = await supabaseClient.from('routes').insert({
-                    name: fullAudioTitle,
-                    video_url: url
-                });
-                if (error) console.error("Supabase audio save error:", error);
-            } catch (e) {
-                console.warn("Napaka pri shranjevanju avdia v Supabase:", e);
-            }
-        }
-
-        let localAudio = JSON.parse(localStorage.getItem('my_saved_yt_audio')) || [];
-        localAudio.unshift({ id: Date.now(), name: name, user_name: currentUser, audio_url: url });
-        localStorage.setItem('my_saved_yt_audio', JSON.stringify(localAudio));
-
-        alert(`Avdio skladba '${name}' je shranjena in sinhronizirana za oba uporabnika!`);
-        document.getElementById('youtubeAudioTitleInput').value = '';
-        await loadSavedYouTubeAudio();
-    }
-
-    async function loadSavedYouTubeAudio() {
-        const savedAudio = await fetchAllSavedAudio();
-        const container = document.getElementById('savedAudioContainer');
-        if (!container) return;
-
-        if (savedAudio.length === 0) {
-            container.innerHTML = `<div style="font-size: 0.8rem; color: var(--text-muted);">Ni shranjenih avdio skladb. Vnesite URL zgoraj in kliknite 'Shrani Avdio'.</div>`;
-            await refreshLiveMusicSelect();
-            return;
-        }
-
-        container.innerHTML = savedAudio.map(item => {
-            const vidId = extractYouTubeId(item.audio_url);
-            const thumbUrl = vidId ? `https://img.youtube.com/vi/${vidId}/hqdefault.jpg` : null;
-            const iconHtml = thumbUrl ? `<img src="${thumbUrl}" class="video-thumb-icon" alt="Thumb">` : `<div class="video-thumb-icon">🎵</div>`;
-            const isPlayingThis = (currentPlayingAudioUrl === item.audio_url && isYouTubeAudioActive);
-
-            return `
-            <div style="background: rgba(255,255,255,0.05); padding: 0.4rem 0.75rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
-                <div style="display: flex; align-items: center; gap: 0.6rem; overflow: hidden;">
-                    ${iconHtml}
-                    <div style="display: flex; flex-direction: column; overflow: hidden;">
-                        <span style="font-size: 0.85rem; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">🎵 ${item.name}</span>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 0.3rem; shrink: 0;">
-                    <button class="btn ${isPlayingThis ? 'btn-danger' : 'btn-purple'}" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="playSavedAudio('${item.audio_url}')">${isPlayingThis ? '⏹ Ustavi' : '▶ Predvajaj'}</button>
-                    <button class="btn btn-danger" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" onclick="deleteSavedAudio('${item.id}')">🗑</button>
-                </div>
-            </div>
-            `;
-        }).join('');
-        await refreshLiveMusicSelect();
-    }
-
-    function togglePlayYouTubeAudioOnly() {
-        if (isYouTubeAudioActive) {
-            stopAudio();
-        } else {
-            playYouTubeAudioOnly();
-        }
-    }
-
-    function stopAudio() {
-        isYouTubeAudioActive = false;
-        currentPlayingAudioUrl = '';
-        if (ytAudioPlayer && typeof ytAudioPlayer.pauseVideo === 'function') {
-            ytAudioPlayer.pauseVideo();
-        }
-        if (document.getElementById('audioPlayingBadge')) {
-            document.getElementById('audioPlayingBadge').style.display = 'none';
-        }
-        updateMediaPlayButtonsState();
-        loadSavedYouTubeAudio();
-    }
-
-    function playSavedAudio(url) {
-        if (currentPlayingAudioUrl === url && isYouTubeAudioActive) {
-            stopAudio();
-            return;
-        }
-        document.getElementById('youtubeAudioUrlInput').value = url;
-        playYouTubeAudioOnly();
-    }
-
-    async function deleteSavedAudio(id) {
-        if (confirm("Izbrišem to avdio skladbo?")) {
-            if (supabaseClient && id) {
-                await supabaseClient.from('routes').delete().eq('id', id);
-            }
-            let localAudio = JSON.parse(localStorage.getItem('my_saved_yt_audio')) || [];
-            localAudio = localAudio.filter(a => a.id != id);
-            localStorage.setItem('my_saved_yt_audio', JSON.stringify(localAudio));
-            await loadSavedYouTubeAudio();
-        }
-    }
-
-    function playYouTubeAudioOnly() {
-        const url = document.getElementById('youtubeAudioUrlInput').value.trim();
-        if (!url) return alert("Vnesite veljaven YouTube URL za avdio.");
-
-        const videoId = extractYouTubeId(url);
-        if (!videoId) return alert("Neveljavna YouTube povezava.");
-
-        isYouTubeAudioActive = true;
-        currentPlayingAudioUrl = url;
-        if (document.getElementById('audioPlayingBadge')) {
-            document.getElementById('audioPlayingBadge').style.display = 'inline';
-        }
-
-        if (ytAudioPlayer) {
-            ytAudioPlayer.loadVideoById(videoId);
-        } else {
-            ytAudioPlayer = new YT.Player('youtubeAudioPlayer', {
-                height: '1',
-                width: '1',
-                videoId: videoId,
-                playerVars: { 'autoplay': 1, 'controls': 0, 'mute': 0 },
-                events: {
-                    'onReady': (evt) => {
-                        evt.target.unMute();
-                        evt.target.playVideo();
-                    }
-                }
-            });
-        }
-
-        updateMediaPlayButtonsState();
-        loadSavedYouTubeAudio();
     }
 
     // SHRANJEVANJE IN NALAGANJE SKUPNIH YOUTUBE PROG (VIDEO) V SUPABASE
