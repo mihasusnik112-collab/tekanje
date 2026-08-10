@@ -504,6 +504,125 @@
             display: none;
         }
 
+        .hud-program-progress {
+            display: none;
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: 42px;
+            z-index: 101;
+            pointer-events: none;
+            background: rgba(8, 12, 20, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 0.65rem;
+            padding: 0.35rem 0.45rem 0.45rem;
+            backdrop-filter: blur(6px);
+        }
+
+        .hud-program-progress.active {
+            display: block;
+        }
+
+        .hud-program-progress-label {
+            font-size: 0.65rem;
+            color: rgba(255, 255, 255, 0.75);
+            font-weight: 600;
+            margin-bottom: 0.2rem;
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
+        .hud-program-svg {
+            width: 100%;
+            height: 54px;
+            display: block;
+        }
+
+        /* CELOZASLONSKI HUD DISPLAY */
+        .fullscreen-hud {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 90000;
+            flex-direction: column;
+            padding: 0.75rem;
+            gap: 0.75rem;
+            overflow: auto;
+            transition: background 1.2s ease;
+            background: radial-gradient(circle at 30% 20%, #0f766e, #082f49 55%, #080c14 100%);
+        }
+
+        .fullscreen-hud.active {
+            display: flex;
+        }
+
+        .fullscreen-hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 2;
+        }
+
+        .fullscreen-hud-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: 0.02em;
+        }
+
+        .fullscreen-hud-body {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 0.85rem;
+            flex: 1;
+            min-height: 0;
+            position: relative;
+            z-index: 2;
+        }
+
+        @media (max-width: 900px), (orientation: portrait) {
+            .fullscreen-hud-body { grid-template-columns: 1fr; }
+        }
+
+        .fullscreen-hud-panel {
+            background: rgba(8, 12, 20, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 1rem;
+            padding: 0.85rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .live-video-card {
+            display: none;
+        }
+
+        .live-video-card.visible {
+            display: block;
+        }
+
+        #fsHudProgramProgress.active {
+            display: block !important;
+        }
+
+        .fullscreen-hud.with-video .fullscreen-hud-body {
+            grid-template-columns: 1.15fr 0.85fr;
+        }
+
+        .fullscreen-hud:not(.with-video) .fullscreen-hud-body {
+            grid-template-columns: 1fr;
+        }
+
+        #fsHudVideoHost .video-container {
+            height: 100%;
+            min-height: 260px;
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+
         .chart-box {
             position: relative;
             height: 250px;
@@ -610,7 +729,7 @@
             <!-- GLAVNI INTERAKTIVNI GUMB "ZAČNI TEK" -->
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
                 <button class="btn btn-huge-start" onclick="openStartWorkoutWizard()">
-                    🚀 ZAČNI TEK (Čarovnik Nastavitev)
+                    🚀 ZAČNI TEK
                 </button>
                 
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
@@ -646,110 +765,17 @@
                     Med tekom lahko kadarkoli zamenjaš skladbo. Playlista je vezana na tvoj profil.
                 </div>
             </div>
-
-            <!-- Merilna mreža -->
-            <div class="metrics-grid">
-                <div class="metric-card highlight-speed">
-                    <div class="metric-label">Hitrost</div>
-                    <div class="metric-value" id="valSpeed">0.0</div>
-                    <div class="metric-unit">km/h</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Naklon</div>
-                    <div class="metric-value" id="valIncline">0.0</div>
-                    <div class="metric-unit">%</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Srčni Utrip</div>
-                    <div class="metric-value" id="valHr">--</div>
-                    <div class="metric-unit">BPM</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Čas</div>
-                    <div class="metric-value" id="valTime">00:00</div>
-                    <div class="metric-unit">min : sec</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Razdalja</div>
-                    <div class="metric-value" id="valDistance">0.00</div>
-                    <div class="metric-unit">km</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Kalorije</div>
-                    <div class="metric-value" id="valCalories">0</div>
-                    <div class="metric-unit">kcal</div>
-                </div>
-            </div>
         </div>
 
-        <!-- Video Sync, Audio Sync & Live Chart -->
-        <div class="media-grid">
-            <div class="card">
-                <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem;">
-                    <div class="card-title">🎬 Video Proge (Skupne za vse)</div>
-                    <div style="display: flex; gap: 0.4rem;">
-                        <button class="btn btn-purple" style="padding: 0.45rem 0.75rem; font-size: 0.85rem;" onclick="toggleVideoFullscreen()" title="Celozaslonski video z HUD podatki steze">
-                            📺 Video HUD Cel Zaslon
-                        </button>
-                        <input type="file" id="videoFileInput" accept="video/*" style="display: none;" onchange="loadUserVideo(event)">
-                        <button class="btn btn-secondary" onclick="document.getElementById('videoFileInput').click()">Naloži MP4</button>
-                    </div>
-                </div>
-
-                <!-- YOUTUBE VNOS & SHRANJEVANJE POVEZAV (VIDEO) -->
-                <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.85rem;">
-                    <div style="display: flex; gap: 0.5rem;">
-                        <input type="text" id="youtubeUrlInput" placeholder="Vnesite svoj YouTube URL posnetka..." style="flex: 1;">
-                        <button class="btn btn-red" id="btnPlayVideoInput" onclick="togglePlayYouTubeVideo()">▶ Predvajaj Video</button>
-                    </div>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <input type="text" id="youtubeTitleInput" placeholder="Ime moje proge (npr. Moja najljubša proga)..." style="flex: 1;">
-                        <button class="btn btn-primary" onclick="saveCurrentYouTubeVideo()">💾 Shrani v Skupne Proge</button>
-                    </div>
-                </div>
-
-                <!-- MOJI SHRANJENI YOUTUBE VIDEI Z IKONO / THUMBNAILOM -->
-                <div style="margin-bottom: 1rem;">
-                    <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.4rem; font-weight: 600;">
-                        ⭐ SKUPNE YOUTUBE PROGE (Dostopno vsem):
-                    </div>
-                    <div id="savedVideosContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 140px; overflow-y: auto;">
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">Nalaganje prog iz Supabase baze...</div>
-                    </div>
-                </div>
-
-                <!-- OSEBNA YOUTUBE PLAYLISTA (SAMO TRENUTNI PROFIL) -->
-                <div style="background: rgba(139, 92, 246, 0.08); border: 1px solid var(--accent-purple); padding: 0.85rem; border-radius: 0.85rem; margin-bottom: 0.85rem;">
-                    <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent-purple); margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.35rem;">
-                        <span>🎵 Moja playlista — <span id="playlistOwnerLabel">profil</span></span>
-                        <span id="audioPlayingBadge" style="font-size: 0.75rem; color: var(--accent-green); display: none;">▶ Predvaja se</span>
-                    </div>
-                    <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.55rem;">
-                        Vsak profil ima svojo playlista. Skladbe vidiš samo ti. Med tekom jih lahko zamenjaš.
-                    </div>
-
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                            <input type="text" id="youtubeAudioUrlInput" placeholder="YouTube URL pesmi / podcasta..." style="flex: 1; min-width: 160px;">
-                            <button class="btn btn-purple" id="btnPlayAudioInput" onclick="togglePlayYouTubeAudioOnly()">▶ Predvajaj Avdio</button>
-                        </div>
-                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                            <input type="text" id="youtubeAudioTitleInput" placeholder="Ime skladbe..." style="flex: 1; min-width: 160px;">
-                            <button class="btn btn-primary" onclick="saveCurrentYouTubeAudio()">💾 Shrani v mojo playlista</button>
-                        </div>
-                    </div>
-
-                    <div id="savedAudioContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 160px; overflow-y: auto;">
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">Nalaganje tvoje playliste...</div>
-                    </div>
-
-                    <!-- SKRITI PREDVAJALNIK ZA YOUTUBE AVDIO -->
-                    <div id="youtubeAudioPlayerContainer" style="position: absolute; width: 1px; height: 1px; opacity: 0.01; overflow: hidden; pointer-events: none;">
-                        <div id="youtubeAudioPlayer"></div>
-                    </div>
-                </div>
-
-                <!-- VIDEO VSEBNIK Z LEBEČIMI HUD PODATKI -->
+        <!-- Video samo, ko je izbran v čarovniku (brez celozaslonskega HUD) -->
+        <div class="card live-video-card" id="liveVideoCard">
+            <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem;">
+                <div class="card-title">🎬 Video proga</div>
+                <button class="btn btn-purple" style="padding: 0.45rem 0.75rem; font-size: 0.85rem;" onclick="toggleVideoFullscreen()" title="Celozaslonski video z HUD podatki steze">
+                    📺 Video HUD Cel Zaslon
+                </button>
+            </div>
+            <div id="liveVideoHost">
                 <div class="video-container" id="videoContainerBox">
                     <div class="video-hud-overlay" id="videoHudOverlay">
                         <div class="hud-chip">
@@ -773,6 +799,13 @@
                             <span class="hud-value" id="hudDistance">0.00 <span style="font-size: 0.75rem;">km</span></span>
                         </div>
                     </div>
+                    <div class="hud-program-progress" id="hudProgramProgress">
+                        <div class="hud-program-progress-label">
+                            <span id="hudProgramStepLabel">Intervalni program</span>
+                            <span id="hudProgramTimeLabel">0:00 / 0:00</span>
+                        </div>
+                        <svg class="hud-program-svg" id="hudProgramSvg" viewBox="0 0 1000 100" preserveAspectRatio="none"></svg>
+                    </div>
                     <div class="hud-track-title" id="hudTrackTitle"></div>
 
                     <video id="routeVideo" loop muted playsinline style="display: block;"></video>
@@ -781,13 +814,87 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">📈 Graf v Realnem Času</div>
+        <!-- Skriti vnosi za video/avdio (čarovnik + shranjevanje) -->
+        <div id="hiddenMediaInputs" style="position:absolute;width:1px;height:1px;opacity:0.01;overflow:hidden;pointer-events:none;">
+            <input type="text" id="youtubeUrlInput">
+            <input type="text" id="youtubeTitleInput">
+            <input type="text" id="youtubeAudioUrlInput">
+            <input type="text" id="youtubeAudioTitleInput">
+            <input type="file" id="videoFileInput" accept="video/*" onchange="loadUserVideo(event)">
+            <div id="youtubeAudioPlayerContainer">
+                <div id="youtubeAudioPlayer"></div>
+            </div>
+            <span id="playlistOwnerLabel"></span>
+            <span id="audioPlayingBadge"></span>
+            <button id="btnPlayVideoInput"></button>
+            <button id="btnPlayAudioInput"></button>
+            <div id="savedAudioContainer"></div>
+        </div>
+    </div>
+
+    <!-- CELOZASLONSKI HUD DISPLAY (metrike + graf + dinamično ozadje) -->
+    <div id="fullscreenHudOverlay" class="fullscreen-hud" aria-hidden="true">
+        <div class="fullscreen-hud-top">
+            <div class="fullscreen-hud-title">📊 HUD DISPLAY — <span id="fsHudUserLabel">Miha</span></div>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <button class="btn btn-purple" style="padding:0.55rem 0.9rem;" onclick="toggleVideoFullscreen()" id="fsHudVideoFsBtn" title="Cel zaslon za video">📺 Video</button>
+                <button class="btn btn-danger" style="padding:0.55rem 1.1rem;font-weight:800;" onclick="stopWorkout('manual')">⏹ USTAVI TEK</button>
+            </div>
+        </div>
+        <div class="fullscreen-hud-body">
+            <div class="fullscreen-hud-panel" id="fsHudVideoPanel" style="display:none;min-height:220px;">
+                <div id="fsHudVideoHost" style="height:100%;min-height:220px;"></div>
+            </div>
+            <div class="fullscreen-hud-panel" style="display:flex;flex-direction:column;gap:0.75rem;">
+                <div class="metrics-grid" style="margin:0;">
+                    <div class="metric-card highlight-speed">
+                        <div class="metric-label">Hitrost</div>
+                        <div class="metric-value" id="valSpeed">0.0</div>
+                        <div class="metric-unit">km/h</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Naklon</div>
+                        <div class="metric-value" id="valIncline">0.0</div>
+                        <div class="metric-unit">%</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Srčni Utrip</div>
+                        <div class="metric-value" id="valHr">--</div>
+                        <div class="metric-unit">BPM</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Čas</div>
+                        <div class="metric-value" id="valTime">00:00</div>
+                        <div class="metric-unit">min : sec</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Razdalja</div>
+                        <div class="metric-value" id="valDistance">0.00</div>
+                        <div class="metric-unit">km</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Kalorije</div>
+                        <div class="metric-value" id="valCalories">0</div>
+                        <div class="metric-unit">kcal</div>
+                    </div>
                 </div>
-                <div class="chart-box">
-                    <canvas id="liveChart"></canvas>
+
+                <div class="hud-program-progress" id="fsHudProgramProgress" style="position:relative;left:auto;right:auto;bottom:auto;display:none;">
+                    <div class="hud-program-progress-label">
+                        <span id="fsHudProgramStepLabel">Intervalni program</span>
+                        <span id="fsHudProgramTimeLabel">0:00 / 0:00</span>
+                    </div>
+                    <svg class="hud-program-svg" id="fsHudProgramSvg" viewBox="0 0 1000 100" preserveAspectRatio="none"></svg>
+                </div>
+                <div class="hud-track-title" id="fsHudTrackTitle" style="position:relative;opacity:0.55;pointer-events:none;font-size:0.95rem;min-height:1.2em;"></div>
+
+                <div>
+                    <div style="font-size:0.85rem;font-weight:700;color:rgba(255,255,255,0.8);margin-bottom:0.35rem;">📈 Graf v realnem času</div>
+                    <div class="chart-box" style="height:200px;background:rgba(0,0,0,0.2);border-radius:0.75rem;padding:0.35rem;">
+                        <canvas id="liveChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1102,6 +1209,30 @@
                 <canvas id="gpxProfileChart"></canvas>
             </div>
         </div>
+
+        <!-- Upravljanje skupnih video prog (izbor je v čarovniku ZAČNI TEK) -->
+        <div class="card">
+            <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem;">
+                <div class="card-title">🎬 Video Proge (Skupne za vse)</div>
+                <button class="btn btn-secondary" onclick="document.getElementById('videoFileInput').click()">Naloži MP4</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.85rem;">
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <input type="text" id="gpxPageYoutubeUrl" placeholder="YouTube URL posnetka..." style="flex: 1; min-width: 180px;" oninput="document.getElementById('youtubeUrlInput').value=this.value">
+                    <button class="btn btn-red" onclick="document.getElementById('youtubeUrlInput').value=document.getElementById('gpxPageYoutubeUrl').value; togglePlayYouTubeVideo(); showLiveVideoCardOnly();">▶ Predvajaj</button>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <input type="text" id="gpxPageYoutubeTitle" placeholder="Ime proge..." style="flex: 1; min-width: 180px;" oninput="document.getElementById('youtubeTitleInput').value=this.value">
+                    <button class="btn btn-primary" onclick="document.getElementById('youtubeTitleInput').value=document.getElementById('gpxPageYoutubeTitle').value; document.getElementById('youtubeUrlInput').value=document.getElementById('gpxPageYoutubeUrl').value; saveCurrentYouTubeVideo();">💾 Shrani v Skupne Proge</button>
+                </div>
+            </div>
+            <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.4rem; font-weight: 600;">
+                ⭐ SKUPNE YOUTUBE PROGE (Dostopno vsem):
+            </div>
+            <div id="savedVideosContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 220px; overflow-y: auto;">
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Nalaganje prog iz Supabase baze...</div>
+            </div>
+        </div>
     </div>
 
     <!-- SEKCIJA 4: ZGODVOINA VADB -->
@@ -1197,15 +1328,32 @@
             </div>
         </div>
 
-        <!-- KORAK 2: IZBIRA VIDEO PROGE -->
+        <!-- KORAK 2: VIDEO PROGA + HUD DISPLAY (lahko skupaj) -->
         <div style="background: rgba(255,255,255,0.04); padding: 1rem; border-radius: 0.85rem;">
             <label style="font-size: 0.9rem; font-weight: 700; color: var(--accent-pink); display: block; margin-bottom: 0.5rem;">
-                2. ŽELITE PREDVAJATI VIDEO PROGO?
+                2. PRIKAZ MED TEKOM
             </label>
 
-            <select id="wizVideoSelect" style="width: 100%;">
-                <option value="none">❌ Brez videa</option>
-            </select>
+            <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+                <label style="display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem; cursor: pointer;">
+                    <input type="checkbox" id="wizUseVideo" onchange="toggleWizardVideoSelect(this.checked)" style="margin-top: 0.2rem;">
+                    <span>
+                        🎬 <strong>Video proga</strong>
+                        <span style="display:block;font-size:0.78rem;color:var(--text-muted);">Lahek video HUD (hitrost, naklon …) + progress bar pri intervalih</span>
+                    </span>
+                </label>
+                <select id="wizVideoSelect" style="width: 100%;" disabled>
+                    <option value="none">❌ Brez videa</option>
+                </select>
+
+                <label style="display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem; cursor: pointer; margin-top: 0.25rem;">
+                    <input type="checkbox" id="wizUseFullscreenHud" checked style="margin-top: 0.2rem;">
+                    <span>
+                        📊 <strong>HUD display</strong>
+                        <span style="display:block;font-size:0.78rem;color:var(--text-muted);">Cel zaslon: metrike, graf, dinamično ozadje (lahko skupaj z videom)</span>
+                    </span>
+                </label>
+            </div>
         </div>
 
         <!-- KORAK 3: IZBIRA AVDIO / GLASBE -->
@@ -1377,6 +1525,13 @@
     let treadmillProtocol = null; // 'ftms' | 'fitshow'
     let treadmillBeltStarted = false;
     let lastTargetSpeed = 5.0;
+    let lastTargetIncline = 0.0;
+    let lastBleUpdateMs = 0;
+    let ignorePhysicalStopUntil = 0;
+    let zeroSpeedStreak = 0;
+    let isProgramActive = false;
+    let continuousListenInterval = null;
+    let reconnectWatchdogInterval = null;
 
     let hrDevice = null;
     let hrChar = null;
@@ -1777,8 +1932,11 @@
 
     function updateHudTrackTitle(title) {
         currentPlayingAudioTitle = title || '';
+        const text = currentPlayingAudioTitle ? `♪ ${currentPlayingAudioTitle}` : '';
         const el = document.getElementById('hudTrackTitle');
-        if (el) el.textContent = currentPlayingAudioTitle ? `♪ ${currentPlayingAudioTitle}` : '';
+        if (el) el.textContent = text;
+        const fsEl = document.getElementById('fsHudTrackTitle');
+        if (fsEl) fsEl.textContent = text;
     }
 
     async function fetchPersonalPlaylist() {
@@ -1795,16 +1953,29 @@
                             if (!parsed) return null;
                             // Samo skladbe trenutnega profila
                             if (parsed.user && parsed.user !== user) return null;
-                            // Stare skupne brez userja ne prikaži drugim (samo lokalna migracija)
+                            // Stari zapisi brez uporabnika: ne prikaži (razen lokalne migracije)
                             if (!parsed.user) return null;
                             return {
                                 id: item.id,
                                 name: parsed.title,
                                 user_name: parsed.user,
-                                audio_url: item.video_url
+                                audio_url: item.video_url,
+                                raw_name: item.name
                             };
                         })
                         .filter(Boolean);
+
+                    // Migracija starega formata AUDIO::title (User) → AUDIO::{user}::{title}
+                    for (const track of audioTracks) {
+                        if (track.raw_name && track.raw_name.startsWith('AUDIO::') && !track.raw_name.includes('::', 7)) {
+                            const newName = encodePersonalAudioName(track.name, user);
+                            try {
+                                await supabaseClient.from('routes').update({ name: newName }).eq('id', track.id);
+                            } catch (migErr) {
+                                console.warn('Audio migrate skip:', migErr);
+                            }
+                        }
+                    }
                 }
             } catch (e) {
                 console.warn("Napaka pri pridobivanju osebne playliste:", e);
@@ -2164,9 +2335,16 @@
     }
 
     // --- INTERAKTIVNI ČAROVNIK ZA ZAGON TEKA ("ZAČNI TEK" Z AVDIO MOŽNOSTJO) ---
+    let workoutDisplayMode = { video: false, fullscreenHud: false };
+
     async function openStartWorkoutWizard() {
         await populateWizardVideosDropdown();
         await populateWizardAudioDropdown();
+        const useVideo = document.getElementById('wizUseVideo');
+        const videoSelect = document.getElementById('wizVideoSelect');
+        if (useVideo && videoSelect) {
+            videoSelect.disabled = !useVideo.checked;
+        }
         document.getElementById('startWorkoutWizardModal').style.display = 'flex';
     }
 
@@ -2178,9 +2356,14 @@
         document.getElementById('wizProgramSelectContainer').style.display = show ? 'block' : 'none';
     }
 
+    function toggleWizardVideoSelect(checked) {
+        const select = document.getElementById('wizVideoSelect');
+        if (select) select.disabled = !checked;
+    }
+
     async function populateWizardVideosDropdown() {
         const select = document.getElementById('wizVideoSelect');
-        select.innerHTML = '<option value="none">❌ Brez videa</option>';
+        select.innerHTML = '<option value="none">❌ Izberi video progo…</option>';
 
         let videos = await fetchAllSavedVideos();
         videos.forEach(item => {
@@ -2198,6 +2381,80 @@
         });
     }
 
+    function parkVideoContainer() {
+        const box = document.getElementById('videoContainerBox');
+        const liveHost = document.getElementById('liveVideoHost');
+        if (box && liveHost && box.parentElement !== liveHost) {
+            liveHost.appendChild(box);
+        }
+    }
+
+    function showLiveVideoCardOnly() {
+        parkVideoContainer();
+        const card = document.getElementById('liveVideoCard');
+        if (card) card.classList.add('visible');
+        switchSection('secLive', { currentTarget: document.querySelectorAll('.selector-btn')[0] });
+    }
+
+    function openFullscreenHud({ withVideo = false } = {}) {
+        const overlay = document.getElementById('fullscreenHudOverlay');
+        if (!overlay) return;
+
+        const userLabel = document.getElementById('fsHudUserLabel');
+        if (userLabel) userLabel.textContent = currentUser || 'Tek';
+
+        const videoPanel = document.getElementById('fsHudVideoPanel');
+        const fsHost = document.getElementById('fsHudVideoHost');
+        const box = document.getElementById('videoContainerBox');
+        const liveCard = document.getElementById('liveVideoCard');
+
+        if (withVideo && box && fsHost) {
+            fsHost.appendChild(box);
+            if (videoPanel) videoPanel.style.display = 'block';
+            overlay.classList.add('with-video');
+            if (liveCard) liveCard.classList.remove('visible');
+        } else {
+            parkVideoContainer();
+            if (videoPanel) videoPanel.style.display = 'none';
+            overlay.classList.remove('with-video');
+        }
+
+        overlay.classList.add('active');
+        overlay.setAttribute('aria-hidden', 'false');
+        updateFullscreenHudEffortBg();
+        if (isProgramActive) buildHudProgramProgressTrack();
+        requestAnimationFrame(() => {
+            try { if (liveChart) liveChart.resize(); } catch (e) {}
+        });
+    }
+
+    function closeFullscreenHud() {
+        const overlay = document.getElementById('fullscreenHudOverlay');
+        if (!overlay) return;
+        overlay.classList.remove('active', 'with-video');
+        overlay.setAttribute('aria-hidden', 'true');
+        parkVideoContainer();
+        const videoPanel = document.getElementById('fsHudVideoPanel');
+        if (videoPanel) videoPanel.style.display = 'none';
+        const liveCard = document.getElementById('liveVideoCard');
+        if (liveCard && !workoutDisplayMode.video) liveCard.classList.remove('visible');
+    }
+
+    function updateFullscreenHudEffortBg() {
+        const overlay = document.getElementById('fullscreenHudOverlay');
+        if (!overlay || !overlay.classList.contains('active')) return;
+
+        const spd = getEffectiveSpeedKmh();
+        const effort = Math.max(0, Math.min(1, (spd * 0.55 + currentIncline * 0.85) / 18));
+        // Mirno (teal/modro) → intenzivno (oranžno/rdeče)
+        const h1 = Math.round(175 - effort * 155); // 175→20
+        const h2 = Math.round(210 - effort * 170); // 210→40
+        const sat = Math.round(55 + effort * 30);
+        const light = Math.round(28 - effort * 8);
+        overlay.style.background =
+            `radial-gradient(circle at 28% 18%, hsl(${h1},${sat}%,${light + 12}%), hsl(${h2},${sat - 8}%,${light}%) 55%, #080c14 100%)`;
+    }
+
     async function executeStartWorkoutWizard() {
         closeWizardModal();
 
@@ -2207,6 +2464,13 @@
             return;
         }
 
+        const useVideo = !!document.getElementById('wizUseVideo')?.checked;
+        const useHud = !!document.getElementById('wizUseFullscreenHud')?.checked;
+        const videoUrl = document.getElementById('wizVideoSelect').value;
+        const hasVideo = useVideo && videoUrl && videoUrl !== 'none';
+
+        workoutDisplayMode = { video: hasVideo, fullscreenHud: useHud };
+
         isWorkoutActive = true;
         hasHadSpeedBefore = false;
         treadmillBeltStarted = false;
@@ -2214,13 +2478,26 @@
         await requestWorkoutWakeLock();
 
         // 1. Video
-        const videoUrl = document.getElementById('wizVideoSelect').value;
-        if (videoUrl !== 'none') {
+        if (hasVideo) {
             document.getElementById('youtubeUrlInput').value = videoUrl;
             loadYouTubeVideo();
+            if (!useHud) {
+                showLiveVideoCardOnly();
+            }
+        } else {
+            const liveCard = document.getElementById('liveVideoCard');
+            if (liveCard) liveCard.classList.remove('visible');
+            parkVideoContainer();
         }
 
-        // 2. Avdio / Glasba
+        // 2. Celozaslonski HUD (lahko skupaj z videom)
+        if (useHud) {
+            openFullscreenHud({ withVideo: hasVideo });
+        } else {
+            closeFullscreenHud();
+        }
+
+        // 3. Avdio / Glasba
         const audioUrl = document.getElementById('wizAudioSelect').value;
         if (audioUrl !== 'none') {
             document.getElementById('youtubeAudioUrlInput').value = audioUrl;
@@ -2241,12 +2518,14 @@
             else generateAndApplyAiWorkout();
 
             await startCustomProgram();
+            document.getElementById('btnStopWorkout').disabled = false;
             return;
         }
 
         const ok = await applyTreadmillTargets(5.0, 2.0, { start: true });
         if (!ok) {
             isWorkoutActive = false;
+            closeFullscreenHud();
             alert("Ukazi za hitrost/naklon niso bili sprejeti. Preverite Bluetooth povezavo s stezo.");
             return;
         }
@@ -2588,7 +2867,13 @@
             return;
         }
         document.getElementById('youtubeUrlInput').value = url;
+        const gpxUrl = document.getElementById('gpxPageYoutubeUrl');
+        if (gpxUrl) gpxUrl.value = url;
         loadYouTubeVideo();
+        const hud = document.getElementById('fullscreenHudOverlay');
+        if (!hud || !hud.classList.contains('active')) {
+            showLiveVideoCardOnly();
+        }
     }
 
     async function deleteSavedYouTube(id) {
@@ -2768,14 +3053,40 @@
                 fitshowWriteChar = null;
                 treadmillProtocol = null;
                 treadmillBeltStarted = false;
-                setTimeout(() => tryAutoConnectTreadmill({ silent: true }), 1000);
+                setTimeout(() => tryAutoConnectTreadmill({ silent: true }), 800);
             });
         } catch (e) {}
 
         dotEl.classList.add('connected');
         const modeLabel = treadmillProtocol === 'fitshow' ? 'FitShow' : 'FTMS';
-        txtEl.textContent = `${treadmillDevice.name || 'Povezano'} (${modeLabel})`;
+        txtEl.textContent = `${treadmillDevice.name || 'Povezano'} (${modeLabel}) · poslušam`;
+        startContinuousTreadmillListen();
         return true;
+    }
+
+    function startContinuousTreadmillListen() {
+        // FitShow: nepreklicno povpraševanje statusa (hitrost, naklon, razdalja)
+        if (fitshowStatusPollInterval) clearInterval(fitshowStatusPollInterval);
+        if (treadmillProtocol === 'fitshow' && fitshowWriteChar) {
+            fitshowStatusPollInterval = setInterval(() => {
+                fitshowSend([0x51]).catch(() => {});
+            }, 800);
+        }
+
+        // Watchdog: če povezava pade, jo vrni
+        if (reconnectWatchdogInterval) clearInterval(reconnectWatchdogInterval);
+        reconnectWatchdogInterval = setInterval(() => {
+            const connected = treadmillDevice?.gatt?.connected && isTreadmillControllable();
+            if (!connected) {
+                tryAutoConnectTreadmill({ silent: true });
+            }
+        }, 4000);
+
+        // Pasivno merjenje tudi brez kliknjenega "Začni tek"
+        if (!workoutTickInterval) {
+            lastWorkoutTickMs = Date.now();
+            workoutTickInterval = setInterval(workoutMetricsTick, 1000);
+        }
     }
 
     async function tryAutoConnectTreadmill({ silent = true } = {}) {
@@ -2907,14 +3218,52 @@
                     }
                 }
 
-                if (speed >= 0 && speed < 30) currentSpeed = speed;
-                if (incline >= 0 && incline <= 20) currentIncline = incline;
+                if (speed >= 0 && speed < 30) {
+                    currentSpeed = speed;
+                    lastBleUpdateMs = Date.now();
+                }
+                if (incline >= 0 && incline <= 20) {
+                    currentIncline = incline;
+                    lastBleUpdateMs = Date.now();
+                }
                 if (distKm != null && distKm >= 0 && distKm < 100) {
                     deviceReportsDistance = true;
                     currentDistance = distKm;
                 }
+                onTreadmillLiveTelemetry();
                 updateUI();
             }
+        }
+    }
+
+    function onTreadmillLiveTelemetry() {
+        if (currentSpeed > 0.5) {
+            hasHadSpeedBefore = true;
+            zeroSpeedStreak = 0;
+            if (!startTime) {
+                startTime = Date.now();
+                startTimer();
+                isWorkoutActive = true;
+                const stopBtn = document.getElementById('btnStopWorkout');
+                if (stopBtn) stopBtn.disabled = false;
+                updateLiveMusicBarVisibility();
+            } else if (!isWorkoutActive) {
+                isWorkoutActive = true;
+                const stopBtn = document.getElementById('btnStopWorkout');
+                if (stopBtn) stopBtn.disabled = false;
+            }
+        } else if (currentSpeed < 0.2) {
+            zeroSpeedStreak++;
+        }
+
+        if (
+            isWorkoutActive &&
+            hasHadSpeedBefore &&
+            zeroSpeedStreak >= 3 &&
+            Date.now() > ignorePhysicalStopUntil
+        ) {
+            console.log('Steza se je fizično ustavila. Zaustavljam aplikacijo...');
+            stopWorkout('physical_stop');
         }
     }
 
@@ -2924,66 +3273,54 @@
             totalCalories = 0.0;
             deviceReportsDistance = false;
             workoutLog = [];
+            zeroSpeedStreak = 0;
         }
         lastWorkoutTickMs = Date.now();
         if (workoutTickInterval) clearInterval(workoutTickInterval);
         workoutTickInterval = setInterval(workoutMetricsTick, 1000);
-
-        // FitShow: aktivno povprašaj status (hitrost/razdalja), če notify ni zanesljiv
-        if (fitshowStatusPollInterval) clearInterval(fitshowStatusPollInterval);
-        if (treadmillProtocol === 'fitshow' && fitshowWriteChar) {
-            fitshowStatusPollInterval = setInterval(() => {
-                fitshowSend([0x51]).catch(() => {});
-            }, 1000);
-        }
-
+        if (isTreadmillControllable()) startContinuousTreadmillListen();
         updateUI();
     }
 
     function stopWorkoutMetricsTracking() {
-        if (workoutTickInterval) {
-            clearInterval(workoutTickInterval);
-            workoutTickInterval = null;
-        }
-        if (fitshowStatusPollInterval) {
-            clearInterval(fitshowStatusPollInterval);
-            fitshowStatusPollInterval = null;
-        }
+        // Continuous listen ostane aktiven; samo pavziramo akumulacijo časa ticka
         lastWorkoutTickMs = null;
     }
 
     function getEffectiveSpeedKmh() {
+        const bleFresh = lastBleUpdateMs && (Date.now() - lastBleUpdateMs) < 2500;
+        if (bleFresh && currentSpeed >= 0) return currentSpeed;
         if (currentSpeed > 0.2) return currentSpeed;
-        if ((isWorkoutActive || startTime) && treadmillBeltStarted && lastTargetSpeed > 0.2) {
+        if ((isWorkoutActive || startTime || isProgramActive) && lastTargetSpeed > 0.2) {
             return lastTargetSpeed;
         }
         return 0;
     }
 
     function workoutMetricsTick() {
-        if (!isWorkoutActive && !startTime) return;
+        if (!isTreadmillControllable() && !isWorkoutActive && !startTime) return;
 
         const now = Date.now();
-        const dtSec = lastWorkoutTickMs ? Math.max(0.2, (now - lastWorkoutTickMs) / 1000) : 1;
+        if (!lastWorkoutTickMs) lastWorkoutTickMs = now;
+        const dtSec = Math.max(0.2, (now - lastWorkoutTickMs) / 1000);
         lastWorkoutTickMs = now;
 
         const spd = getEffectiveSpeedKmh();
-        // Če steza ne pošilja Total Distance, izračunaj iz hitrosti: km = (km/h) * h
-        if (!deviceReportsDistance && spd > 0.2) {
+        if ((isWorkoutActive || startTime) && !deviceReportsDistance && spd > 0.2) {
             currentDistance += spd * (dtSec / 3600);
         }
 
-        if (spd > 0.2) {
+        if ((isWorkoutActive || startTime) && spd > 0.2) {
             const bmrFactor = userProfiles[currentUser]?.bmrFactor || 1.0;
             const met = spd * 1.1;
             totalCalories += met * realWeightKg * bmrFactor * (dtSec / 3600);
         }
 
-        // Posodobi prikaz (brez podvojene akumulacije kalorij)
         refreshMetricDisplays();
         syncVideoSpeed();
+        updateHudProgramProgress();
 
-        if (startTime) {
+        if (startTime && (isWorkoutActive || spd > 0.2)) {
             const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
             workoutLog.push({
                 time: elapsed,
@@ -2995,14 +3332,13 @@
             updateLiveChart(elapsed, spd, currentIncline, currentHr);
         }
 
-        // GPX sledenje naklona glede na izračunano razdaljo
         if (isGpxFollowingActive && gpxPoints.length > 0) {
             const currentTargetPoint = gpxPoints.find(p => p.distKm >= currentDistance);
             if (currentTargetPoint) {
                 const targetIncline = Math.min(currentTargetPoint.inclinePct, maxInclineLimit);
                 if (Math.abs(currentIncline - targetIncline) >= 0.5) {
-                    currentIncline = targetIncline;
-                    setTreadmillIncline(currentIncline);
+                    lastTargetIncline = targetIncline;
+                    setTreadmillIncline(targetIncline);
                 }
             }
         }
@@ -3078,6 +3414,10 @@
         const safeSpeed = Math.max(0, Math.min(speedKmh, 20));
         const safeIncline = Math.min(Math.max(0, inclinePercent), maxInclineLimit);
         lastTargetSpeed = safeSpeed > 0 ? safeSpeed : lastTargetSpeed;
+        lastTargetIncline = safeIncline;
+        // Po ukazu s tablice zaščiti pred lažno fizično ustavitvijo med rampo
+        ignorePhysicalStopUntil = Date.now() + 4000;
+        zeroSpeedStreak = 0;
 
         try {
             if (start || !treadmillBeltStarted) {
@@ -3085,16 +3425,18 @@
                 if (!started) return false;
             }
 
-            if (treadmillProtocol === 'fitshow') {
-                // FitShow: en ukaz nastavi hitrost (0.1 km/h) in naklon (1%)
-                const speedRaw = Math.round(safeSpeed * 10);
-                const inclineRaw = Math.round(safeIncline);
-                await fitshowSend([0x53, 0x02, speedRaw & 0xff, inclineRaw & 0xff]);
-                await sleepMs(120);
-            } else {
-                await setTreadmillSpeed(safeSpeed);
-                await sleepMs(120);
-                await setTreadmillIncline(safeIncline);
+            // Pošlji nemudoma (in še enkrat za zanesljivost)
+            for (let attempt = 0; attempt < 2; attempt++) {
+                if (treadmillProtocol === 'fitshow') {
+                    const speedRaw = Math.round(safeSpeed * 10);
+                    const inclineRaw = Math.round(safeIncline);
+                    await fitshowSend([0x53, 0x02, speedRaw & 0xff, inclineRaw & 0xff]);
+                } else {
+                    await setTreadmillSpeed(safeSpeed);
+                    await sleepMs(80);
+                    await setTreadmillIncline(safeIncline);
+                }
+                await sleepMs(100);
             }
             return true;
         } catch (e) {
@@ -3202,6 +3544,7 @@
             if (data.byteLength >= 4) {
                 const rawSpeed = data.getUint16(2, true);
                 currentSpeed = rawSpeed / 100.0;
+                lastBleUpdateMs = Date.now();
             }
             offset = 4;
         }
@@ -3226,21 +3569,12 @@
             if (data.byteLength >= offset + 2) {
                 const rawIncline = data.getInt16(offset, true);
                 currentIncline = rawIncline / 10.0;
+                lastBleUpdateMs = Date.now();
             }
             offset += 4;
         }
 
-        // ZAZNAVANJE ROČNE USTAVITVE NA STEZI
-        if (currentSpeed > 0.5) {
-            hasHadSpeedBefore = true;
-        }
-
-        if (isWorkoutActive && hasHadSpeedBefore && currentSpeed === 0.0) {
-            console.log("Steza se je fizično ustavila. Zaustavljam aplikacijo...");
-            stopWorkout('physical_stop');
-            return;
-        }
-
+        onTreadmillLiveTelemetry();
         updateUI();
     }
 
@@ -3256,6 +3590,7 @@
 
     function updateUI() {
         refreshMetricDisplays();
+        updateFullscreenHudEffortBg();
 
         // GPX: tudi ob BLE update (tick pokrije primer brez BLE razdalje)
         if (isGpxFollowingActive && gpxPoints.length > 0) {
@@ -3475,45 +3810,175 @@
         }
 
         isWorkoutActive = true;
+        isProgramActive = true;
         hasHadSpeedBefore = false;
         treadmillBeltStarted = false;
         currentStepIdx = 0;
         updateLiveMusicBarVisibility();
         await requestWorkoutWakeLock();
+        buildHudProgramProgressTrack();
         await executeStep(programSteps[currentStepIdx], true);
         document.getElementById('btnStopWorkout').disabled = false;
+        switchSection('secLive', { currentTarget: document.querySelectorAll('.selector-btn')[0] });
     }
 
     async function executeStep(step, isFirstStep = false) {
         stepTimeRemaining = step.duration;
 
+        // Nemudoma pošlji hitrost + naklon na stezo
         const ok = await applyTreadmillTargets(step.speed, step.incline, {
             start: isFirstStep || !treadmillBeltStarted
         });
         if (!ok && isFirstStep) {
             alert("Steza ni sprejela ukazov za zagon. Preverite Bluetooth / FitShow povezavo.");
+            isProgramActive = false;
+            hideHudProgramProgress();
             return;
         }
 
-        currentSpeed = step.speed;
-        currentIncline = Math.min(step.incline, maxInclineLimit);
+        // Ciljne vrednosti programa; UI hitrost/naklon prikaže BLE, ko steza odgovori
+        lastTargetSpeed = step.speed;
+        lastTargetIncline = Math.min(step.incline, maxInclineLimit);
+        // Začasno prikaži cilj, dokler ne pride BLE
+        if (!lastBleUpdateMs || (Date.now() - lastBleUpdateMs) > 1500) {
+            currentSpeed = step.speed;
+            currentIncline = lastTargetIncline;
+        }
         updateUI();
+        updateHudProgramProgress();
 
         if (activeProgramInterval) clearInterval(activeProgramInterval);
 
         activeProgramInterval = setInterval(async () => {
             stepTimeRemaining--;
+            updateHudProgramProgress();
             if (stepTimeRemaining <= 0) {
                 currentStepIdx++;
                 if (currentStepIdx < programSteps.length) {
                     executeStep(programSteps[currentStepIdx], false);
                 } else {
-                    // IZTEK INTERVALNEGA PROGRAMA -> POPOLNA ZAUSTAVITEV
                     stopWorkout('interval_completed');
                     alert(`Intervalni trening za ${currentUser} je uspešno zaključen! Odlično delo! 🎉`);
                 }
             }
         }, 1000);
+    }
+
+    function formatProgramClock(totalSec) {
+        const s = Math.max(0, Math.floor(totalSec));
+        const m = Math.floor(s / 60);
+        const r = s % 60;
+        return `${m}:${r.toString().padStart(2, '0')}`;
+    }
+
+    function getProgramProgressState() {
+        if (!isProgramActive || !programSteps.length) return null;
+        const totalDuration = programSteps.reduce((a, s) => a + (s.duration || 0), 0);
+        if (totalDuration <= 0) return null;
+
+        let elapsed = 0;
+        for (let i = 0; i < currentStepIdx; i++) elapsed += programSteps[i].duration || 0;
+        const cur = programSteps[currentStepIdx];
+        const spentInStep = cur ? Math.max(0, (cur.duration || 0) - stepTimeRemaining) : 0;
+        elapsed += spentInStep;
+
+        return {
+            totalDuration,
+            elapsed: Math.min(elapsed, totalDuration),
+            ratio: Math.min(1, elapsed / totalDuration),
+            step: cur || null,
+            stepIdx: currentStepIdx
+        };
+    }
+
+    function buildHudProgramProgressTrack() {
+        const builds = [
+            { wrapId: 'hudProgramProgress', svgId: 'hudProgramSvg', cursorId: 'hudProgramCursor' },
+            { wrapId: 'fsHudProgramProgress', svgId: 'fsHudProgramSvg', cursorId: 'fsHudProgramCursor' }
+        ];
+
+        builds.forEach(({ wrapId, svgId, cursorId }) => {
+            const wrap = document.getElementById(wrapId);
+            const svg = document.getElementById(svgId);
+            if (!wrap || !svg || !programSteps.length) return;
+
+            wrap.classList.add('active');
+            const W = 1000;
+            const H = 100;
+            const total = programSteps.reduce((a, s) => a + (s.duration || 0), 0) || 1;
+            const maxInc = Math.max(1, ...programSteps.map(s => s.incline || 0), maxInclineLimit);
+            const maxSpd = Math.max(1, ...programSteps.map(s => s.speed || 0));
+
+            let html = '';
+            html += `<rect x="0" y="0" width="${W}" height="${H}" fill="rgba(0,0,0,0.15)" rx="6"/>`;
+
+            let x = 0;
+            programSteps.forEach((step) => {
+                const w = ((step.duration || 0) / total) * W;
+                const h = ((step.incline || 0) / maxInc) * 62;
+                const y = 78 - h;
+                const hue = 160 + Math.min(80, (step.incline || 0) * 8);
+                html += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${Math.max(2, w - 1).toFixed(1)}" height="${Math.max(2, h).toFixed(1)}" fill="hsla(${hue},70%,55%,0.55)" rx="2"/>`;
+                const sy = 18 - ((step.speed || 0) / maxSpd) * 14;
+                html += `<line x1="${x.toFixed(1)}" y1="${sy.toFixed(1)}" x2="${(x + w).toFixed(1)}" y2="${sy.toFixed(1)}" stroke="#10b981" stroke-width="2.5" opacity="0.9"/>`;
+                if (w > 70) {
+                    html += `<text x="${(x + 4).toFixed(1)}" y="12" fill="rgba(255,255,255,0.7)" font-size="11">${(step.speed || 0).toFixed(1)}km/h</text>`;
+                    html += `<text x="${(x + 4).toFixed(1)}" y="92" fill="rgba(6,182,212,0.9)" font-size="11">${(step.incline || 0).toFixed(0)}%</text>`;
+                }
+                x += w;
+            });
+
+            html += `<line x1="0" y1="78" x2="${W}" y2="78" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>`;
+            html += `<g id="${cursorId}"><line x1="0" y1="4" x2="0" y2="96" stroke="#f97316" stroke-width="3"/><circle cx="0" cy="78" r="6" fill="#f97316"/></g>`;
+            svg.innerHTML = html;
+        });
+
+        updateHudProgramProgress();
+    }
+
+    function updateHudProgramProgress() {
+        const state = getProgramProgressState();
+        const wraps = [
+            { wrapId: 'hudProgramProgress', stepId: 'hudProgramStepLabel', timeId: 'hudProgramTimeLabel', cursorId: 'hudProgramCursor' },
+            { wrapId: 'fsHudProgramProgress', stepId: 'fsHudProgramStepLabel', timeId: 'fsHudProgramTimeLabel', cursorId: 'fsHudProgramCursor' }
+        ];
+
+        wraps.forEach(({ wrapId, stepId, timeId, cursorId }) => {
+            const wrap = document.getElementById(wrapId);
+            if (!wrap) return;
+
+            if (!isProgramActive || !programSteps.length || !state) {
+                wrap.classList.remove('active');
+                return;
+            }
+            wrap.classList.add('active');
+
+            const stepLabel = document.getElementById(stepId);
+            const timeLabel = document.getElementById(timeId);
+            if (stepLabel) {
+                const s = state.step;
+                stepLabel.textContent = s
+                    ? `${state.stepIdx + 1}/${programSteps.length}: ${s.name || 'Korak'} · ${Number(s.speed).toFixed(1)} km/h · ${Number(s.incline).toFixed(1)}%`
+                    : 'Intervalni program';
+            }
+            if (timeLabel) {
+                timeLabel.textContent = `${formatProgramClock(state.elapsed)} / ${formatProgramClock(state.totalDuration)}`;
+            }
+
+            const cursor = document.getElementById(cursorId);
+            if (cursor) {
+                const x = state.ratio * 1000;
+                cursor.setAttribute('transform', `translate(${x.toFixed(1)},0)`);
+            }
+        });
+    }
+
+    function hideHudProgramProgress() {
+        isProgramActive = false;
+        ['hudProgramProgress', 'fsHudProgramProgress'].forEach(id => {
+            const wrap = document.getElementById(id);
+            if (wrap) wrap.classList.remove('active');
+        });
     }
 
     function stopCustomProgram() {
@@ -3800,6 +4265,11 @@
         if (timerInterval) clearInterval(timerInterval);
         // Nov timer = nova seja → reset razdalje/kalorij in zagon izračuna
         startWorkoutMetricsTracking(true);
+        // Zagotovi, da tick ne umre po stopWorkoutMetricsTracking
+        if (!workoutTickInterval) {
+            lastWorkoutTickMs = Date.now();
+            workoutTickInterval = setInterval(workoutMetricsTick, 1000);
+        }
         timerInterval = setInterval(() => {
             if (!startTime) return;
             const totalSec = Math.floor((Date.now() - startTime) / 1000);
@@ -3808,6 +4278,7 @@
             const timeStr = `${m}:${s}`;
             document.getElementById('valTime').textContent = timeStr;
             if (document.getElementById('hudTime')) document.getElementById('hudTime').textContent = timeStr;
+            updateHudProgramProgress();
         }, 1000);
     }
 
@@ -3822,6 +4293,11 @@
         if (!isWorkoutActive && !startTime) return;
         isWorkoutActive = false;
         isGpxFollowingActive = false;
+        hideHudProgramProgress();
+        closeFullscreenHud();
+        workoutDisplayMode = { video: false, fullscreenHud: false };
+        const liveCard = document.getElementById('liveVideoCard');
+        if (liveCard) liveCard.classList.remove('visible');
 
         stopTimer();
         releaseWorkoutWakeLock();
@@ -3830,6 +4306,7 @@
         // 1. Ustavitev steze (FTMS Stop ali FitShow Stop)
         stopTreadmillBelt();
         currentSpeed = 0.0;
+        zeroSpeedStreak = 0;
 
         // 2. Ustavitev intervalnega programa
         if (activeProgramInterval) {
@@ -3852,6 +4329,14 @@
         startTime = null;
         hasHadSpeedBefore = false;
         treadmillBeltStarted = false;
+        // Continuous listen ostane — aplikacija še naprej posluša stezo
+        if (isTreadmillControllable()) {
+            lastWorkoutTickMs = Date.now();
+            if (!workoutTickInterval) {
+                workoutTickInterval = setInterval(workoutMetricsTick, 1000);
+            }
+            startContinuousTreadmillListen();
+        }
     }
 
     function showAiDiagnosticModal() {
