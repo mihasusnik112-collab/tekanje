@@ -416,7 +416,7 @@
         th { padding: 0.75rem; color: var(--text-muted); border-bottom: 1px solid var(--card-border); font-weight: 600; }
         td { padding: 0.75rem; border-bottom: 1px solid rgba(255, 255, 255, 0.04); }
 
-        select, input[type="text"], input[type="number"] {
+        select, input[type="text"], input[type="number"], input[type="date"] {
             background: rgba(11, 15, 25, 0.8);
             border: 1px solid var(--card-border);
             color: var(--text-main);
@@ -482,8 +482,7 @@
                 
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     <button id="btnConnect" class="btn btn-primary" onclick="connectTreadmillBLE()">🔌 Poveži Stezo (FTMS)</button>
-                    <button id="btnSimulate" class="btn btn-purple" onclick="toggleSimulationMode()">🎮 Simulacija</button>
-                    <button id="btnConnectHr" class="btn btn-secondary" onclick="connectHeartRateBLE()">❤️ Ura GT</button>
+                    <button id="btnConnectHr" class="btn btn-secondary" onclick="connectHeartRateBLE()">❤️ Ura</button>
                     <button id="btnStopWorkout" class="btn btn-danger" onclick="stopWorkout()" disabled>⏹ USTAVI TEK</button>
                 </div>
             </div>
@@ -534,7 +533,7 @@
         <div class="media-grid">
             <div class="card">
                 <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem;">
-                    <div class="card-title">🎬 Video Proge (Skupne za obadva)</div>
+                    <div class="card-title">🎬 Video Proge (Skupne za vse)</div>
                     <div style="display: flex; gap: 0.4rem;">
                         <button class="btn btn-purple" style="padding: 0.45rem 0.75rem; font-size: 0.85rem;" onclick="toggleVideoFullscreen()" title="Celozaslonski video z HUD podatki steze">
                             📺 Video HUD Cel Zaslon
@@ -632,12 +631,18 @@
                             <input type="text" id="profInputName" placeholder="Npr. Miha, Veronika..." style="width: 100%;">
                         </div>
 
-                        <div>
-                            <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Spol:</label>
-                            <select id="profInputGender" style="width: 100%;">
-                                <option value="male">Moški (👨)</option>
-                                <option value="female">Ženska (👩)</option>
-                            </select>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Spol:</label>
+                                <select id="profInputGender" style="width: 100%;">
+                                    <option value="male">Moški (👨)</option>
+                                    <option value="female">Ženska (👩)</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Datum rojstva:</label>
+                                <input type="date" id="profInputBirthdate" style="width: 100%;" onchange="updateAgeFromBirthdate()">
+                            </div>
                         </div>
 
                         <div style="display: flex; gap: 0.5rem;">
@@ -650,7 +655,7 @@
                                 <input type="number" id="profInputHeight" placeholder="cm" style="width: 100%;">
                             </div>
                             <div style="flex: 1;">
-                                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Starost:</label>
+                                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Starost (let):</label>
                                 <input type="number" id="profInputAge" placeholder="let" style="width: 100%;">
                             </div>
                         </div>
@@ -673,7 +678,7 @@
                     </div>
 
                     <div style="background: rgba(6, 182, 212, 0.1); padding: 0.75rem; border-radius: 0.5rem; font-size: 0.82rem; color: var(--text-muted); margin-top: auto;">
-                        💡 <em>Natančne nastavitve viškov in teže omogočajo 100% natančen preračun porabljenih kalorij in obremenitev golenice (Tibialis Relief).</em>
+                        💡 <em>Natančne nastavitve viškov in teže omogočajo 100% natančen preračun porabljenih kalorij in optimalne obremenitve.</em>
                     </div>
                 </div>
             </div>
@@ -693,7 +698,7 @@
             </div>
 
             <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.5;">
-                Gemini AI neprekinjeno spremlja vaš srčni utrip iz pametne ure (Huawei GT), hitrost in naklon tekalne steze ter fiziološki profil (<strong id="geminiActiveUserText">Miha - 78 kg</strong>). Naložite lahko tudi slike zaslona aplikacije Huawei Health ali pametne tehtnice za popolno celostno obravnavo!
+                Gemini AI neprekinjeno spremlja vaš srčni utrip iz pametne ure, hitrost in naklon tekalne steze ter fiziološki profil (<strong id="geminiActiveUserText">Miha - 78 kg</strong>). Naložite lahko tudi slike zaslona aplikacije Huawei Health ali pametne tehtnice za popolno celostno obravnavo!
             </p>
 
             <!-- UVOZ SLIK PAMETNE TEHTNICE / URE ZA CELOSTNO OBRAVNAVO -->
@@ -724,9 +729,6 @@
                 </button>
                 <button class="btn btn-primary" onclick="generateAndApplyAiWorkout()">
                     ✨ Generiraj & Vnesi Nov AI Trening
-                </button>
-                <button class="btn btn-secondary" onclick="askGeminiQuestion('Kako obvarovati golenico (tibialis) pred bolečinami pri hoji in teku?')">
-                    🩺 Bolečine v Golenici
                 </button>
                 <button class="btn btn-secondary" onclick="askGeminiQuestion('Kakšen je moj idealen utrip za kurjenje maščobe glede na podatke ure?')">
                     ❤️ Optimalen Utrip (HR)
@@ -765,7 +767,7 @@
                 </div>
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     <button class="btn btn-purple" style="font-size: 0.82rem; padding: 0.5rem 0.85rem;" onclick="loadTibialisReliefProgram()">
-                        🦵 <strong>Tibialis Relief (35 min)</strong> - Strma Hoja / Low Impact
+                        🦵 <strong>Tibialis Relief (35 min)</strong> - Strma Hoja / Low Impact (Miha)
                     </button>
                     <button class="btn btn-secondary" style="font-size: 0.82rem; padding: 0.5rem 0.85rem;" onclick="loadFatBurnProgram()">
                         🔥 <strong>Fat Burn Low Impact (20 min)</strong>
@@ -783,7 +785,7 @@
             <div style="margin-bottom: 1.5rem;">
                 <h4 style="color: var(--text-muted); margin-bottom: 0.5rem;">Seznam korakov trenutnega programa:</h4>
                 <ul id="intervalStepsList" style="list-style-type: none; padding-left: 0; display: flex; flex-direction: column; gap: 0.5rem;">
-                    <li style="color: var(--text-muted);">Program je prazen. Izberite 'Tibialis Relief' zgoraj ali dodajte korake.</li>
+                    <li style="color: var(--text-muted);">Program je prazen. Izberite program zgoraj ali dodajte korake.</li>
                 </ul>
             </div>
             
@@ -911,7 +913,7 @@
 
             <div id="wizProgramSelectContainer" style="display: none; margin-top: 0.75rem;">
                 <select id="wizProgramSelect" style="width: 100%;">
-                    <option value="tibialis">🦵 Tibialis Relief (35 min) - Strma Hoja (8% naklon)</option>
+                    <option value="tibialis">🦵 Tibialis Relief (35 min) - Strma Hoja (Miha)</option>
                     <option value="fatburn">🔥 Fat Burn Low Impact (20 min)</option>
                     <option value="ai">✨ AI Progressive Incline (30 min)</option>
                 </select>
@@ -970,24 +972,24 @@
         if (lib && typeof lib.createClient === 'function') {
             try {
                 supabaseClient = lib.createClient(SUPABASE_URL, SUPABASE_KEY);
-                txtEl.textContent = 'Supabase Oblak Povezan';
+                txtEl.textContent = 'Povezan';
                 dotEl.classList.add('connected');
             } catch(e) {
                 console.error("Supabase Client Error:", e);
-                txtEl.textContent = `Supabase napaka: ${e.message}`;
+                txtEl.textContent = `Napaka: ${e.message}`;
             }
         } else {
-            txtEl.textContent = 'Supabase CDN ni naložen';
+            txtEl.textContent = 'Lokalno';
         }
     }
 
-    // PROFILI SA PRILAGOJENIM FIZIOLOŠKIM MERITVAM (Z ODZIVNIM SPREMINJANJEM TEŽE, VIŠINE, STAROSTI)
+    // PROFILI SA PRILAGOJENIM FIZIOLOŠKIM MERITVAM & DATUMOM ROJSTVA
     let defaultUserProfiles = {
-        'Miha': { name: 'Miha', weightKg: 78.0, heightCm: 182, age: 34, gender: 'male', maxHr: 188, bmrFactor: 1.0 },
-        'Veronika': { name: 'Veronika', weightKg: 62.0, heightCm: 168, age: 31, gender: 'female', maxHr: 194, bmrFactor: 0.92 }
+        'Miha': { name: 'Miha', weightKg: 78.0, heightCm: 182, birthdate: '1992-05-14', age: 34, gender: 'male', maxHr: 188, bmrFactor: 1.0 },
+        'Veronika': { name: 'Veronika', weightKg: 62.0, heightCm: 168, birthdate: '1995-09-21', age: 31, gender: 'female', maxHr: 194, bmrFactor: 0.92 }
     };
 
-    let userProfiles = JSON.parse(localStorage.getItem('ble_user_profiles_v2')) || defaultUserProfiles;
+    let userProfiles = JSON.parse(localStorage.getItem('ble_user_profiles_v3')) || defaultUserProfiles;
     let currentUser = localStorage.getItem('ble_active_user') || 'Miha';
 
     const FTMS_SERVICE_UUID = '00001826-0000-1000-8000-00805f9b34fb';
@@ -1110,13 +1112,14 @@
             try {
                 const { data, error } = await supabaseClient
                     .from('profiles')
-                    .select('weight_kg, height_cm, age, gender')
+                    .select('weight_kg, height_cm, age, birthdate, gender')
                     .eq('name', name)
                     .single();
 
                 if (data && data.weight_kg) {
                     prof.weightKg = data.weight_kg;
                     if (data.height_cm) prof.heightCm = data.height_cm;
+                    if (data.birthdate) prof.birthdate = data.birthdate;
                     if (data.age) prof.age = data.age;
                     if (data.gender) prof.gender = data.gender;
                 }
@@ -1132,7 +1135,7 @@
         loadSavedYouTubeVideos();
     }
 
-    // --- UREJANJE IN DODAJANJE NOVIH PROFILOV ---
+    // --- UREJANJE IN DODAJANJE NOVIH PROFILOV Z DATUMOM ROJSTVA ---
     function populateProfileForm() {
         const prof = userProfiles[currentUser];
         if (!prof) return;
@@ -1142,16 +1145,32 @@
         document.getElementById('profInputGender').value = prof.gender || 'male';
         document.getElementById('profInputWeight').value = prof.weightKg || 70;
         document.getElementById('profInputHeight').value = prof.heightCm || 175;
+        document.getElementById('profInputBirthdate').value = prof.birthdate || '1995-01-01';
         document.getElementById('profInputAge').value = prof.age || 30;
 
         calculateProfileMetrics();
+    }
+
+    function updateAgeFromBirthdate() {
+        const bdateStr = document.getElementById('profInputBirthdate').value;
+        if (!bdateStr) return;
+
+        const bdate = new Date(bdateStr);
+        const today = new Date();
+        let age = today.getFullYear() - bdate.getFullYear();
+        const m = today.getMonth() - bdate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < bdate.getDate())) age--;
+
+        if (age > 0 && age < 120) {
+            document.getElementById('profInputAge').value = age;
+            calculateProfileMetrics();
+        }
     }
 
     function calculateProfileMetrics() {
         const weight = parseFloat(document.getElementById('profInputWeight').value) || 70;
         const height = parseFloat(document.getElementById('profInputHeight').value) || 175;
         const age = parseInt(document.getElementById('profInputAge').value) || 30;
-        const gender = document.getElementById('profInputGender').value;
 
         const bmi = (weight / Math.pow(height / 100, 2)).toFixed(1);
         let bmiCat = "Normalna teža";
@@ -1179,13 +1198,14 @@
             name: cleanName,
             weightKg: 68.0,
             heightCm: 172,
+            birthdate: '1998-06-15',
             age: 28,
             gender: 'female',
             maxHr: 192,
             bmrFactor: 0.92
         };
 
-        localStorage.setItem('ble_user_profiles_v2', JSON.stringify(userProfiles));
+        localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
         setUser(cleanName);
         switchSection('secProfiles', { currentTarget: document.querySelectorAll('.selector-btn')[1] });
         alert(`Novi profil za '${cleanName}' je ustvarjen! Posodobite lahko njegove podatke.`);
@@ -1195,6 +1215,7 @@
         const newName = document.getElementById('profInputName').value.trim();
         const weight = parseFloat(document.getElementById('profInputWeight').value);
         const height = parseInt(document.getElementById('profInputHeight').value);
+        const birthdate = document.getElementById('profInputBirthdate').value;
         const age = parseInt(document.getElementById('profInputAge').value);
         const gender = document.getElementById('profInputGender').value;
 
@@ -1207,6 +1228,7 @@
         prof.name = newName;
         prof.weightKg = weight;
         prof.heightCm = height;
+        prof.birthdate = birthdate;
         prof.age = age;
         prof.gender = gender;
         prof.bmrFactor = gender === 'female' ? 0.92 : 1.0;
@@ -1216,7 +1238,7 @@
         currentUser = newName;
 
         localStorage.setItem('ble_active_user', newName);
-        localStorage.setItem('ble_user_profiles_v2', JSON.stringify(userProfiles));
+        localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
 
         if (supabaseClient) {
             try {
@@ -1224,6 +1246,7 @@
                     name: newName,
                     weight_kg: weight,
                     height_cm: height,
+                    birthdate: birthdate,
                     age: age,
                     gender: gender
                 });
@@ -1263,14 +1286,12 @@
     async function executeStartWorkoutWizard() {
         closeWizardModal();
 
-        // 1. Preverimo video
         const videoUrl = document.getElementById('wizVideoSelect').value;
         if (videoUrl !== 'none') {
             document.getElementById('youtubeUrlInput').value = videoUrl;
             loadYouTubeVideo();
         }
 
-        // 2. Preverimo ali gre za intervalni program ali ročni tek
         const progType = document.querySelector('input[name="wizProgramType"]:checked').value;
 
         if (!startTime) {
@@ -1286,13 +1307,8 @@
 
             startCustomProgram();
         } else {
-            // Ročni tek
-            if (!isSimulated && !treadmillDevice) {
-                toggleSimulationMode();
-            } else {
-                setTreadmillSpeed(5.0);
-                setTreadmillIncline(2.0);
-            }
+            setTreadmillSpeed(5.0);
+            setTreadmillIncline(2.0);
         }
 
         alert("▶ TEK SE JE PRIČEL! Srečno vadbo!");
@@ -1316,19 +1332,18 @@
             resultDiv.innerHTML = `<span style="color: var(--accent-cyan);">⏳ Gemini AI skenira posnetek zaslona ure / tehtnice...</span>`;
 
             setTimeout(() => {
-                const isFemale = userProfiles[currentUser].gender === 'female';
+                const isFemale = userProfiles[currentUser]?.gender === 'female';
                 const bodyFat = isFemale ? '22.4 %' : '16.8 %';
                 const muscleMass = isFemale ? '44.2 kg' : '61.5 kg';
 
-                // Samodejna posodobitev teže profila!
                 const detectedWeight = isFemale ? 61.8 : 77.5;
                 userProfiles[currentUser].weightKg = detectedWeight;
                 realWeightKg = detectedWeight;
-                localStorage.setItem('ble_user_profiles_v2', JSON.stringify(userProfiles));
+                localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
                 renderUserSwitcher();
                 
                 resultDiv.innerHTML = `
-                    <strong style="color: var(--accent-green);">✅ ZAZNANI PODATKI IZ SLIKE (Huawei Health / Tehtnica):</strong><br>
+                    <strong style="color: var(--accent-green);">✅ ZAZNANI PODATKI IZ SLIKE (Ura / Tehtnica):</strong><br>
                     • Samodejno posodobljena teža profila: <strong style="color: var(--accent-cyan);">${detectedWeight} kg</strong><br>
                     • Delež telesne maščobe: <strong style="color: #fff;">${bodyFat}</strong><br>
                     • Mišična masa: <strong style="color: #fff;">${muscleMass}</strong><br>
@@ -1344,31 +1359,39 @@
 
     function runGeminiFullAnalysis() {
         const out = document.getElementById('geminiOutputText');
-        const isFemale = userProfiles[currentUser].gender === 'female';
+        const isFemale = userProfiles[currentUser]?.gender === 'female';
         
-        out.innerHTML = `<span style="color: var(--accent-cyan);">⏳ Gemini AI analizira vaše podatke tekalne steze in ure Huawei GT...</span>`;
+        out.innerHTML = `<span style="color: var(--accent-cyan);">⏳ Gemini AI analizira vaše podatke tekalne steze in ure...</span>`;
 
         setTimeout(() => {
-            const hrStatus = currentHr > 0 ? `${currentHr} BPM` : '136 BPM (iz zadnjega treninga)';
-            const speedStatus = currentSpeed > 0 ? `${currentSpeed} km/h` : '5.0 km/h (strma hoja)';
+            const hrStatus = currentHr > 0 ? `${currentHr} BPM` : '136 BPM (iz ure)';
+            const speedStatus = currentSpeed > 0 ? `${currentSpeed} km/h` : '5.0 km/h';
+
+            let physiologicalNote = "";
+            if (currentUser === 'Miha') {
+                physiologicalNote = `• <strong>Zaščita anteriorne golenice (Tibialis):</strong> Priporočen je naklon 8.0% pri 5.0 km/h za popolno odpravo udarcev ob podlago.<br>
+                • <strong>Korekcijska vaja:</strong> 3 serije 'Dorsiflexion z elastiko' po treningu.`;
+            } else {
+                physiologicalNote = `• <strong>Analiza tekaške forme & kardio regeneracije:</strong> Zaznana je odlična telesna pripravljenost in umerjen srčni utrip.<br>
+                • <strong>Priporočena vaja:</strong> Dinamično raztegovanje kvadricepsa in aktivacija gluteusov.`;
+            }
             
             let analysisHtml = `
                 <div style="display: flex; flex-direction: column; gap: 0.85rem;">
                     <div>
-                        <strong style="color: var(--accent-pink);">👤 Uporabnik:</strong> ${currentUser} (${isFemale ? 'Ženska' : 'Moški'}, ${realWeightKg} kg, ${userProfiles[currentUser].heightCm || 175} cm)<br>
-                        <strong style="color: var(--accent-green);">❤️ Trenutni utrip (Ura GT):</strong> ${hrStatus}<br>
-                        <strong style="color: var(--accent-cyan);">⚡ Trenutna hitrost & naklon:</strong> ${speedStatus} | 8.0 % naklon
+                        <strong style="color: var(--accent-pink);">👤 Uporabnik:</strong> ${currentUser} (${isFemale ? 'Ženska' : 'Moški'}, ${realWeightKg} kg, ${userProfiles[currentUser]?.heightCm || 175} cm)<br>
+                        <strong style="color: var(--accent-green);">❤️ Utrip iz Ure:</strong> ${hrStatus}<br>
+                        <strong style="color: var(--accent-cyan);">⚡ Trenutna hitrost:</strong> ${speedStatus}
                     </div>
 
                     <div style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid var(--accent-green); padding: 0.75rem; border-radius: 0.5rem;">
                         <strong>🩺 FIZIOLOŠKA ANALIZA GEMINI AI:</strong><br>
-                        • <strong>Zaščita anteriorne golenice (Tibialis):</strong> Zaznano je odlično razmerje. Naklon 8.0% pri hitrosti 5.0 km/h popolnoma odpravi udarce ob podlago, medtem ko je srčni utrip v coni porabe maščob.<br>
-                        • <strong>Priporočena korekcijska vaja:</strong> 3 serije po 15 ponovitev <em>'Dorsiflexion z elastiko'</em> in raztegovanje mečnih mišic po vsakem treningu.
+                        ${physiologicalNote}
                     </div>
 
                     <div style="background: rgba(139, 92, 246, 0.1); border-left: 4px solid var(--accent-purple); padding: 0.75rem; border-radius: 0.5rem;">
-                        <strong>🎯 PRESERVIZACIJA TRENINGA:</strong><br>
-                        Gemini AI je pripravil nov <strong>'AI Progressive Incline (30 min)'</strong> program. Za samodejni vnos v aplikacijo kliknite spodnji gumb 'Generiraj & Vnesi Nov AI Trening'.
+                        <strong>🎯 PRIPOROČEN TRENING:</strong><br>
+                        Gemini AI je pripravil nov <strong>'AI Progressive Incline'</strong> program prilagojen za ${currentUser}. Za samodejni vnos v aplikacijo kliknite gumb 'Generiraj & Vnesi Nov AI Trening'.
                     </div>
                 </div>
             `;
@@ -1377,15 +1400,13 @@
     }
 
     function generateAndApplyAiWorkout() {
-        const isFemale = userProfiles[currentUser].gender === 'female';
+        const isFemale = userProfiles[currentUser]?.gender === 'female';
         
         programSteps = [
             { duration: 300, speed: 4.5, incline: 1.0, name: 'AI Ogrevanje' },
             { duration: 240, speed: isFemale ? 4.8 : 5.0, incline: 6.0, name: 'AI Vzpon 1' },
             { duration: 180, speed: isFemale ? 5.2 : 5.5, incline: 2.0, name: 'AI Začasno Olajšanje' },
-            { duration: 240, speed: isFemale ? 4.8 : 5.0, incline: 8.0, name: 'AI Vzpon 2 (Maks)' },
-            { duration: 180, speed: isFemale ? 5.2 : 5.5, incline: 2.0, name: 'AI Začasno Olajšanje' },
-            { duration: 240, speed: isFemale ? 4.8 : 5.0, incline: 9.0, name: 'AI Vzpon 3 (Peak)' },
+            { duration: 240, speed: isFemale ? 4.8 : 5.0, incline: 8.0, name: 'AI Vzpon 2' },
             { duration: 180, speed: 4.0, incline: 0.0, name: 'AI Hlajenje' }
         ];
 
@@ -1393,7 +1414,7 @@
         saveProgramToSupabase();
         switchSection('secPrograms', { currentTarget: document.querySelectorAll('.selector-btn')[3] });
 
-        alert(`✨ Gemini AI je uspešno generiral nov personaliziran trening 'AI Progressive Incline' in ga vnesel v zavihek 'Intervalni Programi'! Kliknite 'Zaženi Program na Stezi'.`);
+        alert(`✨ Gemini AI je uspešno generiral nov personaliziran trening 'AI Progressive Incline' za ${currentUser}!`);
     }
 
     function askGeminiQuestion(q) {
@@ -1411,31 +1432,23 @@
 
         setTimeout(() => {
             let res = "";
-            if (q.includes("golenic") || q.includes("tibialis")) {
-                res = `<strong>🩺 Gemini AI Odgovor o Golenici:</strong><br>
-                Bolečine v golenici nastanejo zaradi mikrotravm ob udarcih pri teku z naklonom 0%. Rešitev: <br>
-                1. Še naprej uporabljajte program <strong>Tibialis Relief (8% naklon, 5 km/h)</strong>.<br>
-                2. Izvajajte vajo 'Tibialis Raise' (naslonjeni na steno dvigujte konice prstov 3x20 ponovitev).<br>
-                3. Po hoji uporabite ledene obloge 10 minut.`;
-            } else if (q.includes("utrip") || q.includes("HR") || q.includes("maščob")) {
-                const isFemale = userProfiles[currentUser].gender === 'female';
+            if (q.includes("utrip") || q.includes("HR") || q.includes("maščob")) {
+                const isFemale = userProfiles[currentUser]?.gender === 'female';
                 res = `<strong>❤️ Gemini AI Odgovor o Utripu:</strong><br>
-                Za uporabnika <strong>${currentUser}</strong> je idealna cona kurjenja maščob (Zone 2) med <strong>${isFemale ? '122 in 146 BPM' : '118 in 142 BPM'}</strong>. Ob strmi hoji pri 8% naklonu boste dosegli to cono brez nepotrebne utrujenosti ali stresa na sklepe.`;
+                Za uporabnika <strong>${currentUser}</strong> je idealna cona kurjenja maščob (Zone 2) med <strong>${isFemale ? '122 in 146 BPM' : '118 in 142 BPM'}</strong>. Ob hoji z naklonom boste dosegli to cono brez nepotrebne utrujenosti.`;
             } else {
                 res = `<strong>🤖 Gemini AI Odgovor za ${currentUser}:</strong><br>
-                Na podlagi analize vaše teže (${realWeightKg} kg) in podatkov tekalne steze vam priporočam redno izvajanje 35-minutnih naklonskih treningov 3x na teden. Za regeneracijo poskrbite z hidracijo in vsaj 7-8 urami spanca.`;
+                Na podlagi analize vaše teže (${realWeightKg} kg) vam priporočam redno izvajanje naklonskih treningov 3x na teden. Za regeneracijo poskrbite z hidracijo in počitkom.`;
             }
             out.innerHTML = res;
             input.value = '';
         }, 600);
     }
 
-    // TIBIALIS RELIEF PROGRAM (35 MIN)
+    // TIBIALIS RELIEF PROGRAM (35 MIN - MIHA)
     function loadTibialisReliefProgram() {
         programSteps = [
-            // Ogrevanje (5 min)
             { duration: 300, speed: 4.8, incline: 0.0, name: 'Ogrevanje' },
-            // Intervali vzponov (25 min = 5 ciklov x 5 min)
             { duration: 180, speed: 5.0, incline: 8.0, name: 'Strma Hoja (Cikel 1)' },
             { duration: 120, speed: 5.5, incline: 2.0, name: 'Olajšanje (Cikel 1)' },
 
@@ -1450,18 +1463,17 @@
 
             { duration: 180, speed: 5.0, incline: 8.0, name: 'Strma Hoja (Cikel 5)' },
             { duration: 120, speed: 5.5, incline: 2.0, name: 'Olajšanje (Cikel 5)' },
-            // Hlajenje (5 min)
             { duration: 150, speed: 4.0, incline: 4.0, name: 'Hlajenje 1' },
             { duration: 150, speed: 4.0, incline: 0.0, name: 'Hlajenje 2' }
         ];
 
         renderStepsList();
         saveProgramToSupabase();
-        alert("Program 'Tibialis Relief (35 min)' je uspešno naložen in shranjen v bazo!");
+        alert("Program 'Tibialis Relief (35 min)' je uspešno naložen in shranjen!");
     }
 
     function loadFatBurnProgram() {
-        const isFemale = userProfiles[currentUser].gender === 'female';
+        const isFemale = userProfiles[currentUser]?.gender === 'female';
         programSteps = [
             { duration: 180, speed: 4.5, incline: 1.0, name: 'Ogrevanje' },
             { duration: 240, speed: isFemale ? 5.0 : 5.2, incline: 5.0, name: 'Vzpon' },
@@ -1695,7 +1707,7 @@
         if (!navigator.bluetooth) return alert('Brskalnik ne podpira Web Bluetooth API.');
 
         try {
-            txtEl.textContent = 'Iščem uro / trak...';
+            txtEl.textContent = 'Iščem uro...';
             
             let device = null;
             try {
@@ -1733,58 +1745,7 @@
         } catch (e) {
             console.error("HR BLE error:", e);
             txtEl.textContent = `Napaka: ${e.message}`;
-            alert(`Povezovanje z uro / trakom spodletelo:\n${e.message}\n\n1. Na uri Huawei GT vklopite 'Heart Rate Broadcast' ali 'Oddajanje utripa'.\n2. Prepričajte se, da ura ni že povezana z drugo aplikacijo.`);
-        }
-    }
-
-    let isSimulated = false;
-    let simulationInterval = null;
-
-    function toggleSimulationMode() {
-        isSimulated = !isSimulated;
-
-        const btn = document.getElementById('btnSimulate');
-        const txtEl = document.getElementById('textTreadmill');
-        const dotEl = document.getElementById('dotTreadmill');
-
-        if (isSimulated) {
-            btn.textContent = '⏹ Izklopi Simulacijo';
-            btn.className = 'btn btn-danger';
-            dotEl.classList.add('connected');
-            txtEl.textContent = '🎮 Simulacija (GB4450k Demo)';
-            document.getElementById('btnStopWorkout').disabled = false;
-
-            if (!startTime) {
-                startTime = Date.now();
-                startTimer();
-            }
-
-            if (simulationInterval) clearInterval(simulationInterval);
-            currentSpeed = 7.5;
-            currentIncline = 1.5;
-            currentHr = 138;
-
-            simulationInterval = setInterval(() => {
-                if (!isSimulated) return;
-
-                if (programSteps.length === 0 && gpxPoints.length === 0) {
-                    currentSpeed = Math.min(12.0, Math.max(5.0, currentSpeed + (Math.random() * 0.2 - 0.1)));
-                }
-
-                currentHr = Math.round(130 + (currentSpeed * 2.5) + (Math.random() * 4 - 2));
-                currentDistance += (currentSpeed * (0.5 / 3600.0));
-
-                document.getElementById('valHr').textContent = currentHr;
-                updateUI();
-            }, 500);
-
-            alert("🎮 SIMULACIJSKI NAČIN JE VKLOPLJEN!");
-        } else {
-            if (simulationInterval) clearInterval(simulationInterval);
-            btn.textContent = '🎮 Vklopi Simulacijo';
-            btn.className = 'btn btn-purple';
-            dotEl.classList.remove('connected');
-            txtEl.textContent = 'Ni povezano';
+            alert(`Povezovanje z uro / trakom spodletelo:\n${e.message}\n\n1. Na uri vklopite 'Heart Rate Broadcast' ali 'Oddajanje utripa'.\n2. Prepričajte se, da ura ni že povezana z drugo aplikacijo.`);
         }
     }
 
@@ -1855,12 +1816,10 @@
     }
 
     function updateUI() {
-        // STANDARDNI PRIKAZ
         document.getElementById('valSpeed').textContent = currentSpeed.toFixed(1);
         document.getElementById('valIncline').textContent = currentIncline.toFixed(1);
         document.getElementById('valDistance').textContent = currentDistance.toFixed(2);
 
-        // HUD OVERLAY ZA CELOZASLONSKI VIDEO
         if (document.getElementById('hudSpeed')) document.getElementById('hudSpeed').innerHTML = `${currentSpeed.toFixed(1)} <span style="font-size: 0.75rem;">km/h</span>`;
         if (document.getElementById('hudIncline')) document.getElementById('hudIncline').innerHTML = `${currentIncline.toFixed(1)} <span style="font-size: 0.75rem;">%</span>`;
         if (document.getElementById('hudHr')) document.getElementById('hudHr').innerHTML = `${currentHr > 0 ? currentHr : '--'} <span style="font-size: 0.75rem;">bpm</span>`;
@@ -1877,7 +1836,6 @@
             }
         }
 
-        // PRILAGODITEV PRERAČUNA KALORIJ GLEDE NA ŽENSKI/MOŠKI PROFIL
         const bmrFactor = userProfiles[currentUser]?.bmrFactor || 1.0;
         let met = currentSpeed > 0.5 ? (currentSpeed * 1.1) : 1.0;
         totalCalories += (met * realWeightKg * bmrFactor * (0.5 / 3600));
@@ -1986,7 +1944,7 @@
     function renderStepsList() {
         const list = document.getElementById('intervalStepsList');
         if (programSteps.length === 0) {
-            list.innerHTML = `<li style="color: var(--text-muted);">Program je prazen. Izberite 'Tibialis Relief' zgoraj ali dodajte korake.</li>`;
+            list.innerHTML = `<li style="color: var(--text-muted);">Program je prazen. Izberite program zgoraj ali dodajte korake.</li>`;
             return;
         }
         list.innerHTML = programSteps.map((step, idx) => `
@@ -2269,6 +2227,13 @@
         const isFemale = userProfiles[currentUser]?.gender === 'female';
         const baseCadence = currentSpeed > 0.5 ? Math.round(115 + (currentSpeed * 7)) : 160;
         const baseGct = isFemale ? 295 : 310;
+
+        let userAdvice = "";
+        if (currentUser === 'Miha') {
+            userAdvice = 'Pri naklonu 8% vaša golenica (tibialis) ni obremenjena z udarci, kalorijska poraba pa je bila maksimalna.';
+        } else {
+            userAdvice = 'Bravo Veronika! Odlično opravljen trening z optimalno porabo kalorij in stabilno tekaško držo.';
+        }
         
         const bodyHtml = `
             <div style="display: flex; flex-direction: column; gap: 1rem;">
@@ -2288,7 +2253,7 @@
                 <div style="background: rgba(6, 182, 212, 0.1); border: 1px solid var(--accent-cyan); padding: 0.85rem; border-radius: 0.75rem;">
                     <h4 style="color: var(--accent-cyan); margin-bottom: 0.3rem;">🩺 PRIPOROČILA ZA ZDRAVJE:</h4>
                     <p style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.4;">
-                        ${isFemale ? 'Bravo Veronika! Odlično opravljen trening. Pri naklonu 8% vaša golenica (tibialis) ni obremenjena z udarci, kalorijska poraba pa je bila maksimalna.' : 'Odličen trening! Za še boljši izkoristek energije priporočamo, da kadenco ohranjate med 155 in 165 korakov na minuto.'}
+                        ${userAdvice}
                     </p>
                 </div>
             </div>
