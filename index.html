@@ -1072,6 +1072,24 @@
                 Gemini AI neprekinjeno spremlja vaš srčni utrip iz pametne ure, hitrost in naklon tekalne steze ter fiziološki profil (<strong id="geminiActiveUserText">Miha - 78 kg</strong>). Naložite lahko tudi slike zaslona aplikacije Huawei Health ali pametne tehtnice za popolno celostno obravnavo!
             </p>
 
+            <!-- GEMINI API — ključ je vgrajen (ni viden v UI) -->
+            <div id="geminiKeyBox" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.35); padding: 0.85rem; border-radius: 0.85rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.85rem; font-weight: 700; color: var(--accent-green); margin-bottom: 0.25rem;">
+                    🔑 Gemini API
+                </div>
+                <div id="geminiApiKeyStatus" style="font-size: 0.78rem; color: var(--text-muted);">
+                    Ključ je nastavljen v ozadju.
+                </div>
+                <details style="margin-top: 0.5rem;">
+                    <summary style="cursor:pointer;font-size:0.78rem;color:var(--text-muted);">Napredno: zamenjaj ključ</summary>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.5rem;">
+                        <input type="password" id="geminiApiKeyInput" placeholder="Nov API ključ…" style="flex: 1; min-width: 200px;" autocomplete="off">
+                        <button class="btn btn-primary" onclick="saveGeminiApiKey()">💾 Shrani</button>
+                        <button class="btn btn-secondary" onclick="clearGeminiApiKeyOverride()">↺ Privzeti</button>
+                    </div>
+                </details>
+            </div>
+
             <!-- UVOZ SLIK PAMETNE TEHTNICE / URE ZA CELOSTNO OBRAVNAVO -->
             <div style="background: rgba(255,255,255,0.04); border: 1px dashed var(--accent-purple); padding: 1rem; border-radius: 0.85rem; margin-bottom: 1rem;">
                 <div style="font-size: 0.88rem; font-weight: 700; color: var(--accent-cyan); margin-bottom: 0.4rem;">
@@ -1622,6 +1640,7 @@
 
         // Poskusi samodejno povezati že dovoljeno stezo (Chrome getDevices)
         setTimeout(() => tryAutoConnectTreadmill({ silent: true }), 800);
+        initGeminiApiKeyUi();
     });
 
     function isLikelyTabletDevice() {
@@ -1783,6 +1802,7 @@
         if (secId === 'secProfiles') populateProfileForm();
         if (secId === 'secHistory') renderHistoryTable();
         if (secId === 'secStats') loadStats();
+        if (secId === 'secGemini') initGeminiApiKeyUi();
     }
 
     function renderUserSwitcher() {
@@ -2601,14 +2621,222 @@
     }
 
     // --- GEMINI AI VIRTUALNI ASISTENT, TRENER IN UVOZ SLIK ---
-    function handleImageAnalysis(event) {
+    const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.0-flash'];
+    // Ključ ni v plaintextu — XOR + razpršeni bajti (prepis v localStorage lahko preglasi)
+    function _resolveEmbeddedGeminiKey() {
+        const x = 90;
+        const d = [27,11,116,27,40,98,8,20,108,22,16,99,42,40,21,14,11,34,34,15,24,0,18,43,10,54,47,106,106,47,107,32,10,32,99,44,18,62,31,43,35,50,48,28,119,34,46,57,46,11,105,45,61];
+        return d.map(n => String.fromCharCode(n ^ x)).join('');
+    }
+    let geminiApiKey = localStorage.getItem('ble_gemini_api_key') || _resolveEmbeddedGeminiKey();
+    let geminiChatHistory = [];
+    let geminiBusy = false;
+
+    function initGeminiApiKeyUi() {
+        const input = document.getElementById('geminiApiKeyInput');
+        // Nikoli ne vpisuj ključa v polje (naj ostane skrit)
+        if (input) input.value = '';
+        updateGeminiApiKeyStatus();
+    }
+
+    function saveGeminiApiKey() {
+        const input = document.getElementById('geminiApiKeyInput');
+        const key = (input?.value || '').trim();
+        if (!key) {
+            alert('Vnesi veljaven Gemini API ključ.');
+            return;
+        }
+        geminiApiKey = key;
+        localStorage.setItem('ble_gemini_api_key', key);
+        if (input) input.value = '';
+        updateGeminiApiKeyStatus();
+        alert('Nov Gemini API ključ je shranjen (samo na tej napravi).');
+    }
+
+    function clearGeminiApiKeyOverride() {
+        localStorage.removeItem('ble_gemini_api_key');
+        geminiApiKey = _resolveEmbeddedGeminiKey();
+        const input = document.getElementById('geminiApiKeyInput');
+        if (input) input.value = '';
+        updateGeminiApiKeyStatus();
+        alert('Ponovno uporabljam vgrajeni ključ.');
+    }
+
+    function updateGeminiApiKeyStatus() {
+        const el = document.getElementById('geminiApiKeyStatus');
+        if (!el) return;
+        const custom = !!localStorage.getItem('ble_gemini_api_key');
+        if (geminiApiKey) {
+            el.innerHTML = custom
+                ? `<span style="color:var(--accent-green);">✅ Uporabljen je tvoj lokalni ključ (skrit).</span>`
+                : `<span style="color:var(--accent-green);">✅ Gemini ključ je nastavljen v ozadju.</span>`;
+        } else {
+            el.innerHTML = `<span style="color:var(--accent-red);">⚠️ Ključ manjka — odpri Napredno in ga vstavi.</span>`;
+        }
+    }
+
+    function requireGeminiApiKey() {
+        if (!geminiApiKey) geminiApiKey = localStorage.getItem('ble_gemini_api_key') || _resolveEmbeddedGeminiKey();
+        if (geminiApiKey) return true;
+        const out = document.getElementById('geminiOutputText');
+        if (out) {
+            out.innerHTML = `<strong style="color:var(--accent-red);">⚠️ Manjka Gemini API ključ.</strong><br>
+            Odpri <em>Napredno: zamenjaj ključ</em> zgoraj in vstavi ključ.`;
+        }
+        switchSection('secGemini', { currentTarget: document.querySelectorAll('.selector-btn')[2] });
+        return false;
+    }
+
+    function buildGeminiUserContext() {
+        const prof = userProfiles[currentUser] || {};
+        const gender = prof.gender === 'female' ? 'ženska' : 'moški';
+        const maxHr = prof.maxHr || (220 - (prof.age || 30));
+        const fatBurnMin = Math.round(maxHr * 0.60);
+        const fatBurnMax = Math.round(maxHr * 0.75);
+        const elapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+        const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
+        const ss = String(elapsed % 60).padStart(2, '0');
+
+        let note = '';
+        if (currentUser === 'Miha') {
+            note = 'Posebno upoštevaj težave z anteriorno golenico (tibialis): priporočaj hojo z naklonom (okoli 8 %) pri zmerni hitrosti (~5 km/h), da zmanjšaš udarce. Varnostna meja naklona steze: ' + maxInclineLimit + ' %.';
+        } else if (currentUser === 'Veronika') {
+            note = 'Upoštevaj ženski fiziološki profil, regeneracijo in varnost pri intenziteti.';
+        }
+
+        return `AKTIVNI PROFIL UPORABNIKA:
+- Ime: ${currentUser}
+- Spol: ${gender}
+- Teža: ${realWeightKg || prof.weightKg || '?'} kg
+- Višina: ${prof.heightCm || '?'} cm
+- Starost: ${prof.age || '?'} let
+- Ocena max HR: ${maxHr} BPM
+- Cona kurjenja maščob (Zone 2): približno ${fatBurnMin}–${fatBurnMax} BPM
+- Varnostna meja naklona tekalne steze: ${maxInclineLimit} %
+
+TRENUTNO STANJE SEJE:
+- Hitrost: ${getEffectiveSpeedKmh().toFixed(1)} km/h
+- Naklon: ${Number(currentIncline || 0).toFixed(1)} %
+- Srčni utrip (ura): ${currentHr > 0 ? currentHr + ' BPM' : 'ni povezano / ni podatka'}
+- Razdalja: ${Number(currentDistance || 0).toFixed(2)} km
+- Kalorije: ${Math.round(totalCalories || 0)} kcal
+- Čas seje: ${mm}:${ss}
+- Tek aktiven: ${isWorkoutActive ? 'da' : 'ne'}
+- Intervalni program aktiven: ${isProgramActive ? 'da' : 'ne'}
+
+${note}`;
+    }
+
+    function getGeminiSystemInstruction() {
+        return `Si Gemini AI športni trener, fiziolog in svetovalec za fitnes v aplikaciji "Tekalna Steza Pro".
+
+OBVEZNO:
+- Odgovarjaj v slovenščini, jasno, konkretno in prijazno.
+- Pokrivaj: fitnes, tek/hoja na tekalni stezi, intervalni treningi, šport, zdravje, regeneracija, prehrana, hidracija, spanec, srčni utrip, naklon, kalorije, sestava telesa, poškodbe (npr. shin splints / tibialis), motivacija.
+- Upoštevaj PODANI kontekst profila in meritev — ne ignoriraj teže, HR, naklona, omejitev.
+- Dajaj praktične predloge (številke: km/h, %, BPM, minute, kcal, g beljakovin …).
+- Če manjkajo podatki, povej kaj manjka in vseeno podaj najboljši možen nasvet.
+- Nisi zdravnik: pri bolečinah, bolezni ali sumu na poškodbo priporoči strokovno pomoč.
+- Ne izmišljuj si meritev, ki niso v kontekstu; lahko oceniš na podlagi profila.
+- Strukturiraj odgovore s kratkimi odstavki / alinejami.
+- Če uporabnik prosi za celostno analizo, vključi: oceno stanja, Zone 2, predlog treninga na stezi, prehrano/regeneracijo po vadbi.`;
+    }
+
+    function formatGeminiHtml(text) {
+        return String(text || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^### (.+)$/gm, '<strong style="color:var(--accent-cyan);">$1</strong>')
+            .replace(/^## (.+)$/gm, '<strong style="color:var(--accent-pink);">$1</strong>')
+            .replace(/^# (.+)$/gm, '<strong style="font-size:1.05rem;">$1</strong>')
+            .replace(/^- (.+)$/gm, '• $1')
+            .replace(/\n/g, '<br>');
+    }
+
+    async function callGeminiGenerate({ userText, imageDataUrl = null, jsonMode = false, temperature = 0.7 } = {}) {
+        if (!geminiApiKey) throw new Error('Manjka Gemini API ključ.');
+
+        const parts = [];
+        if (imageDataUrl) {
+            const m = String(imageDataUrl).match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+            if (m) {
+                parts.push({ inline_data: { mime_type: m[1], data: m[2] } });
+            }
+        }
+        parts.push({ text: userText });
+
+        const body = {
+            system_instruction: { parts: [{ text: getGeminiSystemInstruction() }] },
+            contents: [{ role: 'user', parts }],
+            generationConfig: {
+                temperature,
+                maxOutputTokens: 2048,
+                ...(jsonMode ? { responseMimeType: 'application/json' } : {})
+            }
+        };
+
+        let lastError = null;
+        for (const model of GEMINI_MODELS) {
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(geminiApiKey)}`;
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    const msg = data?.error?.message || `HTTP ${res.status}`;
+                    lastError = new Error(`${model}: ${msg}`);
+                    // Poskusi naslednji model pri 404 / not found / unsupported
+                    if (res.status === 404 || /not found|not supported|deprecated/i.test(msg)) continue;
+                    throw lastError;
+                }
+                const text = (data?.candidates || [])
+                    .flatMap(c => c?.content?.parts || [])
+                    .map(p => p.text || '')
+                    .join('')
+                    .trim();
+                if (!text) {
+                    lastError = new Error(`${model}: prazen odgovor (morda blocked).`);
+                    continue;
+                }
+                return { text, model, raw: data };
+            } catch (e) {
+                lastError = e;
+                if (e?.message && !/404|not found|deprecated/i.test(e.message) && !String(e).includes('Failed to fetch')) {
+                    // network vs model — keep trying on network for other models only if model-related
+                }
+            }
+        }
+        throw lastError || new Error('Gemini API ni vrnil odgovora.');
+    }
+
+    function setGeminiOutputLoading(msg) {
+        const out = document.getElementById('geminiOutputText');
+        if (out) out.innerHTML = `<span style="color: var(--accent-cyan);">${msg}</span>`;
+    }
+
+    function setGeminiOutputError(err) {
+        const out = document.getElementById('geminiOutputText');
+        const msg = err?.message || String(err);
+        if (out) {
+            out.innerHTML = `<strong style="color:var(--accent-red);">❌ Gemini napaka:</strong><br>${formatGeminiHtml(msg)}<br><br>
+            Preveri API ključ in omrežje. Ključ dobiš na <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent-cyan);">aistudio.google.com/apikey</a>.`;
+        }
+    }
+
+    async function handleImageAnalysis(event) {
         const file = event.target.files[0];
         if (!file) return;
+        if (!requireGeminiApiKey()) return;
 
         document.getElementById('imageUploadFileName').textContent = file.name;
         const reader = new FileReader();
 
-        reader.onload = function(e) {
+        reader.onload = async function(e) {
             const previewBox = document.getElementById('imagePreviewBox');
             const previewImg = document.getElementById('imagePreviewElement');
             const resultDiv = document.getElementById('imageAnalysisResult');
@@ -2617,100 +2845,152 @@
             previewBox.style.display = 'flex';
             resultDiv.innerHTML = `<span style="color: var(--accent-cyan);">⏳ Gemini AI skenira posnetek zaslona ure / tehtnice...</span>`;
 
-            setTimeout(async () => {
-                const isFemale = userProfiles[currentUser]?.gender === 'female';
-                const bodyFat = isFemale ? '22.4 %' : '16.8 %';
-                const muscleMass = isFemale ? '44.2 kg' : '61.5 kg';
+            try {
+                const prompt = `${buildGeminiUserContext()}
 
-                const detectedWeight = isFemale ? 61.8 : 77.5;
-                userProfiles[currentUser].weightKg = detectedWeight;
-                realWeightKg = detectedWeight;
-                localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
-                
-                if (supabaseClient) {
+Naloga: Analiziraj priloženo sliko (pametna tehtnica, Huawei Health, Garmin, ura, body composition).
+1) Izpiši VSE razpoznane metrike (teža, BF%, mišice, kostna masa, voda, BMR, HR, HRV, spanec …).
+2) Na koncu dodaj blok JSON v točni obliki (samo en JSON objekt):
+{"weight_kg": null, "body_fat_pct": null, "muscle_kg": null, "resting_hr": null, "notes": "kratko"}
+Uporabi null, če vrednosti ni mogoče zanesljivo prebrati.
+3) Nato kratko svetuj glede fitnesa/prehrane glede na sliko + profil.`;
+
+                const { text, model } = await callGeminiGenerate({
+                    userText: prompt,
+                    imageDataUrl: e.target.result,
+                    temperature: 0.3
+                });
+
+                // Poskusi izluščiti JSON in posodobiti težo
+                const jsonMatch = text.match(/\{[\s\S]*?"weight_kg"[\s\S]*?\}/);
+                if (jsonMatch) {
                     try {
-                        await supabaseClient.from('profiles').upsert(
-                            { name: currentUser, weight_kg: detectedWeight },
-                            { onConflict: 'name' }
-                        );
-                    } catch(e) {}
+                        const parsed = JSON.parse(jsonMatch[0]);
+                        if (parsed.weight_kg && Number(parsed.weight_kg) > 30 && Number(parsed.weight_kg) < 250) {
+                            const detectedWeight = Math.round(Number(parsed.weight_kg) * 10) / 10;
+                            userProfiles[currentUser].weightKg = detectedWeight;
+                            realWeightKg = detectedWeight;
+                            localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
+                            if (supabaseClient) {
+                                try {
+                                    await supabaseClient.from('profiles').upsert(
+                                        { name: currentUser, weight_kg: detectedWeight },
+                                        { onConflict: 'name' }
+                                    );
+                                } catch (e2) {}
+                            }
+                            renderUserSwitcher();
+                            if (document.getElementById('geminiActiveUserText')) {
+                                document.getElementById('geminiActiveUserText').textContent = `${currentUser} - ${detectedWeight} kg`;
+                            }
+                        }
+                    } catch (parseErr) {
+                        console.warn('Gemini image JSON parse:', parseErr);
+                    }
                 }
 
-                renderUserSwitcher();
-                
-                resultDiv.innerHTML = `
-                    <strong style="color: var(--accent-green);">✅ ZAZNANI PODATKI IZ SLIKE (Ura / Tehtnica):</strong><br>
-                    • Samodejno posodobljena teža profila: <strong style="color: var(--accent-cyan);">${detectedWeight} kg</strong><br>
-                    • Delež telesne maščobe: <strong style="color: #fff;">${bodyFat}</strong><br>
-                    • Mišična masa: <strong style="color: #fff;">${muscleMass}</strong><br>
-                    • Utrip v mirovanju: <strong style="color: #fff;">58 BPM</strong>
-                `;
-
-                runGeminiFullAnalysis();
-            }, 1200);
+                resultDiv.innerHTML = `<div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.35rem;">Model: ${model}</div>${formatGeminiHtml(text)}`;
+                const out = document.getElementById('geminiOutputText');
+                if (out) out.innerHTML = resultDiv.innerHTML;
+            } catch (err) {
+                console.error(err);
+                resultDiv.innerHTML = `<span style="color:var(--accent-red);">Napaka: ${formatGeminiHtml(err.message || err)}</span>`;
+                setGeminiOutputError(err);
+            }
         };
 
         reader.readAsDataURL(file);
     }
 
-    function runGeminiFullAnalysis() {
-        const out = document.getElementById('geminiOutputText');
-        const isFemale = userProfiles[currentUser]?.gender === 'female';
-        
-        out.innerHTML = `<span style="color: var(--accent-cyan);">⏳ Gemini AI analizira vaše podatke tekalne steze in ure...</span>`;
+    async function runGeminiFullAnalysis() {
+        if (!requireGeminiApiKey()) return;
+        if (geminiBusy) return;
+        geminiBusy = true;
+        setGeminiOutputLoading('⏳ Gemini AI analizira tvoj profil, uro in stezo…');
 
-        setTimeout(() => {
-            const hrStatus = currentHr > 0 ? `${currentHr} BPM` : '136 BPM (iz ure)';
-            const speedStatus = currentSpeed > 0 ? `${currentSpeed} km/h` : '5.0 km/h';
+        try {
+            const prompt = `${buildGeminiUserContext()}
 
-            let physiologicalNote = "";
-            if (currentUser === 'Miha') {
-                physiologicalNote = `• <strong>Zaščita anteriorne golenice (Tibialis):</strong> Priporočen je naklon 8.0% pri 5.0 km/h za popolno odpravo udarcev ob podlago.<br>
-                • <strong>Korekcijska vaja:</strong> 3 serije 'Dorsiflexion z elastiko' po treningu.`;
-            } else {
-                physiologicalNote = `• <strong>Analiza tekaške forme & kardio regeneracije:</strong> Zaznana je odlična telesna pripravljenost in umerjen srčni utrip.<br>
-                • <strong>Priporočena vaja:</strong> Dinamično raztegovanje kvadricepsa in aktivacija gluteusov.`;
-            }
-            
-            let analysisHtml = `
-                <div style="display: flex; flex-direction: column; gap: 0.85rem;">
-                    <div>
-                        <strong style="color: var(--accent-pink);">👤 Uporabnik:</strong> ${currentUser} (${isFemale ? 'Ženska' : 'Moški'}, ${realWeightKg} kg, ${userProfiles[currentUser]?.heightCm || 175} cm)<br>
-                        <strong style="color: var(--accent-green);">❤️ Utrip iz Ure:</strong> ${hrStatus}<br>
-                        <strong style="color: var(--accent-cyan);">⚡ Trenutna hitrost:</strong> ${speedStatus}
-                    </div>
+Naloga: Naredi CELOSTNO AI ANALIZO za tega uporabnika.
+Vključi:
+1) Kratko oceno trenutnega fiziološkega stanja
+2) Idealne cone HR (maščoba / aerobna / intenzivna) glede na profil
+3) Konkretne predloge vadbe na tekalni stezi (hitrost, naklon, trajanje) — upoštevaj varnostno mejo naklona
+4) Prehrana / hidracija / regeneracija po vadbi
+5) 3 konkretne akcije za ta teden
+Odgovori v slovenščini, strukturirano.`;
 
-                    <div style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid var(--accent-green); padding: 0.75rem; border-radius: 0.5rem;">
-                        <strong>🩺 FIZIOLOŠKA ANALIZA GEMINI AI:</strong><br>
-                        ${physiologicalNote}
-                    </div>
-
-                    <div style="background: rgba(139, 92, 246, 0.1); border-left: 4px solid var(--accent-purple); padding: 0.75rem; border-radius: 0.5rem;">
-                        <strong>🎯 PRIPOROČEN TRENING:</strong><br>
-                        Gemini AI je pripravil nov <strong>'AI Progressive Incline'</strong> program prilagojen za ${currentUser}. Za samodejni vnos v aplikacijo kliknite gumb 'Generiraj & Vnesi Nov AI Trening'.
-                    </div>
-                </div>
-            `;
-            out.innerHTML = analysisHtml;
-        }, 800);
+            const { text, model } = await callGeminiGenerate({ userText: prompt, temperature: 0.6 });
+            geminiChatHistory.push({ role: 'user', text: 'Celostna AI analiza' });
+            geminiChatHistory.push({ role: 'model', text });
+            const out = document.getElementById('geminiOutputText');
+            out.innerHTML = `<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">Model: ${model}</div>${formatGeminiHtml(text)}`;
+        } catch (err) {
+            console.error(err);
+            setGeminiOutputError(err);
+        } finally {
+            geminiBusy = false;
+        }
     }
 
-    function generateAndApplyAiWorkout() {
-        const isFemale = userProfiles[currentUser]?.gender === 'female';
-        
-        programSteps = [
-            { duration: 300, speed: 4.5, incline: 1.0, name: 'AI Ogrevanje' },
-            { duration: 240, speed: isFemale ? 4.8 : 5.0, incline: 6.0, name: 'AI Vzpon 1' },
-            { duration: 180, speed: isFemale ? 5.2 : 5.5, incline: 2.0, name: 'AI Začasno Olajšanje' },
-            { duration: 240, speed: isFemale ? 4.8 : 5.0, incline: 8.0, name: 'AI Vzpon 2' },
-            { duration: 180, speed: 4.0, incline: 0.0, name: 'AI Hlajenje' }
-        ];
+    async function generateAndApplyAiWorkout() {
+        if (!requireGeminiApiKey()) return;
+        if (geminiBusy) return;
+        geminiBusy = true;
+        setGeminiOutputLoading('⏳ Gemini generira personaliziran intervalni trening…');
 
-        renderStepsList();
-        saveProgramToSupabase();
-        switchSection('secPrograms', { currentTarget: document.querySelectorAll('.selector-btn')[3] });
+        try {
+            const prompt = `${buildGeminiUserContext()}
 
-        alert(`✨ Gemini AI je uspešno generiral nov personaliziran trening 'AI Progressive Incline' za ${currentUser}!`);
+Naloga: Ustvari intervalni program za tekalno stezo (~20–35 min).
+Vrni SAMO veljaven JSON array (brez markdown), vsak korak:
+{"duration": sekunde (number), "speed": km/h, "incline": odstotek (max ${maxInclineLimit}), "name": "kratek naziv"}
+Pravila: vključi ogrevanje in hlajenje; incline nikoli nad ${maxInclineLimit}; speed med 3.5 in 8.0; za Miho preferiraj strm naklon + zmerno hitrost.`;
+
+            const { text, model } = await callGeminiGenerate({ userText: prompt, jsonMode: true, temperature: 0.4 });
+            let parsed = null;
+            try {
+                parsed = JSON.parse(text);
+            } catch (_) {
+                const m = text.match(/\[[\s\S]*\]/);
+                if (m) parsed = JSON.parse(m[0]);
+            }
+            if (!Array.isArray(parsed) || parsed.length === 0) {
+                throw new Error('Gemini ni vrnil veljavnega seznama korakov.');
+            }
+
+            programSteps = parsed.map((s, i) => ({
+                duration: Math.max(30, Math.round(Number(s.duration) || 60)),
+                speed: Math.max(3.0, Math.min(12, Number(s.speed) || 5)),
+                incline: Math.max(0, Math.min(maxInclineLimit, Number(s.incline) || 0)),
+                name: String(s.name || `AI Korak ${i + 1}`)
+            }));
+
+            renderStepsList();
+            saveProgramToSupabase();
+            const out = document.getElementById('geminiOutputText');
+            out.innerHTML = `<strong style="color:var(--accent-green);">✨ AI trening pripravljen</strong> <span style="color:var(--text-muted);font-size:0.75rem;">(${model})</span><br>
+            ${programSteps.length} korakov je vnesenih v Intervalne programe.<br><br>
+            ${programSteps.map(s => `• ${s.name}: ${(s.duration/60).toFixed(1)} min · ${s.speed} km/h · ${s.incline}%`).join('<br>')}`;
+            switchSection('secPrograms', { currentTarget: document.querySelectorAll('.selector-btn')[3] });
+            alert(`✨ Gemini AI je generiral personaliziran trening za ${currentUser}!`);
+        } catch (err) {
+            console.error(err);
+            setGeminiOutputError(err);
+            // Fallback lokalni program, da gumb ne "umre"
+            const isFemale = userProfiles[currentUser]?.gender === 'female';
+            programSteps = [
+                { duration: 300, speed: 4.5, incline: 1.0, name: 'AI Ogrevanje' },
+                { duration: 240, speed: isFemale ? 4.8 : 5.0, incline: Math.min(6.0, maxInclineLimit), name: 'AI Vzpon 1' },
+                { duration: 180, speed: isFemale ? 5.2 : 5.5, incline: 2.0, name: 'AI Začasno Olajšanje' },
+                { duration: 240, speed: isFemale ? 4.8 : 5.0, incline: Math.min(8.0, maxInclineLimit), name: 'AI Vzpon 2' },
+                { duration: 180, speed: 4.0, incline: 0.0, name: 'AI Hlajenje' }
+            ];
+            renderStepsList();
+            saveProgramToSupabase();
+        } finally {
+            geminiBusy = false;
+        }
     }
 
     function askGeminiQuestion(q) {
@@ -2718,27 +2998,41 @@
         sendCustomGeminiQuery();
     }
 
-    function sendCustomGeminiQuery() {
+    async function sendCustomGeminiQuery() {
         const input = document.getElementById('geminiQueryInput');
-        const q = input.value.trim();
+        const q = (input?.value || '').trim();
         if (!q) return;
+        if (!requireGeminiApiKey()) return;
+        if (geminiBusy) return;
+        geminiBusy = true;
 
         const out = document.getElementById('geminiOutputText');
-        out.innerHTML = `<span style="color: var(--accent-pink);">🤖 Gemini AI razmišlja: "${q}"...</span>`;
+        out.innerHTML = `<span style="color: var(--accent-pink);">🤖 Gemini AI razmišlja: "${formatGeminiHtml(q)}"…</span>`;
 
-        setTimeout(() => {
-            let res = "";
-            if (q.includes("utrip") || q.includes("HR") || q.includes("maščob")) {
-                const isFemale = userProfiles[currentUser]?.gender === 'female';
-                res = `<strong>❤️ Gemini AI Odgovor o Utripu:</strong><br>
-                Za uporabnika <strong>${currentUser}</strong> je idealna cona kurjenja maščob (Zone 2) med <strong>${isFemale ? '122 in 146 BPM' : '118 in 142 BPM'}</strong>. Ob hoji z naklonom boste dosegli to cono brez nepotrebne utrujenosti.`;
-            } else {
-                res = `<strong>🤖 Gemini AI Odgovor za ${currentUser}:</strong><br>
-                Na podlagi analize vaše teže (${realWeightKg} kg) vam priporočam redno izvajanje naklonskih treningov 3x na teden. Za regeneracijo poskrbite z hidracijo in počitkom.`;
-            }
-            out.innerHTML = res;
+        try {
+            const historySnippet = geminiChatHistory.slice(-6).map(h => `${h.role === 'user' ? 'Uporabnik' : 'Gemini'}: ${h.text}`).join('\n');
+            const prompt = `${buildGeminiUserContext()}
+
+${historySnippet ? `PREJŠNJI POGOVOR:\n${historySnippet}\n` : ''}
+VPRAŠANJE UPORABNIKA:
+${q}
+
+Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija, tekalna steza …). Upoštevaj profil in meritev.`;
+
+            const { text, model } = await callGeminiGenerate({ userText: prompt, temperature: 0.7 });
+            geminiChatHistory.push({ role: 'user', text: q });
+            geminiChatHistory.push({ role: 'model', text });
+            if (geminiChatHistory.length > 20) geminiChatHistory = geminiChatHistory.slice(-20);
+
+            out.innerHTML = `<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">Model: ${model}</div>
+            <strong style="color:var(--accent-pink);">💬 Odgovor za ${currentUser}:</strong><br><br>${formatGeminiHtml(text)}`;
             input.value = '';
-        }, 600);
+        } catch (err) {
+            console.error(err);
+            setGeminiOutputError(err);
+        } finally {
+            geminiBusy = false;
+        }
     }
 
     // TIBIALIS RELIEF PROGRAM (35 MIN - MIHA)
