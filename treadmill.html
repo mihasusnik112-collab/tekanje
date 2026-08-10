@@ -1183,6 +1183,26 @@
     let liveChart = null;
     let gpxProfileChart = null;
 
+    // SAMODEJNI VSTOP V CELOZASLONSKI NAČIN OB ODPRTJU ALI PRVI INTERAKCIJI
+    function autoEnterFullscreen() {
+        const doc = document.documentElement;
+        if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+            try {
+                if (doc.requestFullscreen) {
+                    doc.requestFullscreen().catch(() => {});
+                } else if (doc.webkitRequestFullscreen) {
+                    doc.webkitRequestFullscreen().catch(() => {});
+                } else if (doc.msRequestFullscreen) {
+                    doc.msRequestFullscreen().catch(() => {});
+                }
+            } catch(e) {}
+        }
+    }
+
+    ['DOMContentLoaded', 'click', 'touchstart', 'pointerdown'].forEach(evtName => {
+        window.addEventListener(evtName, autoEnterFullscreen, { passive: true });
+    });
+
     window.addEventListener('DOMContentLoaded', async () => {
         checkPwaInstalledState();
         initSupabase();
@@ -1748,7 +1768,7 @@
         alert(`Program 'Fat Burn Low Impact (20 min)' prilagojen za ${currentUser}!`);
     }
 
-    // --- POSODABLJANJE STANJA GUMBOV PREDVAJAL / USTAVI ZA MEDIJE ---
+    // --- POSODABLJANJE STANJA GUMBOV PREDVAJAJ / USTAVI ZA MEDIJE ---
     function updateMediaPlayButtonsState() {
         const btnVid = document.getElementById('btnPlayVideoInput');
         if (btnVid) {
