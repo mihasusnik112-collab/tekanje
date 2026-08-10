@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="50%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#022c22"/>
+    </linearGradient>
+    <linearGradient id="runnerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="50%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Ozadje -->
+  <rect width="512" height="512" rx="120" fill="url(#bgGrad)" stroke="rgba(255,255,255,0.15)" stroke-width="8"/>
+  <circle cx="256" cy="256" r="210" fill="none" stroke="url(#runnerGrad)" stroke-width="6" opacity="0.4" stroke-dasharray="16 10"/>
+
+  <!-- Tekalna steza naklon -->
+  <path d="M 80 390 L 432 320" stroke="url(#runnerGrad)" stroke-width="18" stroke-linecap="round" filter="url(#glow)"/>
+
+  <!-- Moderni tekač silhueta -->
+  <g fill="url(#runnerGrad)" filter="url(#glow)">
+    <!-- Glava -->
+    <circle cx="310" cy="130" r="32"/>
+    <!-- Trup & Roke -->
+    <path d="M 270 170 C 290 160, 330 170, 350 200 C 360 215, 380 230, 400 240 L 380 265 C 360 250, 345 235, 330 220 L 320 270 L 370 330 L 340 355 L 295 290 L 285 230 C 265 245, 245 260, 220 270 L 205 240 C 235 230, 255 210, 270 170 Z"/>
+    <!-- Noge -->
+    <path d="M 320 270 L 260 350 L 190 350 L 190 315 L 245 315 L 285 260 Z"/>
+  </g>
+
+  <!-- Hitrostne linije -->
+  <path d="M 100 170 L 220 170 M 70 210 L 180 210 M 120 250 L 200 250" stroke="#06b6d4" stroke-width="8" stroke-linecap="round" opacity="0.8"/>
+</svg>

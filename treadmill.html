@@ -3,7 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tekalna Steza Pro - Supabase & Gemini AI Coach</title>
+    <title>Tekalna Steza Pro - PWA, Supabase & Gemini AI Coach</title>
+    
+    <!-- PWA MANIFEST & IKONA TEKAČA -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <meta name="theme-color" content="#10b981">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TekalnaSteza">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -71,12 +81,16 @@
             background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan), var(--accent-purple));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
         }
 
         .header-controls {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.5rem;
+            flex-wrap: wrap;
         }
 
         .user-switcher {
@@ -120,10 +134,13 @@
             color: var(--text-main);
             padding: 0.45rem 0.75rem;
             border-radius: 0.75rem;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
         }
 
         .fullscreen-btn:hover {
@@ -326,7 +343,6 @@
             object-fit: cover;
         }
 
-        /* CELOZASLONSKI HEADING HUD OVERLAY ZA VIDEO */
         .video-hud-overlay {
             position: absolute;
             top: 12px;
@@ -441,11 +457,17 @@
 <body>
 
 <div class="app-container" id="mainContainer">
-    <!-- GLAVA Z UPORABNIKOM IN CELOZASLONSKIM GUMBOM -->
+    <!-- GLAVA Z MODERNO IKONO TEKAČA, UPORABNIKOM IN NAMESTITVENIM GUMBOM -->
     <header class="clean-header">
-        <div class="brand-title">🏃♂️ TEKALNA STEZA PRO</div>
+        <div class="brand-title">
+            <img src="icon.svg" style="width: 38px; height: 38px; border-radius: 0.6rem; filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.8));" alt="Tekalna Steza Logo">
+            <span>TEKALNA STEZA PRO</span>
+        </div>
 
         <div class="header-controls">
+            <button class="fullscreen-btn pwa-install-btn" onclick="installPwaApp()" style="background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan)); color: #022c22; font-weight: 800;" title="Namesti kot aplikacijo na telefon ali tablico">
+                📲 Namesti Aplikacijo
+            </button>
             <div class="user-switcher" id="userSwitcherBar">
                 <!-- DINAMIČNO NAPOLNJENI UPORABNIKI -->
             </div>
@@ -456,7 +478,7 @@
     <!-- MINIMALISTIČNI IZBIRNIK -->
     <div class="clean-selector">
         <button class="selector-btn active" onclick="switchSection('secLive', event)">🏃♂️ Tek v Živo</button>
-        <button class="selector-btn" onclick="switchSection('secProfiles', event)">👤 Profili & Nastavitve</button>
+        <button class="selector-btn" onclick="switchSection('secProfiles', event)">⚙️ Profili & Namestitev</button>
         <button class="selector-btn" onclick="switchSection('secGemini', event)">🤖 Gemini AI Asistent & Trener</button>
         <button class="selector-btn" onclick="switchSection('secPrograms', event)">⏱️ Intervalni Programi</button>
         <button class="selector-btn" onclick="switchSection('secGpx', event)">🗺️ GPX & Supabase Proge</button>
@@ -629,8 +651,39 @@
         </div>
     </div>
 
-    <!-- SEKCIJA: PROFILI IN NASTAVITVE -->
+    <!-- SEKCIJA: PROFILI, NASTAVITVE & NAMESTITEV APLIKACIJE -->
     <div id="secProfiles" class="section-view">
+        <!-- MODERNA KARTICA ZA NAMESTITEV APLIKACIJE NA TELEFON / TABLICO -->
+        <div class="card" style="border-color: var(--accent-green); background: radial-gradient(circle at top right, rgba(16, 185, 129, 0.15), rgba(19, 27, 46, 0.95));">
+            <div class="card-header">
+                <div class="card-title" style="color: var(--accent-green); display: flex; align-items: center; gap: 0.75rem;">
+                    <img src="icon.svg" style="width: 48px; height: 48px; border-radius: 0.75rem; filter: drop-shadow(0 0 12px rgba(16, 185, 129, 0.9));" alt="Runner Icon">
+                    <div>
+                        <div>📲 NAMESTITEV APLIKACIJE NA TELEFON / TABLICO</div>
+                        <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 400; margin-top: 0.1rem;">Nativna PWA izkušnja brez Trgovine Play / App Store</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                <p style="font-size: 0.9rem; color: #cbd5e1; line-height: 1.5;">
+                    Aplikacijo <strong>Tekalna Steza Pro</strong> lahko namestite neposredno iz te povezave na vaš telefon ali tablico (Android, iPhone, iPad, Windows ali Mac). Aplikacija bo dobila svojo ikono na domačem zaslonu in delovala kot samostojna aplikacija!
+                </p>
+
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+                    <button class="btn btn-huge-start pwa-install-btn" onclick="installPwaApp()" style="font-size: 1rem; padding: 0.75rem 1.25rem;">
+                        📲 NAMESTI APLIKACIJO NA NAPRAVO
+                    </button>
+                </div>
+
+                <div style="background: rgba(11, 15, 25, 0.7); border: 1px solid var(--card-border); padding: 0.85rem; border-radius: 0.85rem; font-size: 0.85rem; line-height: 1.5; color: var(--text-muted);">
+                    <strong style="color: var(--accent-cyan);">💡 NAVODILA ZA ROČNO NAMESTITEV:</strong><br>
+                    • <strong>Android (Chrome / Edge):</strong> Kliknite 3 pike (⋮) zgoraj desno ➔ izberite <em>"Namesti aplikacijo"</em> ali <em>"Dodaj na domači zaslon"</em>.<br>
+                    • <strong>iPhone / iPad (Safari):</strong> Kliknite gumb <em>"Deli"</em> (Kvadrat s puščico navzgor 📤) ➔ izberite <em>"Dodaj na domači zaslon" (Add to Home Screen)</em>.
+                </div>
+            </div>
+        </div>
+
         <div class="card" style="border-color: var(--accent-cyan);">
             <div class="card-header">
                 <div class="card-title" style="color: var(--accent-cyan);">
@@ -991,6 +1044,37 @@
 </div>
 
 <script>
+    // PWA REGISTRACIJA SERVICE WORKER-JA IN NAMESTITVENI DOGODEK
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('PWA Service Worker uspešno registriran!'))
+                .catch(err => console.warn('Service Worker napaka:', err));
+        });
+    }
+
+    let deferredPwaPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPwaPrompt = e;
+    });
+
+    function installPwaApp() {
+        if (deferredPwaPrompt) {
+            deferredPwaPrompt.prompt();
+            deferredPwaPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    alert('🎉 Hvala! Aplikacija se namešča na vaš domači zaslon.');
+                }
+                deferredPwaPrompt = null;
+            });
+        } else {
+            alert('📱 NAVODILA ZA NAMESTITEV:\n\n' +
+                  '• Android (Chrome / Edge / Samsung): Kliknite Meni brskalnika (3 pike ⋮ zgoraj desno) ➔ "Namesti aplikacijo" ali "Dodaj na domači zaslon".\n\n' +
+                  '• iOS (iPhone / iPad Safari): Kliknite gumb "Deli" (Kvadrat s puščico navzgor 📤) ➔ "Dodaj na domači zaslon" (Add to Home Screen).');
+        }
+    }
+
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
