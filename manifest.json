@@ -3,9 +3,9 @@
   "short_name": "TekalnaSteza",
   "description": "Profesionalna aplikacija za upravljanje tekalne steze, izračun kalorij, spletno progo in Gemini AI trenerja.",
   "start_url": "./index.html",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#080c14",
-  "theme_color": "#10b981",
+  "theme_color": "#080c14",
   "icons": [
     {
       "src": "icon.svg",

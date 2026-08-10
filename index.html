@@ -63,24 +63,7 @@
             gap: 1rem;
         }
 
-        /* MEHKO SKRIVANJE GLAVE IN MREŽE OB NEUPORABI (AUTO-HIDE ON IDLE) */
-        .clean-header, .clean-selector {
-            transition: opacity 0.4s ease, transform 0.4s ease;
-            will-change: opacity, transform;
-        }
-
-        body.auto-hide-ui .clean-header {
-            opacity: 0;
-            transform: translateY(-25px);
-            pointer-events: none;
-        }
-
-        body.auto-hide-ui .clean-selector {
-            opacity: 0;
-            transform: translateY(-15px);
-            pointer-events: none;
-        }
-
+        /* GLAVA APLIKACIJE SE NIKOLI NE SKRIJE */
         .clean-header {
             display: flex;
             justify-content: space-between;
@@ -476,7 +459,7 @@
 <body>
 
 <div class="app-container" id="mainContainer">
-    <!-- GLAVA Z MODERNO IKONO TEKAČA, UPORABNIKOM IN NAMESTITVENIM GUMBOM -->
+    <!-- GLAVA Z MODERNO IKONO TEKAČA, UPORABNIKOM IN NAMESTITVENIM GUMBOM (STALNO VIDNA) -->
     <header class="clean-header" id="appCleanHeader">
         <div class="brand-title">
             <img src="icon.svg" style="width: 38px; height: 38px; border-radius: 0.6rem; filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.8));" alt="Tekalna Steza Logo">
@@ -490,7 +473,7 @@
             <div class="user-switcher" id="userSwitcherBar">
                 <!-- DINAMIČNO NAPOLNJENI UPORABNIKI -->
             </div>
-            <button class="fullscreen-btn" onclick="toggleFullScreen()" title="Celozaslonski način">⛶ Cel Zaslon</button>
+            <button class="fullscreen-btn" onclick="toggleFullScreen()" title="Celozaslonski način (Skrije uro in spodnje 3 gumbe telefona)">⛶ Cel Zaslon</button>
         </div>
     </header>
 
@@ -1083,25 +1066,10 @@
         deferredPwaPrompt = e;
     });
 
-    // AUTO-HIDE UI (HEADER IN FOOTER/IZBIRNIK SE SKRIJETA OB NEUPORABI PO 4 SEKUNDAH)
-    let uiInactivityTimer = null;
-    function resetUiInactivityTimer() {
-        document.body.classList.remove('auto-hide-ui');
-        clearTimeout(uiInactivityTimer);
-        
-        uiInactivityTimer = setTimeout(() => {
-            document.body.classList.add('auto-hide-ui');
-        }, 4000);
-    }
-
-    ['mousemove', 'touchstart', 'pointerdown', 'keydown', 'scroll'].forEach(evtName => {
-        window.addEventListener(evtName, resetUiInactivityTimer, { passive: true });
-    });
-    resetUiInactivityTimer();
-
-    // SKRIVANJE GUMBOV ZA NAMESTITEV, ČE JE APLIKACIJA ŽE NAMEŠČENA KOT PWA (STANDALONE)
+    // SKRIVANJE GUMBOV ZA NAMESTITEV, ČE JE APLIKACIJA ŽE NAMEŠČENA KOT PWA (STANDALONE / FULLSCREEN)
     function checkPwaInstalledState() {
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+                          || window.matchMedia('(display-mode: fullscreen)').matches
                           || window.navigator.standalone 
                           || document.referrer.includes('android-app://');
 
@@ -1225,11 +1193,25 @@
         loadSavedYouTubeAudio();
     });
 
+    // CELOZASLONSKI NAČIN (SKRIJE ZGORNJO URO / SISTEMSKE IKONE IN SPODNJE 3 GUMBE TELEFONA)
     function toggleFullScreen() {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => alert(`Napaka celozaslonskega načina: ${err.message}`));
+        const doc = document.documentElement;
+        if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+            if (doc.requestFullscreen) {
+                doc.requestFullscreen();
+            } else if (doc.webkitRequestFullscreen) {
+                doc.webkitRequestFullscreen();
+            } else if (doc.msRequestFullscreen) {
+                doc.msRequestFullscreen();
+            }
         } else {
-            if (document.exitFullscreen) document.exitFullscreen();
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
         }
     }
 
@@ -1237,7 +1219,7 @@
         const box = document.getElementById('videoContainerBox');
         if (!box) return;
 
-        if (!document.fullscreenElement) {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
             if (box.requestFullscreen) {
                 box.requestFullscreen();
             } else if (box.webkitRequestFullscreen) {
@@ -1246,7 +1228,11 @@
                 box.msRequestFullscreen();
             }
         } else {
-            if (document.exitFullscreen) document.exitFullscreen();
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
         }
     }
 
