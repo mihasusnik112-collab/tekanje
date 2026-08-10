@@ -476,7 +476,7 @@
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     <button id="btnConnect" class="btn btn-primary" onclick="connectTreadmillBLE()">🔌 Poveži Stezo (FTMS)</button>
                     <button id="btnConnectHr" class="btn btn-secondary" onclick="connectHeartRateBLE()">❤️ Ura</button>
-                    <button id="btnStopWorkout" class="btn btn-danger" onclick="stopWorkout()" disabled>⏹ USTAVI TEK</button>
+                    <button id="btnStopWorkout" class="btn btn-danger" onclick="stopWorkout('manual')" disabled>⏹ USTAVI TEK</button>
                 </div>
             </div>
 
@@ -1041,6 +1041,8 @@
 
     let startTime = null;
     let workoutLog = [];
+    let isWorkoutActive = false;
+    let hasHadSpeedBefore = false;
 
     let realWeightKg = 78.0;
     let currentSpeed = 0.0;
@@ -1334,6 +1336,9 @@
     async function executeStartWorkoutWizard() {
         closeWizardModal();
 
+        isWorkoutActive = true;
+        hasHadSpeedBefore = false;
+
         // 1. Video
         const videoUrl = document.getElementById('wizVideoSelect').value;
         if (videoUrl !== 'none') {
@@ -1367,6 +1372,7 @@
             setTreadmillIncline(2.0);
         }
 
+        document.getElementById('btnStopWorkout').disabled = false;
         alert("▶ TEK SE JE PRIČEL! Srečno vadbo!");
     }
 
@@ -1993,6 +1999,17 @@
             }
         }
 
+        // ZAZNAVANJE ROČNE USTAVITVE NA STEZI
+        if (currentSpeed > 0.5) {
+            hasHadSpeedBefore = true;
+        }
+
+        if (isWorkoutActive && hasHadSpeedBefore && currentSpeed === 0.0) {
+            console.log("Steza se je fizično ustavila. Zaustavljam aplikacijo...");
+            stopWorkout('physical_stop');
+            return;
+        }
+
         updateUI();
     }
 
@@ -2158,6 +2175,7 @@
             startTimer();
         }
 
+        isWorkoutActive = true;
         currentStepIdx = 0;
         executeStep(programSteps[currentStepIdx]);
     }
@@ -2181,7 +2199,8 @@
                 if (currentStepIdx < programSteps.length) {
                     executeStep(programSteps[currentStepIdx]);
                 } else {
-                    stopCustomProgram();
+                    // IZTEK INTERVALNEGA PROGRAMA -> POPOLNA ZAUSTAVITEV
+                    stopWorkout('interval_completed');
                     alert(`Intervalni trening za ${currentUser} je uspešno zaključen! Odlično delo! 🎉`);
                 }
             }
@@ -2189,9 +2208,7 @@
     }
 
     function stopCustomProgram() {
-        if (activeProgramInterval) clearInterval(activeProgramInterval);
-        setTreadmillSpeed(0);
-        alert("Program ustavljen.");
+        stopWorkout('manual_program');
     }
 
     function loadYouTubeVideo() {
@@ -2397,21 +2414,40 @@
         if (timerInterval) clearInterval(timerInterval);
     }
 
-    function stopWorkout() {
-        stopTimer();
-        setTreadmillSpeed(0);
+    // UNIFICIRANA USTAVITEV VSEGA (VIDEO, AVDIO, MERJENJE & STEZA)
+    function stopWorkout(reason = 'user_click') {
+        if (!isWorkoutActive && !startTime) return;
+        isWorkoutActive = false;
 
+        stopTimer();
+
+        // 1. Ustavitev steze
+        setTreadmillSpeed(0);
+        currentSpeed = 0.0;
+
+        // 2. Ustavitev intervalnega programa
+        if (activeProgramInterval) {
+            clearInterval(activeProgramInterval);
+            activeProgramInterval = null;
+        }
+
+        // 3. Ustavitev VIDEO predvajalnika (Lokalni ali YouTube)
+        const localVideo = document.getElementById('routeVideo');
+        if (localVideo) {
+            localVideo.pause();
+        }
+        if (ytPlayer && typeof ytPlayer.pauseVideo === 'function') {
+            ytPlayer.pauseVideo();
+        }
+
+        // 4. Ustavitev AVDIO predvajalnika
         if (ytAudioPlayer && typeof ytAudioPlayer.pauseVideo === 'function') {
             ytAudioPlayer.pauseVideo();
         }
+        if (document.getElementById('audioPlayingBadge')) {
+            document.getElementById('audioPlayingBadge').style.display = 'none';
+        }
 
-        if (treadmillDevice && treadmillDevice.gatt.connected) treadmillDevice.gatt.disconnect();
-        if (hrDevice && hrDevice.gatt.connected) hrDevice.gatt.disconnect();
-
-        document.getElementById('dotTreadmill').classList.remove('connected');
-        document.getElementById('textTreadmill').textContent = 'Ni povezano';
-        document.getElementById('dotHr').classList.remove('connected');
-        document.getElementById('textHr').textContent = 'Ni povezano';
         document.getElementById('btnStopWorkout').disabled = true;
 
         showAiDiagnosticModal();
