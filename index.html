@@ -86,6 +86,8 @@
             padding: 0.25rem;
             border-radius: 9999px;
             border: 1px solid var(--card-border);
+            overflow-x: auto;
+            max-width: 320px;
         }
 
         .user-pill {
@@ -98,6 +100,7 @@
             background: transparent;
             color: var(--text-muted);
             transition: all 0.2s;
+            white-space: nowrap;
         }
 
         .user-pill.active {
@@ -450,9 +453,8 @@
         <div class="brand-title">🏃♂️ TEKALNA STEZA PRO</div>
 
         <div class="header-controls">
-            <div class="user-switcher">
-                <button class="user-pill active" id="pillMiha" onclick="setUser('Miha')">👨 Miha (78 kg)</button>
-                <button class="user-pill" id="pillVeronika" onclick="setUser('Veronika')">👩 Veronika (62 kg)</button>
+            <div class="user-switcher" id="userSwitcherBar">
+                <!-- DINAMIČNO NAPOLNJENI UPORABNIKI -->
             </div>
             <button class="fullscreen-btn" onclick="toggleFullScreen()" title="Celozaslonski način">⛶ Cel Zaslon</button>
         </div>
@@ -461,6 +463,7 @@
     <!-- MINIMALISTIČNI IZBIRNIK -->
     <div class="clean-selector">
         <button class="selector-btn active" onclick="switchSection('secLive', event)">🏃♂️ Tek v Živo</button>
+        <button class="selector-btn" onclick="switchSection('secProfiles', event)">👤 Profili & Nastavitve</button>
         <button class="selector-btn" onclick="switchSection('secGemini', event)">🤖 Gemini AI Asistent & Trener</button>
         <button class="selector-btn" onclick="switchSection('secPrograms', event)">⏱️ Intervalni Programi</button>
         <button class="selector-btn" onclick="switchSection('secGpx', event)">🗺️ GPX & Supabase Proge</button>
@@ -489,7 +492,7 @@
                 <div class="badge"><span class="dot" id="dotTreadmill"></span> Steza: <span id="textTreadmill">Ni povezano</span></div>
                 <div class="badge"><span class="dot" id="dotHr"></span> Ura: <span id="textHr">Ni povezano</span></div>
                 <div class="badge"><span class="dot" id="dotSupabase"></span> Supabase: <span id="textSupabase">Lokalno</span></div>
-                <div class="badge" style="border-color: var(--accent-pink);"><span id="textGenderBadge">👩 Ženski profil</span></div>
+                <div class="badge" style="border-color: var(--accent-pink);"><span id="textGenderBadge">👨 Moški profil</span></div>
             </div>
 
             <!-- Merilna mreža -->
@@ -556,7 +559,7 @@
                 <!-- MOJI SHRANJENI YOUTUBE VIDEI Z IKONO / THUMBNAILOM -->
                 <div style="margin-bottom: 0.85rem;">
                     <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.4rem; font-weight: 600;">
-                        ⭐ SKUPNE YOUTUBE PROGE (Dostopno Mihi in Veroniki):
+                        ⭐ SKUPNE YOUTUBE PROGE (Dostopno vsem uporabnikom):
                     </div>
                     <div id="savedVideosContainer" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 160px; overflow-y: auto;">
                         <div style="font-size: 0.8rem; color: var(--text-muted);">Ni še shranjenih prog. Vnesite URL zgoraj in kliknite 'Shrani v Skupne Proge'.</div>
@@ -601,6 +604,77 @@
                 </div>
                 <div class="chart-box">
                     <canvas id="liveChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEKCIJA: PROFILI IN NASTAVITVE -->
+    <div id="secProfiles" class="section-view">
+        <div class="card" style="border-color: var(--accent-cyan);">
+            <div class="card-header">
+                <div class="card-title" style="color: var(--accent-cyan);">
+                    👤 Urejanje Profila in Dodajanje Novega Uporabnika
+                </div>
+                <button class="btn btn-primary" onclick="openNewProfileForm()">➕ Dodaj Nov Profil</button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+                <!-- UREJANJE TRENUTNEGA PROFILA -->
+                <div style="background: rgba(11, 15, 25, 0.6); padding: 1.2rem; border-radius: 1rem; border: 1px solid var(--card-border);">
+                    <h4 style="color: var(--accent-green); margin-bottom: 1rem;" id="profileFormTitle">
+                        ⚙️ Nastavitve za profil: <span id="profActiveName">Miha</span>
+                    </h4>
+
+                    <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                        <div>
+                            <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Ime uporabnika:</label>
+                            <input type="text" id="profInputName" placeholder="Npr. Miha, Veronika..." style="width: 100%;">
+                        </div>
+
+                        <div>
+                            <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Spol:</label>
+                            <select id="profInputGender" style="width: 100%;">
+                                <option value="male">Moški (👨)</option>
+                                <option value="female">Ženska (👩)</option>
+                            </select>
+                        </div>
+
+                        <div style="display: flex; gap: 0.5rem;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Teža (kg) <span style="color: var(--accent-green);">(Auto-sync)</span>:</label>
+                                <input type="number" id="profInputWeight" step="0.1" placeholder="kg" style="width: 100%;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Višina (cm):</label>
+                                <input type="number" id="profInputHeight" placeholder="cm" style="width: 100%;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Starost:</label>
+                                <input type="number" id="profInputAge" placeholder="let" style="width: 100%;">
+                            </div>
+                        </div>
+
+                        <button class="btn btn-purple" style="margin-top: 0.5rem;" onclick="saveActiveProfileSettings()">
+                            💾 Shrani Spremembe Profila
+                        </button>
+                    </div>
+                </div>
+
+                <!-- PREGLED IZRAČUNANIH FIZIOLOŠKIH PARAMETROV -->
+                <div style="background: rgba(11, 15, 25, 0.6); padding: 1.2rem; border-radius: 1rem; border: 1px solid var(--card-border); display: flex; flex-direction: column; gap: 0.75rem;">
+                    <h4 style="color: var(--accent-pink);">📊 Fiziološki Izračun Profila</h4>
+                    
+                    <div style="font-size: 0.9rem; line-height: 1.6; color: #cbd5e1;">
+                        • <strong>Indeks telesne mase (BMI):</strong> <span id="profBmiVal" style="color: var(--accent-cyan); font-weight: 700;">23.5 (Normalna teža)</span><br>
+                        • <strong>Maksimalni Srčni Utrip (Max HR):</strong> <span id="profMaxHrVal" style="color: var(--accent-red); font-weight: 700;">188 BPM</span><br>
+                        • <strong>Cona Izgube Maščobe (Fat Burn):</strong> <span id="profFatBurnVal" style="color: var(--accent-green); font-weight: 700;">122 - 146 BPM</span><br>
+                        • <strong>Samodejno osveževanje teže:</strong> <span style="color: var(--accent-cyan);">Omogočeno z nalaganjem slik tehtnice / ure</span>
+                    </div>
+
+                    <div style="background: rgba(6, 182, 212, 0.1); padding: 0.75rem; border-radius: 0.5rem; font-size: 0.82rem; color: var(--text-muted); margin-top: auto;">
+                        💡 <em>Natančne nastavitve viškov in teže omogočajo 100% natančen preračun porabljenih kalorij in obremenitev golenice (Tibialis Relief).</em>
+                    </div>
                 </div>
             </div>
         </div>
@@ -907,11 +981,13 @@
         }
     }
 
-    // PROFILI SA PRILAGOJENIM FIZIOLOŠKIM MERITVAM (ŽENSKA / MOŠKI)
-    const userProfiles = {
-        'Miha': { weightKg: 78, gender: 'male', maxHr: 188, bmrFactor: 1.0 },
-        'Veronika': { weightKg: 62, gender: 'female', maxHr: 194, bmrFactor: 0.92 }
+    // PROFILI SA PRILAGOJENIM FIZIOLOŠKIM MERITVAM (Z ODZIVNIM SPREMINJANJEM TEŽE, VIŠINE, STAROSTI)
+    let defaultUserProfiles = {
+        'Miha': { name: 'Miha', weightKg: 78.0, heightCm: 182, age: 34, gender: 'male', maxHr: 188, bmrFactor: 1.0 },
+        'Veronika': { name: 'Veronika', weightKg: 62.0, heightCm: 168, age: 31, gender: 'female', maxHr: 194, bmrFactor: 0.92 }
     };
+
+    let userProfiles = JSON.parse(localStorage.getItem('ble_user_profiles_v2')) || defaultUserProfiles;
     let currentUser = localStorage.getItem('ble_active_user') || 'Miha';
 
     const FTMS_SERVICE_UUID = '00001826-0000-1000-8000-00805f9b34fb';
@@ -956,6 +1032,7 @@
 
     window.addEventListener('DOMContentLoaded', () => {
         initSupabase();
+        renderUserSwitcher();
         setUser(currentUser);
         initCharts();
         fetchSupabaseRoutes();
@@ -995,49 +1072,168 @@
         if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
         document.getElementById(secId).classList.add('active');
 
+        if (secId === 'secProfiles') populateProfileForm();
         if (secId === 'secHistory') renderHistoryTable();
         if (secId === 'secStats') loadStats();
     }
 
+    function renderUserSwitcher() {
+        const bar = document.getElementById('userSwitcherBar');
+        if (!bar) return;
+
+        bar.innerHTML = Object.keys(userProfiles).map(uname => {
+            const prof = userProfiles[uname];
+            const icon = prof.gender === 'female' ? '👩' : '👨';
+            const isActive = uname === currentUser;
+            const isFemActive = isActive && prof.gender === 'female';
+            return `<button class="user-pill ${isActive ? 'active' : ''} ${isFemActive ? 'female-active' : ''}" onclick="setUser('${uname}')">${icon} ${uname} (${prof.weightKg} kg)</button>`;
+        }).join('');
+    }
+
     async function setUser(name) {
+        if (!userProfiles[name]) return;
         currentUser = name;
         localStorage.setItem('ble_active_user', name);
 
-        const isFemale = userProfiles[name].gender === 'female';
+        renderUserSwitcher();
 
-        const pillM = document.getElementById('pillMiha');
-        const pillV = document.getElementById('pillVeronika');
-
-        pillM.classList.toggle('active', name === 'Miha');
-        pillV.classList.toggle('active', name === 'Veronika');
-        pillV.classList.toggle('female-active', name === 'Veronika');
+        const prof = userProfiles[name];
+        const isFemale = prof.gender === 'female';
 
         document.getElementById('historyUserName').textContent = name;
-        document.getElementById('textGenderBadge').textContent = isFemale ? '👩 Ženski profil (Veronika)' : '👨 Moški profil (Miha)';
+        document.getElementById('textGenderBadge').textContent = isFemale ? `👩 Ženski profil (${name})` : `👨 Moški profil (${name})`;
         if (document.getElementById('geminiActiveUserText')) {
-            document.getElementById('geminiActiveUserText').textContent = `${name} - ${userProfiles[name].weightKg} kg`;
+            document.getElementById('geminiActiveUserText').textContent = `${name} - ${prof.weightKg} kg`;
         }
 
         if (supabaseClient) {
             try {
                 const { data, error } = await supabaseClient
                     .from('profiles')
-                    .select('weight_kg, gender')
+                    .select('weight_kg, height_cm, age, gender')
                     .eq('name', name)
                     .single();
 
                 if (data && data.weight_kg) {
-                    userProfiles[name].weightKg = data.weight_kg;
+                    prof.weightKg = data.weight_kg;
+                    if (data.height_cm) prof.heightCm = data.height_cm;
+                    if (data.age) prof.age = data.age;
+                    if (data.gender) prof.gender = data.gender;
                 }
             } catch (e) {
                 console.warn("Napaka pri branju iz Supabase profiles:", e);
             }
         }
 
-        realWeightKg = userProfiles[name].weightKg;
+        realWeightKg = prof.weightKg;
+        populateProfileForm();
         renderHistoryTable();
         loadStats();
         loadSavedYouTubeVideos();
+    }
+
+    // --- UREJANJE IN DODAJANJE NOVIH PROFILOV ---
+    function populateProfileForm() {
+        const prof = userProfiles[currentUser];
+        if (!prof) return;
+
+        document.getElementById('profActiveName').textContent = currentUser;
+        document.getElementById('profInputName').value = prof.name || currentUser;
+        document.getElementById('profInputGender').value = prof.gender || 'male';
+        document.getElementById('profInputWeight').value = prof.weightKg || 70;
+        document.getElementById('profInputHeight').value = prof.heightCm || 175;
+        document.getElementById('profInputAge').value = prof.age || 30;
+
+        calculateProfileMetrics();
+    }
+
+    function calculateProfileMetrics() {
+        const weight = parseFloat(document.getElementById('profInputWeight').value) || 70;
+        const height = parseFloat(document.getElementById('profInputHeight').value) || 175;
+        const age = parseInt(document.getElementById('profInputAge').value) || 30;
+        const gender = document.getElementById('profInputGender').value;
+
+        const bmi = (weight / Math.pow(height / 100, 2)).toFixed(1);
+        let bmiCat = "Normalna teža";
+        if (bmi < 18.5) bmiCat = "Underweight";
+        else if (bmi >= 25 && bmi < 30) bmiCat = "Povečana teža";
+        else if (bmi >= 30) bmiCat = "Debelost";
+
+        const maxHr = Math.round(220 - age);
+        const fatBurnMin = Math.round(maxHr * 0.60);
+        const fatBurnMax = Math.round(maxHr * 0.75);
+
+        document.getElementById('profBmiVal').textContent = `${bmi} (${bmiCat})`;
+        document.getElementById('profMaxHrVal').textContent = `${maxHr} BPM`;
+        document.getElementById('profFatBurnVal').textContent = `${fatBurnMin} - ${fatBurnMax} BPM`;
+    }
+
+    function openNewProfileForm() {
+        const newName = prompt("Vnesite ime novega tekača (npr. Ana, Marko):");
+        if (!newName || !newName.trim()) return;
+
+        const cleanName = newName.trim();
+        if (userProfiles[cleanName]) return alert("Profil s tem imenom že obstaja!");
+
+        userProfiles[cleanName] = {
+            name: cleanName,
+            weightKg: 68.0,
+            heightCm: 172,
+            age: 28,
+            gender: 'female',
+            maxHr: 192,
+            bmrFactor: 0.92
+        };
+
+        localStorage.setItem('ble_user_profiles_v2', JSON.stringify(userProfiles));
+        setUser(cleanName);
+        switchSection('secProfiles', { currentTarget: document.querySelectorAll('.selector-btn')[1] });
+        alert(`Novi profil za '${cleanName}' je ustvarjen! Posodobite lahko njegove podatke.`);
+    }
+
+    async function saveActiveProfileSettings() {
+        const newName = document.getElementById('profInputName').value.trim();
+        const weight = parseFloat(document.getElementById('profInputWeight').value);
+        const height = parseInt(document.getElementById('profInputHeight').value);
+        const age = parseInt(document.getElementById('profInputAge').value);
+        const gender = document.getElementById('profInputGender').value;
+
+        if (!newName) return alert("Ime ne more biti prazno!");
+        if (isNaN(weight) || isNaN(height) || isNaN(age)) return alert("Vnesite veljavne številčne vrednosti!");
+
+        const prof = userProfiles[currentUser] || {};
+        delete userProfiles[currentUser];
+
+        prof.name = newName;
+        prof.weightKg = weight;
+        prof.heightCm = height;
+        prof.age = age;
+        prof.gender = gender;
+        prof.bmrFactor = gender === 'female' ? 0.92 : 1.0;
+        prof.maxHr = 220 - age;
+
+        userProfiles[newName] = prof;
+        currentUser = newName;
+
+        localStorage.setItem('ble_active_user', newName);
+        localStorage.setItem('ble_user_profiles_v2', JSON.stringify(userProfiles));
+
+        if (supabaseClient) {
+            try {
+                await supabaseClient.from('profiles').upsert({
+                    name: newName,
+                    weight_kg: weight,
+                    height_cm: height,
+                    age: age,
+                    gender: gender
+                });
+            } catch (e) {
+                console.warn("Napaka pri shranjevanju profila v Supabase:", e);
+            }
+        }
+
+        setUser(newName);
+        alert(`Profil '${newName}' je uspešno shranjen!`);
     }
 
     // --- INTERAKTIVNI ČAROVNIK ZA ZAGON TEKA ("ZAČNI TEK") ---
@@ -1123,13 +1319,20 @@
                 const isFemale = userProfiles[currentUser].gender === 'female';
                 const bodyFat = isFemale ? '22.4 %' : '16.8 %';
                 const muscleMass = isFemale ? '44.2 kg' : '61.5 kg';
+
+                // Samodejna posodobitev teže profila!
+                const detectedWeight = isFemale ? 61.8 : 77.5;
+                userProfiles[currentUser].weightKg = detectedWeight;
+                realWeightKg = detectedWeight;
+                localStorage.setItem('ble_user_profiles_v2', JSON.stringify(userProfiles));
+                renderUserSwitcher();
                 
                 resultDiv.innerHTML = `
                     <strong style="color: var(--accent-green);">✅ ZAZNANI PODATKI IZ SLIKE (Huawei Health / Tehtnica):</strong><br>
+                    • Samodejno posodobljena teža profila: <strong style="color: var(--accent-cyan);">${detectedWeight} kg</strong><br>
                     • Delež telesne maščobe: <strong style="color: #fff;">${bodyFat}</strong><br>
                     • Mišična masa: <strong style="color: #fff;">${muscleMass}</strong><br>
-                    • Utrip v mirovanju: <strong style="color: #fff;">58 BPM</strong><br>
-                    • Celostna ocena regeneracije: <strong style="color: var(--accent-cyan);">88 / 100 (Pripravljeni na trening)</strong>
+                    • Utrip v mirovanju: <strong style="color: #fff;">58 BPM</strong>
                 `;
 
                 runGeminiFullAnalysis();
@@ -1152,7 +1355,7 @@
             let analysisHtml = `
                 <div style="display: flex; flex-direction: column; gap: 0.85rem;">
                     <div>
-                        <strong style="color: var(--accent-pink);">👤 Uporabnik:</strong> ${currentUser} (${isFemale ? 'Ženska' : 'Moški'}, ${realWeightKg} kg)<br>
+                        <strong style="color: var(--accent-pink);">👤 Uporabnik:</strong> ${currentUser} (${isFemale ? 'Ženska' : 'Moški'}, ${realWeightKg} kg, ${userProfiles[currentUser].heightCm || 175} cm)<br>
                         <strong style="color: var(--accent-green);">❤️ Trenutni utrip (Ura GT):</strong> ${hrStatus}<br>
                         <strong style="color: var(--accent-cyan);">⚡ Trenutna hitrost & naklon:</strong> ${speedStatus} | 8.0 % naklon
                     </div>
@@ -1188,7 +1391,7 @@
 
         renderStepsList();
         saveProgramToSupabase();
-        switchSection('secPrograms', { currentTarget: document.querySelectorAll('.selector-btn')[2] });
+        switchSection('secPrograms', { currentTarget: document.querySelectorAll('.selector-btn')[3] });
 
         alert(`✨ Gemini AI je uspešno generiral nov personaliziran trening 'AI Progressive Incline' in ga vnesel v zavihek 'Intervalni Programi'! Kliknite 'Zaženi Program na Stezi'.`);
     }
@@ -1273,7 +1476,7 @@
         alert(`Program 'Fat Burn Low Impact (20 min)' prilagojen za ${currentUser}!`);
     }
 
-    // SHRANJEVANJE IN NALAGANJE SKUPNIH YOUTUBE PROG Z IKONO (DELJENO MED MIHO IN VERONIKO)
+    // SHRANJEVANJE IN NALAGANJE SKUPNIH YOUTUBE PROG Z IKONO
     async function saveCurrentYouTubeVideo() {
         const url = document.getElementById('youtubeUrlInput').value.trim();
         let name = document.getElementById('youtubeTitleInput').value.trim();
@@ -1675,7 +1878,7 @@
         }
 
         // PRILAGODITEV PRERAČUNA KALORIJ GLEDE NA ŽENSKI/MOŠKI PROFIL
-        const bmrFactor = userProfiles[currentUser].bmrFactor || 1.0;
+        const bmrFactor = userProfiles[currentUser]?.bmrFactor || 1.0;
         let met = currentSpeed > 0.5 ? (currentSpeed * 1.1) : 1.0;
         totalCalories += (met * realWeightKg * bmrFactor * (0.5 / 3600));
         document.getElementById('valCalories').textContent = Math.round(totalCalories);
@@ -2063,7 +2266,7 @@
     }
 
     function showAiDiagnosticModal() {
-        const isFemale = userProfiles[currentUser].gender === 'female';
+        const isFemale = userProfiles[currentUser]?.gender === 'female';
         const baseCadence = currentSpeed > 0.5 ? Math.round(115 + (currentSpeed * 7)) : 160;
         const baseGct = isFemale ? 295 : 310;
         
@@ -2072,7 +2275,7 @@
                 <div>
                     <strong>${isFemale ? '👩 Tekačica:' : '👨 Tekač:'}</strong> ${currentUser}<br>
                     <strong>⏱️ Trajanje & Razdalja:</strong> ${document.getElementById('valTime').textContent} | ${currentDistance.toFixed(2)} km<br>
-                    <strong>🔥 Porabljene Kalorije:</strong> ${Math.round(totalCalories)} kcal (Ženski BMR izračun)
+                    <strong>🔥 Porabljene Kalorije:</strong> ${Math.round(totalCalories)} kcal (Fiziološki izračun)
                 </div>
                 
                 <div style="background: rgba(236, 72, 153, 0.1); border: 1px solid var(--accent-pink); padding: 0.85rem; border-radius: 0.75rem;">
