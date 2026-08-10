@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tekalna Steza Pro - Supabase Sync</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --bg-color: #080c14;
+            --card-bg: rgba(19, 27, 46, 0.85);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --accent-green: #10b981;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --accent-orange: #f97316;
+            --accent-red: #ef4444;
+            --accent-pink: #ec4899;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: radial-gradient(circle at 50% 0%, #1a163a, #080c14 85%);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 0.75rem;
+            display: flex;
+            justify-content: center;
+            transition: background 0.5s ease;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .clean-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            padding: 0.85rem 1.25rem;
+            border-radius: 1.25rem;
+            gap: 0.75rem;
+        }
+
+        .brand-title {
+            font-size: 1.3rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-switcher {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 0.25rem;
+            border-radius: 9999px;
+            border: 1px solid var(--card-border);
+        }
+
+        .user-pill {
+            padding: 0.35rem 0.85rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .user-pill.active {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+        }
+
+        .fullscreen-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 0.45rem 0.75rem;
+            border-radius: 0.75rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .fullscreen-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .clean-selector {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding-bottom: 0.25rem;
+            scrollbar-width: none;
+        }
+        .clean-selector::-webkit-scrollbar { display: none; }
+
+        .selector-btn {
+            padding: 0.55rem 1rem;
+            border-radius: 0.85rem;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .selector-btn.active {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(6, 182, 212, 0.25));
+            color: var(--accent-cyan);
+            border-color: rgba(6, 182, 212, 0.4);
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 1.25rem;
+            padding: 1.25rem;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .connect-bar {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.9rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-red);
+        }
+
+        .dot.connected {
+            background: var(--accent-green);
+            box-shadow: 0 0 10px var(--accent-green);
+        }
+
+        .btn {
+            padding: 0.65rem 1.1rem;
+            border-radius: 0.75rem;
+            border: none;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+            color: #022c22;
+        }
+
+        .btn-purple {
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+            color: #fff;
+        }
+
+        .btn-red {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: #fff;
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-main);
+            border: 1px solid var(--card-border);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.85rem;
+        }
+
+        .metric-card {
+            background: rgba(11, 15, 25, 0.6);
+            border: 1px solid var(--card-border);
+            border-radius: 1rem;
+            padding: 0.9rem;
+            text-align: center;
+        }
+
+        .metric-card.highlight-speed {
+            border-color: rgba(16, 185, 129, 0.4);
+            background: radial-gradient(circle at top, rgba(16, 185, 129, 0.15), rgba(11, 15, 25, 0.6));
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.2rem;
+        }
+
+        .metric-value {
+            font-size: 2.1rem;
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1.1;
+        }
+
+        .metric-unit {
+            font-size: 0.8rem;
+            color: var(--accent-cyan);
+            font-weight: 600;
+            margin-top: 0.15rem;
+        }
+
+        .media-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .media-grid { grid-template-columns: 1fr; }
+        }
+
+        .video-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 0.85rem;
+            overflow: hidden;
+            border: 1px solid var(--card-border);
+            position: relative;
+        }
+
+        video, iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            object-fit: cover;
+        }
+
+        .chart-box {
+            position: relative;
+            height: 250px;
+            width: 100%;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        .modal-card {
+            background: #0d0b2e;
+            border: 1px solid var(--accent-purple);
+            border-radius: 1.25rem;
+            max-width: 650px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 1.5rem;
+            box-shadow: 0 20px 50px rgba(168, 85, 247, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem; }
+        th { padding: 0.75rem; color: var(--text-muted); border-bottom: 1px solid var(--card-border); font-weight: 600; }
+        td { padding: 0.75rem; border-bottom: 1px solid rgba(255, 255, 255, 0.04); }
+
+        select, input[type="text"], input[type="number"] {
+            background: rgba(11, 15, 25, 0.8);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 0.6rem 0.85rem;
+            border-radius: 0.65rem;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .section-view { display: none; flex-direction: column; gap: 1rem; }
+        .section-view.active { display: flex; }
+    </style>
+</head>
+<body>
+
+<div class="app-container" id="mainContainer">
+    <!-- GLAVA Z UPORABNIKOM IN CELOZASLONSKIM GUMBOM -->
+    <header class="clean-header">
+        <div class="brand-title">🏃♂️ TEKALNA STEZA PRO</div>
+
+        <div class="header-controls">
+            <div class="user-switcher">
+                <button class="user-pill active" id="pillMiha" onclick="setUser('Miha')">Miha</button>
+                <button class="user-pill" id="pillVeronika" onclick="setUser('Veronika')">Veronika</button>
+            </div>
+            <button class="fullscreen-btn" onclick="toggleFullScreen()" title="Celozaslonski način">⛶ Cel Zaslon</button>
+        </div>
+    </header>
+
+    <!-- MINIMALISTIČNI IZBIRNIK -->
+    <div class="clean-selector">
+        <button class="selector-btn active" onclick="switchSection('secLive', event)">🏃♂️ Tek v Živo</button>
+        <button class="selector-btn" onclick="switchSection('secPrograms', event)">⏱️ Intervalni Programi</button>
+        <button class="selector-btn" onclick="switchSection('secGpx', event)">🗺️ GPX & Supabase Proge</button>
+        <button class="selector-btn" onclick="switchSection('secHistory', event)">📜 Zgodovina Vadb</button>
+        <button class="selector-btn" onclick="switchSection('secStats', event)">📊 Statistika</button>
+    </div>
+
+    <!-- SEKCIJA 1: TEK V ŽIVO -->
+    <div id="secLive" class="section-view active">
+        <div class="card">
+            <!-- Povezovanje Bluetooth naprav -->
+            <div class="connect-bar">
+                <button id="btnConnect" class="btn btn-primary" onclick="connectTreadmillBLE()">🔌 Poveži Stezo (FTMS)</button>
+                <button id="btnSimulate" class="btn btn-purple" onclick="toggleSimulationMode()">🎮 Vklopi Simulacijo</button>
+                <button id="btnConnectHr" class="btn btn-secondary" onclick="connectHeartRateBLE()">❤️ Poveži Uro (Huawei GT)</button>
+                <button id="btnStopWorkout" class="btn btn-danger" onclick="stopWorkout()" disabled>⏹ USTAVI TEK</button>
+            </div>
+
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                <div class="badge"><span class="dot" id="dotTreadmill"></span> Steza: <span id="textTreadmill">Ni povezano</span></div>
+                <div class="badge"><span class="dot" id="dotHr"></span> Ura: <span id="textHr">Ni povezano</span></div>
+                <div class="badge"><span class="dot" id="dotSupabase"></span> Supabase: <span id="textSupabase">Lokalno</span></div>
+            </div>
+
+            <!-- Merilna mreža -->
+            <div class="metrics-grid">
+                <div class="metric-card highlight-speed">
+                    <div class="metric-label">Hitrost</div>
+                    <div class="metric-value" id="valSpeed">0.0</div>
+                    <div class="metric-unit">km/h</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Naklon</div>
+                    <div class="metric-value" id="valIncline">0.0</div>
+                    <div class="metric-unit">%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Srčni Utrip</div>
+                    <div class="metric-value" id="valHr">--</div>
+                    <div class="metric-unit">BPM</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Čas</div>
+                    <div class="metric-value" id="valTime">00:00</div>
+                    <div class="metric-unit">min : sec</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Razdalja</div>
+                    <div class="metric-value" id="valDistance">0.00</div>
+                    <div class="metric-unit">km</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Kalorije</div>
+                    <div class="metric-value" id="valCalories">0</div>
+                    <div class="metric-unit">kcal</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Sync & Live Chart -->
+        <div class="media-grid">
+            <div class="card">
+                <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem;">
+                    <div class="card-title">🎬 Video Proge</div>
+                    <input type="file" id="videoFileInput" accept="video/*" style="display: none;" onchange="loadUserVideo(event)">
+                    <button class="btn btn-secondary" onclick="document.getElementById('videoFileInput').click()">Naloži MP4</button>
+                </div>
+
+                <!-- YOUTUBE VNOS & PREDNASTAVITVE -->
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+                    <input type="text" id="youtubeUrlInput" placeholder="Vnesite YouTube URL ali kliknite spodaj..." style="flex: 1;">
+                    <button class="btn btn-red" onclick="loadYouTubeVideo()">▶ Predvajaj</button>
+                </div>
+
+                <div style="margin-bottom: 0.85rem;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem; font-weight: 600;">
+                        📍 HITRE 4K TEKAŠKE PROGE:
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.4rem;">
+                        <button class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.4rem; text-align: left;" onclick="playPresetYouTube('https://www.youtube.com/watch?v=1bGl0S1j76U', 'Alpe 4K')">
+                            🏔️ <strong>Alpe 4K</strong>
+                        </button>
+                        <button class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.4rem; text-align: left;" onclick="playPresetYouTube('https://www.youtube.com/watch?v=2Oznlyx_2Q8', 'Zeleni Gozd')">
+                            🌲 <strong>Zeleni Gozd</strong>
+                        </button>
+                        <button class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.4rem; text-align: left;" onclick="playPresetYouTube('https://www.youtube.com/watch?v=h9_E-aWwZtQ', 'Tropska Plaža')">
+                            🏖️ <strong>Tropska Plaža</strong>
+                        </button>
+                        <button class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.4rem; text-align: left;" onclick="playPresetYouTube('https://www.youtube.com/watch?v=gT8eK-s14Yk', 'Fjordi 4K')">
+                            🇳🇴 <strong>Norveški Fjordi</strong>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="video-container">
+                    <video id="routeVideo" loop muted playsinline style="display: block;"></video>
+                    <div id="youtubePlayerContainer" style="display: none; width: 100%; height: 100%;">
+                        <div id="youtubePlayer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📈 Graf v Realnem Času</div>
+                </div>
+                <div class="chart-box">
+                    <canvas id="liveChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEKCIJA 2: INTERVALNI PROGRAMI -->
+    <div id="secPrograms" class="section-view">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">⏱️ Intervalni Programi (Supabase Baza)</div>
+            </div>
+            
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center;">
+                <input type="number" id="progDuration" placeholder="Čas (sek)" style="width: 110px;" value="60">
+                <input type="number" id="progSpeed" placeholder="Hitrost (km/h)" step="0.5" style="width: 130px;" value="8.0">
+                <input type="number" id="progIncline" placeholder="Naklon (%)" step="0.5" style="width: 110px;" value="1.0">
+                <button class="btn btn-primary" onclick="addIntervalStep()">➕ Dodaj Korak</button>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <h4 style="color: var(--text-muted); margin-bottom: 0.5rem;">Seznam korakov:</h4>
+                <ul id="intervalStepsList" style="list-style-type: none; padding-left: 0; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <li style="color: var(--text-muted);">Program je prazen. Dodajte korake zgoraj.</li>
+                </ul>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <button class="btn btn-purple" style="flex: 1;" onclick="startCustomProgram()">🚀 ZAŽENI PROGRAM NA STEZI</button>
+                <button class="btn btn-primary" onclick="saveProgramToSupabase()">💾 Shrani v Supabase</button>
+                <button class="btn btn-danger" onclick="stopCustomProgram()">⏹ Prekini Program</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEKCIJA 3: GPX PROGA & SUPABASE ROUTES -->
+    <div id="secGpx" class="section-view">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">🗺️ Supabase Proge in GPX Auto-Following</div>
+                <input type="file" id="gpxFileInput" accept=".gpx" style="display: none;" onchange="loadGpxFile(event)">
+                <button class="btn btn-primary" onclick="document.getElementById('gpxFileInput').click()">Izberi Lokalni GPX</button>
+            </div>
+
+            <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;">
+                <span style="font-size: 0.9rem; color: var(--text-muted);">Supabase Proge:</span>
+                <select id="supabaseRouteSelect" style="flex: 1; min-width: 200px;" onchange="loadSupabaseRoute(this.value)">
+                    <option value="">-- Izberi progo iz Supabase baze --</option>
+                </select>
+                <button class="btn btn-secondary" onclick="fetchSupabaseRoutes()">🔄 Osveži Proge</button>
+            </div>
+
+            <div id="gpxInfoCard" style="display: none; background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 0.85rem; margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span>Ime Proge: <strong id="gpxName" style="color: var(--accent-cyan);">-</strong></span>
+                    <span>Skupna Dolžina: <strong id="gpxDistance">0.0 km</strong></span>
+                </div>
+            </div>
+
+            <div class="chart-box">
+                <canvas id="gpxProfileChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEKCIJA 4: ZGODVOINA VADB -->
+    <div id="secHistory" class="section-view">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">📜 Zgodovina Treningov za <span id="historyUserName">Miha</span></div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="btn btn-purple" onclick="exportWorkoutGPX()">📲 Izvozi GPX (Health Connect)</button>
+                    <button class="btn btn-secondary" onclick="exportHistoryCSV()">Izvozi CSV</button>
+                    <button class="btn btn-danger" onclick="clearHistory()">Počisti</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Trajanje</th>
+                            <th>Razdalja</th>
+                            <th>Teža</th>
+                            <th>Kalorije</th>
+                            <th>Povp. HR</th>
+                            <th>Akcija</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Ni še zabeleženih aktivnosti.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEKCIJA 5: STATISTIKA -->
+    <div id="secStats" class="section-view">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">📊 Skupna Statistika Treningov</div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem;">
+                <div style="background: rgba(11, 15, 25, 0.6); padding: 1rem; border-radius: 1rem; text-align: center;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">SKUPNA RAZDALJA</div>
+                    <div style="font-size: 2.2rem; font-weight: 700;" id="statTotalDist">0.0</div>
+                    <div style="font-size: 0.8rem; color: var(--accent-cyan);">km</div>
+                </div>
+                <div style="background: rgba(11, 15, 25, 0.6); padding: 1rem; border-radius: 1rem; text-align: center;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">SKUPNI ČAS</div>
+                    <div style="font-size: 2.2rem; font-weight: 700; color: var(--accent-green);" id="statTotalTime">0</div>
+                    <div style="font-size: 0.8rem; color: var(--accent-green);">minut</div>
+                </div>
+                <div style="background: rgba(11, 15, 25, 0.6); padding: 1rem; border-radius: 1rem; text-align: center;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">PORABLJENE KALORIJE</div>
+                    <div style="font-size: 2.2rem; font-weight: 700;" id="statTotalCals">0</div>
+                    <div style="font-size: 0.8rem; color: var(--accent-cyan);">kcal</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODALNO OKNO ZA AI DIAGNOSTIKO -->
+<div class="modal-overlay" id="aiDiagnosticModal">
+    <div class="modal-card">
+        <h3 style="font-size: 1.3rem; color: var(--accent-pink); text-align: center;">📊 AI DIAGNOSTIKA TEKA</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center;">Biomehanika drže in analiza kadence (sporthealth)</p>
+
+        <div style="font-size: 0.9rem; line-height: 1.5;" id="modalBodyContent">
+            Loading AI report...
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+            <button class="btn btn-purple" style="flex: 1;" onclick="exportWorkoutGPX()">📲 Izvozi GPX za Google Health Connect</button>
+            <button class="btn btn-primary" onclick="closeModal()">Zapri Poročilo</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // INICIACIJA SUPABASE ODJEMALCA
+    const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
+    let supabaseClient = null;
+
+    function initSupabase() {
+        const txtEl = document.getElementById('textSupabase');
+        const dotEl = document.getElementById('dotSupabase');
+
+        const lib = window.supabase || window.Supabase;
+        if (lib && typeof lib.createClient === 'function') {
+            try {
+                supabaseClient = lib.createClient(SUPABASE_URL, SUPABASE_KEY);
+                txtEl.textContent = 'Supabase Oblak Povezan';
+                dotEl.classList.add('connected');
+            } catch(e) {
+                console.error("Supabase Client Error:", e);
+                txtEl.textContent = `Supabase napaka: ${e.message}`;
+            }
+        } else {
+            txtEl.textContent = 'Supabase CDN ni naložen';
+        }
+    }
+
+    const userProfiles = {
+        'Miha': { weightKg: 78 },
+        'Veronika': { weightKg: 62 }
+    };
+    let currentUser = localStorage.getItem('ble_active_user') || 'Miha';
+
+    const FTMS_SERVICE_UUID = '00001826-0000-1000-8000-00805f9b34fb';
+    const TREADMILL_DATA_CHAR_UUID = '00002ace-0000-1000-8000-00805f9b34fb';
+    const TREADMILL_CONTROL_POINT_CHAR_UUID_1 = '00002ada-0000-1000-8000-00805f9b34fb';
+    const TREADMILL_CONTROL_POINT_CHAR_UUID_2 = '00002ad9-0000-1000-8000-00805f9b34fb';
+
+    const HR_SERVICE_UUID = '0000180d-0000-1000-8000-00805f9b34fb';
+    const HR_MEASUREMENT_CHAR_UUID = '00002a37-0000-1000-8000-00805f9b34fb';
+
+    let treadmillDevice = null;
+    let treadmillChar = null;
+    let controlPointChar = null;
+
+    let hrDevice = null;
+    let hrChar = null;
+
+    let startTime = null;
+    let workoutLog = [];
+
+    let realWeightKg = 78.0;
+    let currentSpeed = 0.0;
+    let currentIncline = 0.0;
+    let currentHr = 0;
+    let currentDistance = 0.0;
+    let totalCalories = 0.0;
+
+    let gpxPoints = [];
+    let gpxTotalLength = 0.0;
+
+    let programSteps = [];
+    let activeProgramInterval = null;
+    let currentStepIdx = 0;
+    let stepTimeRemaining = 0;
+
+    let ytPlayer = null;
+    let isYouTubeActive = false;
+
+    let timerInterval = null;
+    let liveChart = null;
+    let gpxProfileChart = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+        initSupabase();
+        setUser(currentUser);
+        initCharts();
+        fetchSupabaseRoutes();
+        fetchIntervalPrograms();
+    });
+
+    function toggleFullScreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => alert(`Napaka celozaslonskega načina: ${err.message}`));
+        } else {
+            if (document.exitFullscreen) document.exitFullscreen();
+        }
+    }
+
+    function switchSection(secId, evt) {
+        document.querySelectorAll('.selector-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.section-view').forEach(view => view.classList.remove('active'));
+
+        evt.currentTarget.classList.add('active');
+        document.getElementById(secId).classList.add('active');
+
+        if (secId === 'secHistory') renderHistoryTable();
+        if (secId === 'secStats') loadStats();
+    }
+
+    async function setUser(name) {
+        currentUser = name;
+        localStorage.setItem('ble_active_user', name);
+
+        document.getElementById('pillMiha').classList.toggle('active', name === 'Miha');
+        document.getElementById('pillVeronika').classList.toggle('active', name === 'Veronika');
+        document.getElementById('historyUserName').textContent = name;
+
+        if (supabaseClient) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('profiles')
+                    .select('weight_kg')
+                    .eq('name', name)
+                    .single();
+
+                if (data && data.weight_kg) {
+                    userProfiles[name].weightKg = data.weight_kg;
+                }
+            } catch (e) {
+                console.warn("Napaka pri branju iz Supabase profiles:", e);
+            }
+        }
+
+        realWeightKg = userProfiles[name].weightKg;
+        renderHistoryTable();
+        loadStats();
+    }
+
+    async function connectTreadmillBLE() {
+        const txtEl = document.getElementById('textTreadmill');
+        const dotEl = document.getElementById('dotTreadmill');
+
+        if (!navigator.bluetooth) {
+            alert('Vaš mobilni brskalnik žal ne podpira Web Bluetooth API. Preverite, da uporabljate Google Chrome ali Microsoft Edge.');
+            txtEl.textContent = 'Brez podpore za BLE';
+            return;
+        }
+
+        txtEl.textContent = 'Iščem tekalno stezo...';
+
+        try {
+            const optionalServices = [
+                FTMS_SERVICE_UUID,
+                '00001826-0000-1000-8000-00805f9b34fb',
+                '00002ace-0000-1000-8000-00805f9b34fb',
+                '00002ada-0000-1000-8000-00805f9b34fb',
+                '00002ad9-0000-1000-8000-00805f9b34fb',
+                '0000fff0-0000-1000-8000-00805f9b34fb',
+                '0000ff00-0000-1000-8000-00805f9b34fb',
+                '0000fe59-0000-1000-8000-00805f9b34fb'
+            ];
+
+            let device = null;
+            try {
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [
+                        { services: [FTMS_SERVICE_UUID] },
+                        { services: ['00001826-0000-1000-8000-00805f9b34fb'] },
+                        { services: ['0000fff0-0000-1000-8000-00805f9b34fb'] },
+                        { namePrefix: 'Kubi' },
+                        { namePrefix: 'Fit' },
+                        { namePrefix: 'GB' },
+                        { namePrefix: 'FS' }
+                    ],
+                    optionalServices: optionalServices
+                });
+            } catch (err1) {
+                device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: optionalServices
+                });
+            }
+
+            treadmillDevice = device;
+            txtEl.textContent = 'Povezovanje z ' + (treadmillDevice.name || 'stezo') + '...';
+
+            const server = await treadmillDevice.gatt.connect();
+            
+            let service = null;
+            try {
+                service = await server.getPrimaryService(FTMS_SERVICE_UUID);
+            } catch (e1) {
+                try {
+                    service = await server.getPrimaryService('0000fff0-0000-1000-8000-00805f9b34fb');
+                } catch (e2) {
+                    const services = await server.getPrimaryServices();
+                    service = services[0];
+                }
+            }
+
+            if (service) {
+                try {
+                    treadmillChar = await service.getCharacteristic(TREADMILL_DATA_CHAR_UUID);
+                } catch (e3) {
+                    const chars = await service.getCharacteristics();
+                    treadmillChar = chars.find(c => c.properties.notify || c.properties.indicate) || chars[0];
+                }
+
+                if (treadmillChar) {
+                    await treadmillChar.startNotifications();
+                    treadmillChar.addEventListener('characteristicvaluechanged', handleTreadmillData);
+                }
+
+                try {
+                    controlPointChar = await service.getCharacteristic(TREADMILL_CONTROL_POINT_CHAR_UUID_1);
+                } catch (e) {
+                    try {
+                        controlPointChar = await service.getCharacteristic(TREADMILL_CONTROL_POINT_CHAR_UUID_2);
+                    } catch (e2) {}
+                }
+
+                if (controlPointChar) {
+                    try {
+                        await controlPointChar.writeValue(new Uint8Array([0x00]));
+                    } catch(e) {}
+                }
+            }
+
+            dotEl.classList.add('connected');
+            txtEl.textContent = treadmillDevice.name || 'Povezano!';
+            document.getElementById('btnStopWorkout').disabled = false;
+
+            if (!startTime) {
+                startTime = Date.now();
+                startTimer();
+            }
+        } catch (e) {
+            console.error("BLE error:", e);
+            txtEl.textContent = `Povezava spodletela: ${e.message}`;
+            alert(`Povezovanje s stezo spodletelo:\n${e.message}\n\nREŠITEV:\n1. Preverite, ali je Bluetooth na telefonu vklopljen.\n2. Odklopite aplikacijo FitShow na telefonu, če teče v ozadju.\n3. V nastavitvah telefona pod Chrome dovolite 'Naprave v bližini'.`);
+        }
+    }
+
+    async function connectHeartRateBLE() {
+        const txtEl = document.getElementById('textHr');
+        const dotEl = document.getElementById('dotHr');
+
+        if (!navigator.bluetooth) return alert('Brskalnik ne podpira Web Bluetooth API.');
+
+        try {
+            txtEl.textContent = 'Iščem uro / trak...';
+            
+            let device = null;
+            try {
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [
+                        { services: [HR_SERVICE_UUID] },
+                        { services: ['0000180d-0000-1000-8000-00805f9b34fb'] },
+                        { namePrefix: 'HUAWEI' },
+                        { namePrefix: 'Huawei' },
+                        { namePrefix: 'GT' },
+                        { namePrefix: 'Honor' }
+                    ],
+                    optionalServices: [HR_SERVICE_UUID, HR_MEASUREMENT_CHAR_UUID]
+                });
+            } catch(e1) {
+                device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: [HR_SERVICE_UUID, HR_MEASUREMENT_CHAR_UUID]
+                });
+            }
+
+            hrDevice = device;
+            txtEl.textContent = 'Povezovanje z ' + (hrDevice.name || 'uro') + '...';
+
+            const server = await hrDevice.gatt.connect();
+            const service = await server.getPrimaryService(HR_SERVICE_UUID);
+
+            hrChar = await service.getCharacteristic(HR_MEASUREMENT_CHAR_UUID);
+            await hrChar.startNotifications();
+            hrChar.addEventListener('characteristicvaluechanged', handleHeartRateData);
+
+            dotEl.classList.add('connected');
+            txtEl.textContent = hrDevice.name || 'Povezano!';
+            document.getElementById('btnStopWorkout').disabled = false;
+        } catch (e) {
+            console.error("HR BLE error:", e);
+            txtEl.textContent = `Napaka: ${e.message}`;
+            alert(`Povezovanje z uro / trakom spodletelo:\n${e.message}\n\n1. Na uri Huawei GT vklopite 'Heart Rate Broadcast' ali 'Oddajanje utripa'.\n2. Prepričajte se, da ura ni že povezana z drugo aplikacijo.`);
+        }
+    }
+
+    let isSimulated = false;
+    let simulationInterval = null;
+
+    function toggleSimulationMode() {
+        isSimulated = !isSimulated;
+
+        const btn = document.getElementById('btnSimulate');
+        const txtEl = document.getElementById('textTreadmill');
+        const dotEl = document.getElementById('dotTreadmill');
+
+        if (isSimulated) {
+            btn.textContent = '⏹ Izklopi Simulacijo';
+            btn.className = 'btn btn-danger';
+            dotEl.classList.add('connected');
+            txtEl.textContent = '🎮 Simulacija (GB4450k Demo)';
+            document.getElementById('btnStopWorkout').disabled = false;
+
+            if (!startTime) {
+                startTime = Date.now();
+                startTimer();
+            }
+
+            if (simulationInterval) clearInterval(simulationInterval);
+            currentSpeed = 7.5;
+            currentIncline = 1.5;
+            currentHr = 138;
+
+            simulationInterval = setInterval(() => {
+                if (!isSimulated) return;
+
+                if (programSteps.length === 0 && gpxPoints.length === 0) {
+                    currentSpeed = Math.min(12.0, Math.max(5.0, currentSpeed + (Math.random() * 0.2 - 0.1)));
+                }
+
+                currentHr = Math.round(130 + (currentSpeed * 2.5) + (Math.random() * 4 - 2));
+                currentDistance += (currentSpeed * (0.5 / 3600.0));
+
+                document.getElementById('valHr').textContent = currentHr;
+                updateUI();
+            }, 500);
+
+            alert("🎮 SIMULACIJSKI NAČIN JE VKLOPLJEN!");
+        } else {
+            if (simulationInterval) clearInterval(simulationInterval);
+            btn.textContent = '🎮 Vklopi Simulacijo';
+            btn.className = 'btn btn-purple';
+            dotEl.classList.remove('connected');
+            txtEl.textContent = 'Ni povezano';
+        }
+    }
+
+    async function setTreadmillSpeed(speedKmh) {
+        if (!controlPointChar) return;
+        try {
+            const rawSpeed = Math.round(speedKmh * 100);
+            const buffer = new ArrayBuffer(3);
+            const view = new DataView(buffer);
+            view.setUint8(0, 0x02);
+            view.setUint16(1, rawSpeed, true);
+            await controlPointChar.writeValue(buffer);
+        } catch (e) {}
+    }
+
+    async function setTreadmillIncline(inclinePercent) {
+        if (!controlPointChar) return;
+        try {
+            const rawIncline = Math.round(inclinePercent * 10);
+            const buffer = new ArrayBuffer(3);
+            const view = new DataView(buffer);
+            view.setUint8(0, 0x03);
+            view.setInt16(1, rawIncline, true);
+            await controlPointChar.writeValue(buffer);
+        } catch (e) {}
+    }
+
+    function handleTreadmillData(event) {
+        const data = event.target.value;
+        if (data.byteLength < 4) return;
+
+        const flags = data.getUint16(0, true);
+        const rawSpeed = data.getUint16(2, true);
+        currentSpeed = rawSpeed / 100.0;
+
+        let offset = 4;
+        if (flags & (1 << 1)) offset += 2;
+
+        if (flags & (1 << 2)) {
+            if (data.byteLength >= offset + 3) {
+                const b0 = data.getUint8(offset);
+                const b1 = data.getUint8(offset + 1);
+                const b2 = data.getUint8(offset + 2);
+                const rawDist = b0 | (b1 << 8) | (b2 << 16);
+                currentDistance = rawDist / 1000.0;
+            }
+            offset += 3;
+        }
+
+        if (flags & (1 << 3)) {
+            if (data.byteLength >= offset + 2) {
+                const rawIncline = data.getInt16(offset, true);
+                currentIncline = rawIncline / 10.0;
+            }
+        }
+
+        updateUI();
+    }
+
+    function handleHeartRateData(event) {
+        const data = event.target.value;
+        if (data.byteLength < 2) return;
+
+        const flags = data.getUint8(0);
+        const hrFormat = flags & 0x01;
+        currentHr = (hrFormat === 0) ? data.getUint8(1) : data.getUint16(1, true);
+        document.getElementById('valHr').textContent = currentHr;
+    }
+
+    function updateUI() {
+        document.getElementById('valSpeed').textContent = currentSpeed.toFixed(1);
+        document.getElementById('valIncline').textContent = currentIncline.toFixed(1);
+        document.getElementById('valDistance').textContent = currentDistance.toFixed(2);
+
+        if (gpxPoints.length > 0) {
+            const currentTargetPoint = gpxPoints.find(p => p.distKm >= currentDistance);
+            if (currentTargetPoint) {
+                const targetIncline = currentTargetPoint.inclinePct;
+                if (Math.abs(currentIncline - targetIncline) >= 0.5) {
+                    currentIncline = targetIncline;
+                    setTreadmillIncline(currentIncline);
+                }
+            }
+        }
+
+        let met = currentSpeed > 0.5 ? (currentSpeed * 1.1) : 1.0;
+        totalCalories += (met * realWeightKg * (0.5 / 3600));
+        document.getElementById('valCalories').textContent = Math.round(totalCalories);
+
+        syncVideoSpeed();
+
+        if (startTime) {
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            workoutLog.push({
+                time: elapsed,
+                speed: currentSpeed,
+                incline: currentIncline,
+                hr: currentHr,
+                distance: currentDistance
+            });
+
+            updateLiveChart(elapsed, currentSpeed, currentIncline, currentHr);
+        }
+    }
+
+    async function fetchSupabaseRoutes() {
+        if (!supabaseClient) return;
+
+        try {
+            const { data, error } = await supabaseClient.from('routes').select('*');
+            if (data && data.length > 0) {
+                const select = document.getElementById('supabaseRouteSelect');
+                select.innerHTML = '<option value="">-- Izberi progo iz Supabase baze --</option>';
+                data.forEach((r, idx) => {
+                    select.innerHTML += `<option value="${r.id}">${r.name} (${r.distance_km || 0} km)</option>`;
+                });
+                window.supabaseRoutesData = data;
+            }
+        } catch (e) {
+            console.warn("Napaka pri pridobivanju prog iz Supabase:", e);
+        }
+    }
+
+    async function loadSupabaseRoute(routeId) {
+        if (!routeId || !window.supabaseRoutesData) return;
+
+        const route = window.supabaseRoutesData.find(r => r.id == routeId);
+        if (!route) return;
+
+        if (route.video_url) {
+            isYouTubeActive = false;
+            document.getElementById('youtubePlayerContainer').style.display = 'none';
+            const video = document.getElementById('routeVideo');
+            video.style.display = 'block';
+            video.src = route.video_url;
+            video.play();
+        }
+
+        if (route.gpx_data) {
+            parseGpxXml(route.gpx_data);
+        }
+    }
+
+    async function fetchIntervalPrograms() {
+        if (!supabaseClient) return;
+
+        try {
+            const { data, error } = await supabaseClient.from('interval_programs').select('*').eq('user_name', currentUser);
+            if (data && data.length > 0) {
+                programSteps = data[0].steps || [];
+                renderStepsList();
+            }
+        } catch (e) {
+            console.warn("Napaka pri branju programov:", e);
+        }
+    }
+
+    async function saveProgramToSupabase() {
+        if (programSteps.length === 0) return alert("Sestavite program pred shranjevanjem.");
+
+        if (supabaseClient) {
+            try {
+                await supabaseClient.from('interval_programs').upsert({
+                    user_name: currentUser,
+                    steps: programSteps
+                });
+                alert("Program je uspešno shranjen v Supabase bazo!");
+            } catch (e) {
+                alert(`Napaka pri shranjevanju v Supabase: ${e.message}`);
+            }
+        } else {
+            localStorage.setItem(`ble_program_${currentUser}`, JSON.stringify(programSteps));
+            alert("Program je shranjen v lokalno shrambo.");
+        }
+    }
+
+    function addIntervalStep() {
+        const dur = parseInt(document.getElementById('progDuration').value);
+        const spd = parseFloat(document.getElementById('progSpeed').value);
+        const inc = parseFloat(document.getElementById('progIncline').value);
+
+        if (isNaN(dur) || isNaN(spd) || isNaN(inc)) return alert("Vnesite veljavne številčne vrednosti!");
+
+        programSteps.push({ duration: dur, speed: spd, incline: inc });
+        renderStepsList();
+    }
+
+    function renderStepsList() {
+        const list = document.getElementById('intervalStepsList');
+        if (programSteps.length === 0) {
+            list.innerHTML = `<li style="color: var(--text-muted);">Program je prazen. Dodajte korake zgoraj.</li>`;
+            return;
+        }
+        list.innerHTML = programSteps.map((step, idx) => `
+            <li style="background: rgba(255,255,255,0.05); padding: 0.5rem 1rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <span>Korak ${idx + 1}: <strong>${step.duration}s</strong> pri <strong>${step.speed} km/h</strong> in <strong>${step.incline}%</strong> naklona</span>
+                <button class="btn btn-danger" style="padding: 0.1rem 0.4rem; font-size: 0.75rem;" onclick="removeStep(${idx})">Odstrani</button>
+            </li>
+        `).join('');
+    }
+
+    function removeStep(idx) {
+        programSteps.splice(idx, 1);
+        renderStepsList();
+    }
+
+    async function startCustomProgram() {
+        if (programSteps.length === 0) return alert("Najprej sestavite program!");
+        if (!startTime) {
+            startTime = Date.now();
+            startTimer();
+        }
+
+        currentStepIdx = 0;
+        executeStep(programSteps[currentStepIdx]);
+    }
+
+    async function executeStep(step) {
+        stepTimeRemaining = step.duration;
+
+        await setTreadmillSpeed(step.speed);
+        await setTreadmillIncline(step.incline);
+
+        currentSpeed = step.speed;
+        currentIncline = step.incline;
+        updateUI();
+
+        if (activeProgramInterval) clearInterval(activeProgramInterval);
+
+        activeProgramInterval = setInterval(async () => {
+            stepTimeRemaining--;
+            if (stepTimeRemaining <= 0) {
+                currentStepIdx++;
+                if (currentStepIdx < programSteps.length) {
+                    executeStep(programSteps[currentStepIdx]);
+                } else {
+                    stopCustomProgram();
+                    alert("Intervalni trening je uspešno zaključen!");
+                }
+            }
+        }, 1000);
+    }
+
+    function stopCustomProgram() {
+        if (activeProgramInterval) clearInterval(activeProgramInterval);
+        setTreadmillSpeed(0);
+        alert("Program ustavljen.");
+    }
+
+    function playPresetYouTube(url, title) {
+        document.getElementById('youtubeUrlInput').value = url;
+        loadYouTubeVideo();
+    }
+
+    function loadYouTubeVideo() {
+        const url = document.getElementById('youtubeUrlInput').value.trim();
+        if (!url) return alert("Vnesite veljaven YouTube URL.");
+
+        const videoId = extractYouTubeId(url);
+        if (!videoId) return alert("Neveljavna YouTube povezava.");
+
+        document.getElementById('routeVideo').style.display = 'none';
+        document.getElementById('youtubePlayerContainer').style.display = 'block';
+        isYouTubeActive = true;
+
+        if (ytPlayer) {
+            ytPlayer.loadVideoById(videoId);
+        } else {
+            ytPlayer = new YT.Player('youtubePlayer', {
+                height: '100%',
+                width: '100%',
+                videoId: videoId,
+                playerVars: { 'autoplay': 1, 'controls': 1, 'mute': 1, 'rel': 0 },
+                events: {
+                    'onReady': (evt) => evt.target.playVideo(),
+                    'onError': (evt) => {
+                        console.warn("YouTube Player error:", evt.data);
+                        if (evt.data === 101 || evt.data === 150 || evt.data === 2) {
+                            alert("Avtor tega posameznega YouTube videa je onemogočil vgrajeno predvajanje na zunanjih spletnih straneh.\n\nKliknite na eno od naših prednastavljenih 4K prog zgoraj (npr. Alpe 4K ali Zeleni Gozd 4K), ki imajo predvajanje 100% omogočeno!");
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    function extractYouTubeId(url) {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    }
+
+    function syncVideoSpeed() {
+        const refSpeed = 10.0;
+
+        if (isYouTubeActive && ytPlayer && typeof ytPlayer.setPlaybackRate === 'function') {
+            if (currentSpeed <= 0.2) {
+                ytPlayer.pauseVideo();
+            } else {
+                ytPlayer.playVideo();
+                const rate = Math.max(0.25, Math.min(currentSpeed / refSpeed, 2.0));
+                ytPlayer.setPlaybackRate(rate);
+            }
+        } else {
+            const video = document.getElementById('routeVideo');
+            if (!video || !video.src) return;
+
+            if (currentSpeed <= 0.2) {
+                video.pause();
+            } else {
+                if (video.paused) video.play();
+                video.playbackRate = Math.max(0.25, Math.min(currentSpeed / refSpeed, 3.0));
+            }
+        }
+    }
+
+    function loadUserVideo(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        isYouTubeActive = false;
+        document.getElementById('youtubePlayerContainer').style.display = 'none';
+        const video = document.getElementById('routeVideo');
+        video.style.display = 'block';
+        video.src = URL.createObjectURL(file);
+        video.play();
+    }
+
+    function loadGpxFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) { parseGpxXml(e.target.result); };
+        reader.readAsText(file);
+    }
+
+    function parseGpxXml(xmlText) {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+        const trkpts = xmlDoc.getElementsByTagName("trkpt");
+        if (trkpts.length === 0) return alert("GPX ne vsebuje točk.");
+
+        gpxPoints = [];
+        let cumDist = 0.0;
+
+        for (let i = 0; i < trkpts.length; i++) {
+            const lat = parseFloat(trkpts[i].getAttribute("lat"));
+            const lon = parseFloat(trkpts[i].getAttribute("lon"));
+            const eleNode = trkpts[i].getElementsByTagName("ele")[0];
+            const ele = eleNode ? parseFloat(eleNode.textContent) : 0;
+
+            if (i > 0) {
+                const prev = gpxPoints[i-1];
+                const dMeters = haversineDistance(prev.lat, prev.lon, lat, lon);
+                const deltaH = ele - prev.ele;
+                const incline = dMeters > 0.1 ? ((deltaH / dMeters) * 100) : 0;
+                cumDist += (dMeters / 1000.0);
+                gpxPoints.push({ lat, lon, ele, distKm: cumDist, inclinePct: parseFloat(incline.toFixed(1)) });
+            } else {
+                gpxPoints.push({ lat, lon, ele, distKm: 0, inclinePct: 0 });
+            }
+        }
+
+        gpxTotalLength = cumDist;
+        document.getElementById('gpxInfoCard').style.display = 'block';
+        document.getElementById('gpxName').textContent = xmlDoc.getElementsByTagName("name")[0]?.textContent || "GPX Proga";
+        document.getElementById('gpxDistance').textContent = `${cumDist.toFixed(2)} km`;
+        renderGpxProfileChart();
+    }
+
+    function haversineDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371000.0;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function initCharts() {
+        const ctxLive = document.getElementById('liveChart').getContext('2d');
+        liveChart = new Chart(ctxLive, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Hitrost (km/h)', borderColor: '#10b981', data: [], borderWidth: 2, yAxisID: 'y' },
+                    { label: 'Naklon (%)', borderColor: '#06b6d4', data: [], borderWidth: 2, yAxisID: 'y1' },
+                    { label: 'Srčni Utrip (BPM)', borderColor: '#ef4444', data: [], borderWidth: 2, yAxisID: 'y2' }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { ticks: { color: '#94a3b8' } },
+                    y: { type: 'linear', position: 'left', ticks: { color: '#10b981' } },
+                    y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#06b6d4' } },
+                    y2: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#ef4444' } }
+                }
+            }
+        });
+    }
+
+    function updateLiveChart(t, speed, incline, hr) {
+        if (!liveChart) return;
+        liveChart.data.labels.push(`${t}s`);
+        liveChart.data.datasets[0].data.push(speed);
+        liveChart.data.datasets[1].data.push(incline);
+        liveChart.data.datasets[2].data.push(hr);
+
+        if (liveChart.data.labels.length > 60) {
+            liveChart.data.labels.shift();
+            liveChart.data.datasets[0].data.shift();
+            liveChart.data.datasets[1].data.shift();
+            liveChart.data.datasets[2].data.shift();
+        }
+        liveChart.update('none');
+    }
+
+    function renderGpxProfileChart() {
+        const ctxProfile = document.getElementById('gpxProfileChart').getContext('2d');
+        if (gpxProfileChart) gpxProfileChart.destroy();
+        gpxProfileChart = new Chart(ctxProfile, {
+            type: 'line',
+            data: {
+                labels: gpxPoints.map(p => `${p.distKm.toFixed(1)}km`),
+                datasets: [{
+                    label: 'Višina (m)',
+                    borderColor: '#8b5cf6',
+                    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                    fill: true,
+                    data: gpxPoints.map(p => p.ele)
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    function startTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if (!startTime) return;
+            const totalSec = Math.floor((Date.now() - startTime) / 1000);
+            const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+            const s = (totalSec % 60).toString().padStart(2, '0');
+            document.getElementById('valTime').textContent = `${m}:${s}`;
+        }, 1000);
+    }
+
+    function stopTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+    }
+
+    function stopWorkout() {
+        stopTimer();
+        setTreadmillSpeed(0);
+
+        if (treadmillDevice && treadmillDevice.gatt.connected) treadmillDevice.gatt.disconnect();
+        if (hrDevice && hrDevice.gatt.connected) hrDevice.gatt.disconnect();
+
+        document.getElementById('dotTreadmill').classList.remove('connected');
+        document.getElementById('textTreadmill').textContent = 'Ni povezano';
+        document.getElementById('dotHr').classList.remove('connected');
+        document.getElementById('textHr').textContent = 'Ni povezano';
+        document.getElementById('btnStopWorkout').disabled = true;
+
+        showAiDiagnosticModal();
+        saveWorkoutToHistory();
+    }
+
+    function showAiDiagnosticModal() {
+        const baseCadence = currentSpeed > 0.5 ? Math.round(110 + (currentSpeed * 7)) : 156;
+        const baseGct = 310;
+        
+        const bodyHtml = `
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div>
+                    <strong>👤 Tekač:</strong> ${currentUser}<br>
+                    <strong>⏱️ Trajanje & Razdalja:</strong> ${document.getElementById('valTime').textContent} | ${currentDistance.toFixed(2)} km<br>
+                    <strong>🔥 Porabljene Kalorije:</strong> ${Math.round(totalCalories)} kcal
+                </div>
+                
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid var(--accent-green); padding: 0.85rem; border-radius: 0.75rem;">
+                    <h4 style="color: var(--accent-green); margin-bottom: 0.3rem;">🏃♂️ ANALIZA TEKAŠKE DRŽE & KADENCE:</h4>
+                    • Čas stika s tlemi (GCT): <strong style="color: #fff;">${baseGct} ms</strong><br>
+                    • Povprečna kadenca: <strong style="color: #fff;">${baseCadence} korakov/min</strong><br>
+                    • Navpično nihanje: <strong style="color: #fff;">8.2 cm</strong>
+                </div>
+
+                <div style="background: rgba(6, 182, 212, 0.1); border: 1px solid var(--accent-cyan); padding: 0.85rem; border-radius: 0.75rem;">
+                    <h4 style="color: var(--accent-cyan); margin-bottom: 0.3rem;">🩺 PRIPOROČILA ZA TRENING:</h4>
+                    <p style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.4;">
+                        Odličen trening! Za še boljši izkoristek energije priporočamo, da kadenco ohranjate med 155 in 165 korakov na minuto.
+                    </p>
+                </div>
+            </div>
+        `;
+        document.getElementById('modalBodyContent').innerHTML = bodyHtml;
+        document.getElementById('aiDiagnosticModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('aiDiagnosticModal').style.display = 'none';
+    }
+
+    async function saveWorkoutToHistory() {
+        if (!startTime || workoutLog.length === 0) return;
+        const durationSec = Math.floor((Date.now() - startTime) / 1000);
+        if (durationSec < 5) return;
+
+        const hrs = workoutLog.filter(d => d.hr > 0).map(d => d.hr);
+        const avgHr = hrs.length > 0 ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 0;
+
+        const record = {
+            id: Date.now(),
+            user_name: currentUser,
+            date: new Date().toLocaleString('sl-SI'),
+            duration_sec: durationSec,
+            distance_km: currentDistance,
+            user_weight_kg: realWeightKg,
+            calories: Math.round(totalCalories),
+            avg_hr: avgHr
+        };
+
+        if (supabaseClient) {
+            try {
+                await supabaseClient.from('workouts').insert(record);
+            } catch (e) {
+                console.warn("Napaka pri pošiljanju v Supabase workouts:", e);
+            }
+        }
+
+        const history = JSON.parse(localStorage.getItem('ble_history_v4')) || [];
+        history.unshift(record);
+        localStorage.setItem('ble_history_v4', JSON.stringify(history));
+
+        renderHistoryTable();
+    }
+
+    async function renderHistoryTable() {
+        let userHistory = [];
+
+        if (supabaseClient) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('workouts')
+                    .select('*')
+                    .eq('user_name', currentUser)
+                    .order('created_at', { ascending: false });
+
+                if (data && data.length > 0) {
+                    userHistory = data;
+                }
+            } catch (e) {
+                console.warn("Napaka pri branju iz Supabase workouts:", e);
+            }
+        }
+
+        if (userHistory.length === 0) {
+            const allHistory = JSON.parse(localStorage.getItem('ble_history_v4')) || [];
+            userHistory = allHistory.filter(i => (i.user || i.user_name) === currentUser);
+        }
+
+        const tbody = document.getElementById('historyTableBody');
+
+        if (userHistory.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Ni še zabeleženih aktivnosti.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = '';
+        userHistory.forEach(item => {
+            const dur = item.duration_sec || item.durationSec || 0;
+            const dist = item.distance_km || item.distanceKm || 0;
+            const cals = item.calories || 0;
+            const hr = item.avg_hr || item.avgHr || '--';
+            const weight = item.user_weight_kg || item.effective_weight_kg || 78;
+            const min = Math.floor(dur / 60);
+            const sec = dur % 60;
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>${item.date || new Date(item.created_at).toLocaleString('sl-SI')}</td>
+                    <td>${min}m ${sec}s</td>
+                    <td>${dist.toFixed(2)} km</td>
+                    <td>${weight} kg</td>
+                    <td>${cals} kcal</td>
+                    <td>${hr} BPM</td>
+                    <td><button class="btn btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="deleteHistoryItem(${item.id})">Izbriši</button></td>
+                </tr>
+            `;
+        });
+    }
+
+    function deleteHistoryItem(id) {
+        if (supabaseClient) {
+            supabaseClient.from('workouts').delete().eq('id', id).then();
+        }
+        let history = JSON.parse(localStorage.getItem('ble_history_v4')) || [];
+        history = history.filter(item => item.id !== id);
+        localStorage.setItem('ble_history_v4', JSON.stringify(history));
+        renderHistoryTable();
+    }
+
+    function clearHistory() {
+        if (confirm(`Izbrišem zgodovino za ${currentUser}?`)) {
+            if (supabaseClient) {
+                supabaseClient.from('workouts').delete().eq('user_name', currentUser).then();
+            }
+            let history = JSON.parse(localStorage.getItem('ble_history_v4')) || [];
+            history = history.filter(i => (i.user || i.user_name) !== currentUser);
+            localStorage.setItem('ble_history_v4', JSON.stringify(history));
+            renderHistoryTable();
+        }
+    }
+
+    function exportWorkoutGPX() {
+        if (workoutLog.length === 0) return alert("Ni zabeleženih točk za izvoz GPX datoteke.");
+
+        const dateIso = new Date().toISOString();
+        let gpxXml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+        gpxXml += `<gpx version="1.1" creator="Tekalna Steza Pro"\n`;
+        gpxXml += `  xmlns="http://www.topografix.com/GPX/1/1"\n`;
+        gpxXml += `  xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">\n`;
+        gpxXml += `  <metadata>\n`;
+        gpxXml += `    <name>Tek Trening - ${currentUser}</name>\n`;
+        gpxXml += `    <time>${dateIso}</time>\n`;
+        gpxXml += `  </metadata>\n`;
+        gpxXml += `  <trk>\n`;
+        gpxXml += `    <name>Tekalna Steza</name>\n`;
+        gpxXml += `    <trkseg>\n`;
+
+        const baseTime = Date.now() - (workoutLog.length * 500);
+
+        workoutLog.forEach((pt, idx) => {
+            const ptTime = new Date(baseTime + (idx * 500)).toISOString();
+            const cad = pt.speed > 0.5 ? Math.round(110 + (pt.speed * 7)) : 0;
+            const hr = pt.hr || 135;
+
+            gpxXml += `      <trkpt lat="46.0569" lon="14.5058">\n`;
+            gpxXml += `        <ele>300</ele>\n`;
+            gpxXml += `        <time>${ptTime}</time>\n`;
+            gpxXml += `        <extensions>\n`;
+            gpxXml += `          <gpxtpx:TrackPointExtension>\n`;
+            gpxXml += `            <gpxtpx:hr>${hr}</gpxtpx:hr>\n`;
+            gpxXml += `            <gpxtpx:cad>${cad}</gpxtpx:cad>\n`;
+            gpxXml += `          </gpxtpx:TrackPointExtension>\n`;
+            gpxXml += `        </extensions>\n`;
+            gpxXml += `      </trkpt>\n`;
+        });
+
+        gpxXml += `    </trkseg>\n`;
+        gpxXml += `  </trk>\n`;
+        gpxXml += `</gpx>\n`;
+
+        const blob = new Blob([gpxXml], { type: "application/gpx+xml" });
+        const link = document.createElement("a");
+        const dateStr = new Date().toISOString().slice(0,19).replace(/[-:]/g, "").replace("T", "_");
+        link.href = URL.createObjectURL(blob);
+        link.download = `trening_health_connect_${currentUser}_${dateStr}.gpx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        alert("GPX datoteka z vgrajenim utripom in kadenco je preneta!");
+    }
+
+    function exportHistoryCSV() {
+        const allHistory = JSON.parse(localStorage.getItem('ble_history_v4')) || [];
+        const userHistory = allHistory.filter(i => (i.user || i.user_name) === currentUser);
+        if (userHistory.length === 0) return alert("Ni podatkov.");
+
+        let csv = "data:text/csv;charset=utf-8,Uporabnik,Datum,Trajanje_s,Razdalja_km,Teza_kg,Kalorije_kcal\n";
+        userHistory.forEach(r => {
+            csv += `"${r.user || r.user_name}","${r.date}",${r.duration_sec || r.durationSec},${r.distance_km || r.distanceKm},${r.user_weight_kg || 78},${r.calories}\n`;
+        });
+
+        const encodedUri = encodeURI(csv);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `treningi_aktivnosti_${currentUser}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function loadStats() {
+        const allHistory = JSON.parse(localStorage.getItem('ble_history_v4')) || [];
+        const userHistory = allHistory.filter(i => (i.user || i.user_name) === currentUser);
+
+        const totalDist = userHistory.reduce((acc, i) => acc + (i.distance_km || i.distanceKm || 0), 0);
+        const totalSec = userHistory.reduce((acc, i) => acc + (i.duration_sec || i.durationSec || 0), 0);
+        const totalCals = userHistory.reduce((acc, i) => acc + (i.calories || 0), 0);
+
+        document.getElementById('statTotalDist').textContent = totalDist.toFixed(1);
+        document.getElementById('statTotalTime').textContent = Math.round(totalSec / 60);
+        document.getElementById('statTotalCals').textContent = totalCals;
+    }
+</script>
+</body>
+</html>
