@@ -106,6 +106,11 @@
             box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
         }
 
+        .user-pill.active.female-active {
+            background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+            box-shadow: 0 4px 12px rgba(236, 72, 153, 0.4);
+        }
+
         .fullscreen-btn {
             background: rgba(255, 255, 255, 0.08);
             border: 1px solid var(--card-border);
@@ -421,8 +426,8 @@
 
         <div class="header-controls">
             <div class="user-switcher">
-                <button class="user-pill active" id="pillMiha" onclick="setUser('Miha')">Miha</button>
-                <button class="user-pill" id="pillVeronika" onclick="setUser('Veronika')">Veronika</button>
+                <button class="user-pill active" id="pillMiha" onclick="setUser('Miha')">👨 Miha (78 kg)</button>
+                <button class="user-pill" id="pillVeronika" onclick="setUser('Veronika')">👩 Veronika (62 kg)</button>
             </div>
             <button class="fullscreen-btn" onclick="toggleFullScreen()" title="Celozaslonski način">⛶ Cel Zaslon</button>
         </div>
@@ -452,6 +457,7 @@
                 <div class="badge"><span class="dot" id="dotTreadmill"></span> Steza: <span id="textTreadmill">Ni povezano</span></div>
                 <div class="badge"><span class="dot" id="dotHr"></span> Ura: <span id="textHr">Ni povezano</span></div>
                 <div class="badge"><span class="dot" id="dotSupabase"></span> Supabase: <span id="textSupabase">Lokalno</span></div>
+                <div class="badge" style="border-color: var(--accent-pink);"><span id="textGenderBadge">👩 Ženski profil</span></div>
             </div>
 
             <!-- Merilna mreža -->
@@ -744,9 +750,10 @@
         }
     }
 
+    // PROFILI SA PRILAGOJENIM FIZIOLOŠKIM MERITVAM (ŽENSKA / MOŠKI)
     const userProfiles = {
-        'Miha': { weightKg: 78 },
-        'Veronika': { weightKg: 62 }
+        'Miha': { weightKg: 78, gender: 'male', maxHr: 188, bmrFactor: 1.0 },
+        'Veronika': { weightKg: 62, gender: 'female', maxHr: 194, bmrFactor: 0.92 }
     };
     let currentUser = localStorage.getItem('ble_active_user') || 'Miha';
 
@@ -839,15 +846,23 @@
         currentUser = name;
         localStorage.setItem('ble_active_user', name);
 
-        document.getElementById('pillMiha').classList.toggle('active', name === 'Miha');
-        document.getElementById('pillVeronika').classList.toggle('active', name === 'Veronika');
+        const isFemale = userProfiles[name].gender === 'female';
+
+        const pillM = document.getElementById('pillMiha');
+        const pillV = document.getElementById('pillVeronika');
+
+        pillM.classList.toggle('active', name === 'Miha');
+        pillV.classList.toggle('active', name === 'Veronika');
+        pillV.classList.toggle('female-active', name === 'Veronika');
+
         document.getElementById('historyUserName').textContent = name;
+        document.getElementById('textGenderBadge').textContent = isFemale ? '👩 Ženski profil (Veronika)' : '👨 Moški profil (Miha)';
 
         if (supabaseClient) {
             try {
                 const { data, error } = await supabaseClient
                     .from('profiles')
-                    .select('weight_kg')
+                    .select('weight_kg, gender')
                     .eq('name', name)
                     .single();
 
@@ -896,18 +911,19 @@
     }
 
     function loadFatBurnProgram() {
+        const isFemale = userProfiles[currentUser].gender === 'female';
         programSteps = [
             { duration: 180, speed: 4.5, incline: 1.0, name: 'Ogrevanje' },
-            { duration: 240, speed: 5.2, incline: 5.0, name: 'Vzpon' },
-            { duration: 180, speed: 5.0, incline: 3.0, name: 'Umerjeno' },
-            { duration: 240, speed: 5.2, incline: 6.0, name: 'Vzpon' },
-            { duration: 180, speed: 5.0, incline: 3.0, name: 'Umerjeno' },
+            { duration: 240, speed: isFemale ? 5.0 : 5.2, incline: 5.0, name: 'Vzpon' },
+            { duration: 180, speed: 4.8, incline: 3.0, name: 'Umerjeno' },
+            { duration: 240, speed: isFemale ? 5.0 : 5.2, incline: 6.0, name: 'Vzpon' },
+            { duration: 180, speed: 4.8, incline: 3.0, name: 'Umerjeno' },
             { duration: 180, speed: 4.0, incline: 0.0, name: 'Hlajenje' }
         ];
 
         renderStepsList();
         saveProgramToSupabase();
-        alert("Program 'Fat Burn Low Impact (20 min)' naložen!");
+        alert(`Program 'Fat Burn Low Impact (20 min)' prilagojen za ${currentUser}!`);
     }
 
     // SHRANJEVANJE IN NALAGANJE MOJIH YOUTUBE PROG
@@ -1299,8 +1315,10 @@
             }
         }
 
+        // PRILAGODITEV PRERAČUNA KALORIJ GLEDE NA ŽENSKI/MOŠKI PROFIL
+        const bmrFactor = userProfiles[currentUser].bmrFactor || 1.0;
         let met = currentSpeed > 0.5 ? (currentSpeed * 1.1) : 1.0;
-        totalCalories += (met * realWeightKg * (0.5 / 3600));
+        totalCalories += (met * realWeightKg * bmrFactor * (0.5 / 3600));
         document.getElementById('valCalories').textContent = Math.round(totalCalories);
 
         syncVideoSpeed();
@@ -1453,7 +1471,7 @@
                     executeStep(programSteps[currentStepIdx]);
                 } else {
                     stopCustomProgram();
-                    alert("Intervalni trening 'Tibialis Relief' je uspešno zaključen! Odlično delo!");
+                    alert(`Intervalni trening za ${currentUser} je uspešno zaključen! Odlično delo! 🎉`);
                 }
             }
         }, 1000);
@@ -1686,28 +1704,29 @@
     }
 
     function showAiDiagnosticModal() {
-        const baseCadence = currentSpeed > 0.5 ? Math.round(110 + (currentSpeed * 7)) : 156;
-        const baseGct = 310;
+        const isFemale = userProfiles[currentUser].gender === 'female';
+        const baseCadence = currentSpeed > 0.5 ? Math.round(115 + (currentSpeed * 7)) : 160;
+        const baseGct = isFemale ? 295 : 310;
         
         const bodyHtml = `
             <div style="display: flex; flex-direction: column; gap: 1rem;">
                 <div>
-                    <strong>👤 Tekač:</strong> ${currentUser}<br>
+                    <strong>${isFemale ? '👩 Tekačica:' : '👨 Tekač:'}</strong> ${currentUser}<br>
                     <strong>⏱️ Trajanje & Razdalja:</strong> ${document.getElementById('valTime').textContent} | ${currentDistance.toFixed(2)} km<br>
-                    <strong>🔥 Porabljene Kalorije:</strong> ${Math.round(totalCalories)} kcal
+                    <strong>🔥 Porabljene Kalorije:</strong> ${Math.round(totalCalories)} kcal (Ženski BMR izračun)
                 </div>
                 
-                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid var(--accent-green); padding: 0.85rem; border-radius: 0.75rem;">
-                    <h4 style="color: var(--accent-green); margin-bottom: 0.3rem;">🏃♂️ ANALIZA TEKAŠKE DRŽE & KADENCE:</h4>
+                <div style="background: rgba(236, 72, 153, 0.1); border: 1px solid var(--accent-pink); padding: 0.85rem; border-radius: 0.75rem;">
+                    <h4 style="color: var(--accent-pink); margin-bottom: 0.3rem;">🏃♀️ ANALIZA TEKAŠKE DRŽE & FIZIOLOGIJE:</h4>
                     • Čas stika s tlemi (GCT): <strong style="color: #fff;">${baseGct} ms</strong><br>
                     • Povprečna kadenca: <strong style="color: #fff;">${baseCadence} korakov/min</strong><br>
-                    • Navpično nihanje: <strong style="color: #fff;">8.2 cm</strong>
+                    • Optimalno območje srčnega utripa: <strong style="color: #fff;">125 - 150 BPM (Fat Burn Zone)</strong>
                 </div>
 
                 <div style="background: rgba(6, 182, 212, 0.1); border: 1px solid var(--accent-cyan); padding: 0.85rem; border-radius: 0.75rem;">
-                    <h4 style="color: var(--accent-cyan); margin-bottom: 0.3rem;">🩺 PRIPOROČILA ZA TRENING:</h4>
+                    <h4 style="color: var(--accent-cyan); margin-bottom: 0.3rem;">🩺 PRIPOROČILA ZA ZDRAVJE:</h4>
                     <p style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.4;">
-                        Odličen trening! Za še boljši izkoristek energije priporočamo, da kadenco ohranjate med 155 in 165 korakov na minuto.
+                        ${isFemale ? 'Bravo Veronika! Odlično opravljen trening. Pri naklonu 8% vaša golenica (tibialis) ni obremenjena z udarci, kalorijska poraba pa je bila maksimalna.' : 'Odličen trening! Za še boljši izkoristek energije priporočamo, da kadenco ohranjate med 155 in 165 korakov na minuto.'}
                     </p>
                 </div>
             </div>
@@ -1791,7 +1810,7 @@
             const dist = item.distance_km || item.distanceKm || 0;
             const cals = item.calories || 0;
             const hr = item.avg_hr || item.avgHr || '--';
-            const weight = item.user_weight_kg || item.effective_weight_kg || 78;
+            const weight = item.user_weight_kg || item.effective_weight_kg || 62;
             const min = Math.floor(dur / 60);
             const sec = dur % 60;
 
@@ -1889,7 +1908,7 @@
 
         let csv = "data:text/csv;charset=utf-8,Uporabnik,Datum,Trajanje_s,Razdalja_km,Teza_kg,Kalorije_kcal\n";
         userHistory.forEach(r => {
-            csv += `"${r.user || r.user_name}","${r.date}",${r.duration_sec || r.durationSec},${r.distance_km || r.distanceKm},${r.user_weight_kg || 78},${r.calories}\n`;
+            csv += `"${r.user || r.user_name}","${r.date}",${r.duration_sec || r.durationSec},${r.distance_km || r.distanceKm},${r.user_weight_kg || 62},${r.calories}\n`;
         });
 
         const encodedUri = encodeURI(csv);
