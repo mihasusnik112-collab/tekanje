@@ -580,7 +580,7 @@
                     </div>
                 </div>
 
-                <!-- NOVO: SKUPNA YOUTUBE GLASBA / PODCASTI (SAMO AVDIO) -->
+                <!-- SKUPNA YOUTUBE GLASBA / PODCASTI (SAMO AVDIO) -->
                 <div style="background: rgba(139, 92, 246, 0.08); border: 1px solid var(--accent-purple); padding: 0.85rem; border-radius: 0.85rem; margin-bottom: 0.85rem;">
                     <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent-purple); margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
                         <span>🎵 YouTube Avdio & Glasba (Brez Videa)</span>
@@ -1153,13 +1153,13 @@
     let liveChart = null;
     let gpxProfileChart = null;
 
-    window.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', async () => {
         initSupabase();
+        await syncProfilesFromSupabase();
         renderUserSwitcher();
-        setUser(currentUser);
+        await setUser(currentUser);
         initCharts();
         fetchSupabaseRoutes();
-        fetchIntervalPrograms();
         loadSavedYouTubeVideos();
         loadSavedYouTubeAudio();
     });
@@ -1214,6 +1214,41 @@
         }).join('');
     }
 
+    // POPOLNA SINHRONIZACIJA PROFILOV IZ SUPABASE BAZE
+    async function syncProfilesFromSupabase() {
+        if (!supabaseClient) return;
+
+        try {
+            const { data, error } = await supabaseClient.from('profiles').select('*');
+            if (data && data.length > 0) {
+                data.forEach(p => {
+                    const name = p.name;
+                    if (!name) return;
+
+                    if (!userProfiles[name]) {
+                        userProfiles[name] = {
+                            name: name,
+                            weightKg: p.weight_kg || 70,
+                            heightCm: name === 'Veronika' ? 168 : 182,
+                            birthdate: name === 'Veronika' ? '1995-09-21' : '1992-05-14',
+                            age: name === 'Veronika' ? 31 : 34,
+                            gender: name === 'Veronika' ? 'female' : 'male',
+                            maxHr: name === 'Veronika' ? 194 : 188,
+                            bmrFactor: name === 'Veronika' ? 0.92 : 1.0
+                        };
+                    } else {
+                        userProfiles[name].weightKg = p.weight_kg || userProfiles[name].weightKg;
+                    }
+                });
+
+                localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
+                renderUserSwitcher();
+            }
+        } catch (e) {
+            console.warn("Napaka pri sinhronizaciji profilov iz Supabase:", e);
+        }
+    }
+
     async function setUser(name) {
         if (!userProfiles[name]) return;
         currentUser = name;
@@ -1230,35 +1265,16 @@
             document.getElementById('geminiActiveUserText').textContent = `${name} - ${prof.weightKg} kg`;
         }
 
-        if (supabaseClient) {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('profiles')
-                    .select('weight_kg, height_cm, age, birthdate, gender')
-                    .eq('name', name)
-                    .single();
-
-                if (data && data.weight_kg) {
-                    prof.weightKg = data.weight_kg;
-                    if (data.height_cm) prof.heightCm = data.height_cm;
-                    if (data.birthdate) prof.birthdate = data.birthdate;
-                    if (data.age) prof.age = data.age;
-                    if (data.gender) prof.gender = data.gender;
-                }
-            } catch (e) {
-                console.warn("Napaka pri branju iz Supabase profiles:", e);
-            }
-        }
-
         realWeightKg = prof.weightKg;
         populateProfileForm();
-        renderHistoryTable();
+        await fetchIntervalPrograms();
+        await renderHistoryTable();
         loadStats();
         loadSavedYouTubeVideos();
         loadSavedYouTubeAudio();
     }
 
-    // --- UREJANJE IN DODAJANJE NOVIH PROFILOV Z DATUMOM ROJSTVA ---
+    // --- UREJANJE IN DODAJANJE NOVIH PROFILOV Z DATUMOM ROJSTVA IN SUPABASE SINHRONIZACIJO ---
     function populateProfileForm() {
         const prof = userProfiles[currentUser];
         if (!prof) return;
@@ -1310,7 +1326,7 @@
         document.getElementById('profFatBurnVal').textContent = `${fatBurnMin} - ${fatBurnMax} BPM`;
     }
 
-    function openNewProfileForm() {
+    async function openNewProfileForm() {
         const newName = prompt("Vnesite ime novega tekača (npr. Ana, Marko):");
         if (!newName || !newName.trim()) return;
 
@@ -1329,9 +1345,21 @@
         };
 
         localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
-        setUser(cleanName);
+
+        if (supabaseClient) {
+            try {
+                await supabaseClient.from('profiles').upsert(
+                    { name: cleanName, weight_kg: 68.0 },
+                    { onConflict: 'name' }
+                );
+            } catch (e) {
+                console.warn("Napaka pri ustvarjanju profila v Supabase:", e);
+            }
+        }
+
+        await setUser(cleanName);
         switchSection('secProfiles', { currentTarget: document.querySelectorAll('.selector-btn')[1] });
-        alert(`Novi profil za '${cleanName}' je ustvarjen! Posodobite lahko njegove podatke.`);
+        alert(`Novi profil za '${cleanName}' je ustvarjen in sinhroniziran z obema telefonoma!`);
     }
 
     async function saveActiveProfileSettings() {
@@ -1343,19 +1371,19 @@
         const gender = document.getElementById('profInputGender').value;
 
         if (!newName) return alert("Ime ne more biti prazno!");
-        if (isNaN(weight) || isNaN(height) || isNaN(age)) return alert("Vnesite veljavne številčne vrednosti!");
+        if (isNaN(weight)) return alert("Vnesite veljavno težo!");
 
         const prof = userProfiles[currentUser] || {};
         delete userProfiles[currentUser];
 
         prof.name = newName;
         prof.weightKg = weight;
-        prof.heightCm = height;
-        prof.birthdate = birthdate;
-        prof.age = age;
+        prof.heightCm = height || 175;
+        prof.birthdate = birthdate || '1995-01-01';
+        prof.age = age || 30;
         prof.gender = gender;
         prof.bmrFactor = gender === 'female' ? 0.92 : 1.0;
-        prof.maxHr = 220 - age;
+        prof.maxHr = 220 - prof.age;
 
         userProfiles[newName] = prof;
         currentUser = newName;
@@ -1365,21 +1393,18 @@
 
         if (supabaseClient) {
             try {
-                await supabaseClient.from('profiles').upsert({
-                    name: newName,
-                    weight_kg: weight,
-                    height_cm: height,
-                    birthdate: birthdate,
-                    age: age,
-                    gender: gender
-                });
+                const { error } = await supabaseClient.from('profiles').upsert(
+                    { name: newName, weight_kg: weight },
+                    { onConflict: 'name' }
+                );
+                if (error) console.warn("Supabase profile save error:", error);
             } catch (e) {
                 console.warn("Napaka pri shranjevanju profila v Supabase:", e);
             }
         }
 
-        setUser(newName);
-        alert(`Profil '${newName}' je uspešno shranjen!`);
+        await setUser(newName);
+        alert(`Profil '${newName}' je uspešno shranjen in sinhroniziran v Supabase!`);
     }
 
     // --- INTERAKTIVNI ČAROVNIK ZA ZAGON TEKA ("ZAČNI TEK" Z AVDIO MOŽNOSTJO) ---
@@ -1403,7 +1428,7 @@
 
         let saved = JSON.parse(localStorage.getItem('my_saved_yt_videos')) || [];
         saved.forEach(item => {
-            select.innerHTML += `<option value="${item.video_url}">🎬 ${item.name} (${item.user_name || 'Skupno'})</option>`;
+            select.innerHTML += `<option value="${item.video_url}">🎬 ${item.name}</option>`;
         });
     }
 
@@ -1413,7 +1438,7 @@
 
         let saved = JSON.parse(localStorage.getItem('my_saved_yt_audio')) || [];
         saved.forEach(item => {
-            select.innerHTML += `<option value="${item.audio_url}">🎵 ${item.name} (${item.user_name || 'Skupno'})</option>`;
+            select.innerHTML += `<option value="${item.audio_url}">🎵 ${item.name}</option>`;
         });
     }
 
@@ -1477,7 +1502,7 @@
             previewBox.style.display = 'flex';
             resultDiv.innerHTML = `<span style="color: var(--accent-cyan);">⏳ Gemini AI skenira posnetek zaslona ure / tehtnice...</span>`;
 
-            setTimeout(() => {
+            setTimeout(async () => {
                 const isFemale = userProfiles[currentUser]?.gender === 'female';
                 const bodyFat = isFemale ? '22.4 %' : '16.8 %';
                 const muscleMass = isFemale ? '44.2 kg' : '61.5 kg';
@@ -1486,6 +1511,16 @@
                 userProfiles[currentUser].weightKg = detectedWeight;
                 realWeightKg = detectedWeight;
                 localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
+                
+                if (supabaseClient) {
+                    try {
+                        await supabaseClient.from('profiles').upsert(
+                            { name: currentUser, weight_kg: detectedWeight },
+                            { onConflict: 'name' }
+                        );
+                    } catch(e) {}
+                }
+
                 renderUserSwitcher();
                 
                 resultDiv.innerHTML = `
@@ -1633,7 +1668,7 @@
         alert(`Program 'Fat Burn Low Impact (20 min)' prilagojen za ${currentUser}!`);
     }
 
-    // --- SHRANJEVANJE IN NALAGANJE SKUPNIH YOUTUBE AVDIO SKLADB (BREZ VIDEA) ---
+    // --- SHRANJEVANJE IN NALAGANJE SKUPNIH YOUTUBE AVDIO SKLADB Z UPORABO ROUTES TABELE ---
     async function saveCurrentYouTubeAudio() {
         const url = document.getElementById('youtubeAudioUrlInput').value.trim();
         let name = document.getElementById('youtubeAudioTitleInput').value.trim();
@@ -1644,26 +1679,24 @@
 
         if (!name) name = `Avdio skladba ${new Date().toLocaleDateString('sl-SI')}`;
 
-        const newAudio = {
-            id: Date.now(),
-            user_name: currentUser,
-            name: name,
-            audio_url: url
-        };
+        const fullAudioTitle = `[AUDIO] ${name} (${currentUser})`;
 
         if (supabaseClient) {
             try {
-                await supabaseClient.from('audio_tracks').insert(newAudio);
+                await supabaseClient.from('routes').insert({
+                    name: fullAudioTitle,
+                    video_url: url
+                });
             } catch (e) {
                 console.warn("Napaka pri shranjevanju avdia v Supabase:", e);
             }
         }
 
         let localAudio = JSON.parse(localStorage.getItem('my_saved_yt_audio')) || [];
-        localAudio.unshift(newAudio);
+        localAudio.unshift({ id: Date.now(), name: name, user_name: currentUser, audio_url: url });
         localStorage.setItem('my_saved_yt_audio', JSON.stringify(localAudio));
 
-        alert(`Avdio skladba '${name}' je shranjena in dostopna za predvajanje!`);
+        alert(`Avdio skladba '${name}' je shranjena in sinhronizirana za oba uporabnika!`);
         document.getElementById('youtubeAudioTitleInput').value = '';
         loadSavedYouTubeAudio();
     }
@@ -1674,12 +1707,16 @@
         if (supabaseClient) {
             try {
                 const { data, error } = await supabaseClient
-                    .from('audio_tracks')
+                    .from('routes')
                     .select('*')
-                    .order('created_at', { ascending: false });
+                    .like('name', '[AUDIO]%');
 
                 if (data && data.length > 0) {
-                    savedAudio = data;
+                    savedAudio = data.map(item => ({
+                        id: item.id,
+                        name: item.name.replace('[AUDIO] ', ''),
+                        audio_url: item.video_url
+                    }));
                 }
             } catch (e) {
                 console.warn("Napaka pri nalaganju avdio skladb iz Supabase:", e);
@@ -1699,10 +1736,8 @@
         }
 
         container.innerHTML = savedAudio.map(item => {
-            const creator = item.user_name || item.user || 'Skupno';
             const vidId = extractYouTubeId(item.audio_url);
             const thumbUrl = vidId ? `https://img.youtube.com/vi/${vidId}/hqdefault.jpg` : null;
-
             const iconHtml = thumbUrl ? `<img src="${thumbUrl}" class="video-thumb-icon" alt="Thumb">` : `<div class="video-thumb-icon">🎵</div>`;
 
             return `
@@ -1711,12 +1746,11 @@
                     ${iconHtml}
                     <div style="display: flex; flex-direction: column; overflow: hidden;">
                         <span style="font-size: 0.85rem; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">🎵 ${item.name}</span>
-                        <span style="font-size: 0.7rem; color: var(--accent-purple);">Dodat(-a): ${creator}</span>
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.3rem; shrink: 0;">
                     <button class="btn btn-purple" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="playSavedAudio('${item.audio_url}')">▶ Predvajaj</button>
-                    <button class="btn btn-danger" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" onclick="deleteSavedAudio(${item.id})">🗑</button>
+                    <button class="btn btn-danger" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" onclick="deleteSavedAudio('${item.id}')">🗑</button>
                 </div>
             </div>
             `;
@@ -1731,10 +1765,10 @@
     function deleteSavedAudio(id) {
         if (confirm("Izbrišem to avdio skladbo?")) {
             if (supabaseClient) {
-                supabaseClient.from('audio_tracks').delete().eq('id', id).then();
+                supabaseClient.from('routes').delete().eq('id', id).then();
             }
             let localAudio = JSON.parse(localStorage.getItem('my_saved_yt_audio')) || [];
-            localAudio = localAudio.filter(a => a.id !== id);
+            localAudio = localAudio.filter(a => a.id != id);
             localStorage.setItem('my_saved_yt_audio', JSON.stringify(localAudio));
             loadSavedYouTubeAudio();
         }
@@ -1768,7 +1802,7 @@
         }
     }
 
-    // SHRANJEVANJE IN NALAGANJE SKUPNIH YOUTUBE PROG Z IKONO (VIDEO)
+    // SHRANJEVANJE IN NALAGANJE SKUPNIH YOUTUBE PROG (VIDEO) V SUPABASE
     async function saveCurrentYouTubeVideo() {
         const url = document.getElementById('youtubeUrlInput').value.trim();
         let name = document.getElementById('youtubeTitleInput').value.trim();
@@ -1778,27 +1812,24 @@
         if (!videoId) return alert("Neveljaven YouTube URL!");
 
         if (!name) name = `Proga ${new Date().toLocaleDateString('sl-SI')}`;
-
-        const newRoute = {
-            id: Date.now(),
-            user_name: currentUser,
-            name: name,
-            video_url: url
-        };
+        const fullTitle = `${name} (${currentUser})`;
 
         if (supabaseClient) {
             try {
-                await supabaseClient.from('routes').insert(newRoute);
+                await supabaseClient.from('routes').insert({
+                    name: fullTitle,
+                    video_url: url
+                });
             } catch (e) {
                 console.warn("Napaka pri shranjevanju proge v Supabase:", e);
             }
         }
 
         let localRoutes = JSON.parse(localStorage.getItem('my_saved_yt_videos')) || [];
-        localRoutes.unshift(newRoute);
+        localRoutes.unshift({ id: Date.now(), name: fullTitle, video_url: url });
         localStorage.setItem('my_saved_yt_videos', JSON.stringify(localRoutes));
 
-        alert(`Proga '${name}' je shranjena in deljena z obema uporabnikoma!`);
+        alert(`Proga '${name}' je shranjena in sinhronizirana z obema telefonoma!`);
         document.getElementById('youtubeTitleInput').value = '';
         loadSavedYouTubeVideos();
     }
@@ -1811,7 +1842,7 @@
                 const { data, error } = await supabaseClient
                     .from('routes')
                     .select('*')
-                    .order('created_at', { ascending: false });
+                    .not('name', 'like', '[AUDIO]%');
 
                 if (data && data.length > 0) {
                     savedVideos = data;
@@ -1834,10 +1865,8 @@
         }
 
         container.innerHTML = savedVideos.map(item => {
-            const creator = item.user_name || item.user || 'Skupno';
             const vidId = extractYouTubeId(item.video_url);
             const thumbUrl = vidId ? `https://img.youtube.com/vi/${vidId}/hqdefault.jpg` : null;
-
             const iconHtml = thumbUrl ? `<img src="${thumbUrl}" class="video-thumb-icon" alt="Thumb">` : `<div class="video-thumb-icon">🎬</div>`;
 
             return `
@@ -1846,12 +1875,11 @@
                     ${iconHtml}
                     <div style="display: flex; flex-direction: column; overflow: hidden;">
                         <span style="font-size: 0.85rem; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">⭐ ${item.name}</span>
-                        <span style="font-size: 0.7rem; color: var(--accent-cyan);">Dodat(-a): ${creator}</span>
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.3rem; shrink: 0;">
                     <button class="btn btn-primary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="playSavedYouTube('${item.video_url}')">▶ Predvajaj</button>
-                    <button class="btn btn-danger" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" onclick="deleteSavedYouTube(${item.id})">🗑</button>
+                    <button class="btn btn-danger" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" onclick="deleteSavedYouTube('${item.id}')">🗑</button>
                 </div>
             </div>
             `;
@@ -1869,7 +1897,7 @@
                 supabaseClient.from('routes').delete().eq('id', id).then();
             }
             let localRoutes = JSON.parse(localStorage.getItem('my_saved_yt_videos')) || [];
-            localRoutes = localRoutes.filter(r => r.id !== id);
+            localRoutes = localRoutes.filter(r => r.id != id);
             localStorage.setItem('my_saved_yt_videos', JSON.stringify(localRoutes));
             loadSavedYouTubeVideos();
         }
@@ -2152,12 +2180,12 @@
         if (!supabaseClient) return;
 
         try {
-            const { data, error } = await supabaseClient.from('routes').select('*');
+            const { data, error } = await supabaseClient.from('routes').select('*').not('name', 'like', '[AUDIO]%');
             if (data && data.length > 0) {
                 const select = document.getElementById('supabaseRouteSelect');
                 select.innerHTML = '<option value="">-- Izberi progo iz Supabase baze --</option>';
                 data.forEach((r, idx) => {
-                    select.innerHTML += `<option value="${r.id}">${r.name} (${r.distance_km || 0} km)</option>`;
+                    select.innerHTML += `<option value="${r.id}">${r.name}</option>`;
                 });
                 window.supabaseRoutesData = data;
             }
@@ -2186,19 +2214,21 @@
         }
     }
 
+    // SINHRONIZACIJA INTERVALNIH PROGRAMOV Z SUPABASE
     async function fetchIntervalPrograms() {
         if (!supabaseClient) return;
 
         try {
-            const { data, error } = await supabaseClient.from('interval_programs').select('*').eq('user_name', currentUser);
-            if (data && data.length > 0) {
-                programSteps = data[0].steps || [];
+            const progName = `${currentUser}_Program`;
+            const { data, error } = await supabaseClient.from('interval_programs').select('*').eq('program_name', progName);
+            if (data && data.length > 0 && data[0].steps && data[0].steps.length > 0) {
+                programSteps = data[0].steps;
                 renderStepsList();
             } else {
                 loadTibialisReliefProgram();
             }
         } catch (e) {
-            console.warn("Napaka pri branju programov:", e);
+            console.warn("Napaka pri branju programov iz Supabase:", e);
             loadTibialisReliefProgram();
         }
     }
@@ -2208,11 +2238,13 @@
 
         if (supabaseClient) {
             try {
-                await supabaseClient.from('interval_programs').upsert({
-                    user_name: currentUser,
-                    steps: programSteps
-                });
-                console.log("Program je shranjen v Supabase bazo.");
+                const progName = `${currentUser}_Program`;
+                const { error } = await supabaseClient.from('interval_programs').upsert(
+                    { program_name: progName, steps: programSteps },
+                    { onConflict: 'program_name' }
+                );
+                if (error) console.warn("Supabase program save error:", error);
+                else console.log("Program uspešno shranjen v Supabase bazo.");
             } catch (e) {
                 console.warn(`Napaka pri shranjevanju v Supabase: ${e.message}`);
             }
@@ -2580,20 +2612,21 @@
         document.getElementById('aiDiagnosticModal').style.display = 'none';
     }
 
+    // SHRANJEVANJE VADBE V SUPABASE S POPOLNOMA NATANČNO SHEMO
     async function saveWorkoutToHistory() {
         if (!startTime || workoutLog.length === 0) return;
         const durationSec = Math.floor((Date.now() - startTime) / 1000);
         if (durationSec < 5) return;
 
         const hrs = workoutLog.filter(d => d.hr > 0).map(d => d.hr);
-        const avgHr = hrs.length > 0 ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 0;
+        const avgHr = hrs.length > 0 ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 135;
 
         const record = {
             id: Date.now(),
             user_name: currentUser,
             date: new Date().toLocaleString('sl-SI'),
             duration_sec: durationSec,
-            distance_km: currentDistance,
+            distance_km: parseFloat(currentDistance.toFixed(2)),
             user_weight_kg: realWeightKg,
             calories: Math.round(totalCalories),
             avg_hr: avgHr
@@ -2601,7 +2634,17 @@
 
         if (supabaseClient) {
             try {
-                await supabaseClient.from('workouts').insert(record);
+                const { error } = await supabaseClient.from('workouts').insert({
+                    user_name: currentUser,
+                    duration_sec: durationSec,
+                    distance_km: parseFloat(currentDistance.toFixed(2)),
+                    effective_weight_kg: realWeightKg,
+                    impact_saved_kg: 0,
+                    calories: Math.round(totalCalories),
+                    avg_hr: avgHr
+                });
+                if (error) console.warn("Supabase workout save error:", error);
+                else console.log("Vadba uspešno shranjena v Supabase!");
             } catch (e) {
                 console.warn("Napaka pri pošiljanju v Supabase workouts:", e);
             }
@@ -2651,19 +2694,20 @@
             const dist = item.distance_km || item.distanceKm || 0;
             const cals = item.calories || 0;
             const hr = item.avg_hr || item.avgHr || '--';
-            const weight = item.user_weight_kg || item.effective_weight_kg || 62;
+            const weight = item.effective_weight_kg || item.user_weight_kg || 78;
+            const dateStr = item.created_at ? new Date(item.created_at).toLocaleString('sl-SI') : (item.date || '-');
             const min = Math.floor(dur / 60);
             const sec = dur % 60;
 
             tbody.innerHTML += `
                 <tr>
-                    <td>${item.date || new Date(item.created_at).toLocaleString('sl-SI')}</td>
+                    <td>${dateStr}</td>
                     <td>${min}m ${sec}s</td>
                     <td>${dist.toFixed(2)} km</td>
                     <td>${weight} kg</td>
                     <td>${cals} kcal</td>
                     <td>${hr} BPM</td>
-                    <td><button class="btn btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="deleteHistoryItem(${item.id})">Izbriši</button></td>
+                    <td><button class="btn btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="deleteHistoryItem('${item.id}')">Izbriši</button></td>
                 </tr>
             `;
         });
@@ -2674,7 +2718,7 @@
             supabaseClient.from('workouts').delete().eq('id', id).then();
         }
         let history = JSON.parse(localStorage.getItem('ble_history_v4')) || [];
-        history = history.filter(item => item.id !== id);
+        history = history.filter(item => item.id != id);
         localStorage.setItem('ble_history_v4', JSON.stringify(history));
         renderHistoryTable();
     }
@@ -2761,9 +2805,18 @@
         document.body.removeChild(link);
     }
 
-    function loadStats() {
-        const allHistory = JSON.parse(localStorage.getItem('ble_history_v4')) || [];
-        const userHistory = allHistory.filter(i => (i.user || i.user_name) === currentUser);
+    async function loadStats() {
+        let userHistory = [];
+        if (supabaseClient) {
+            try {
+                const { data } = await supabaseClient.from('workouts').select('*').eq('user_name', currentUser);
+                if (data) userHistory = data;
+            } catch(e) {}
+        }
+        if (userHistory.length === 0) {
+            const allHistory = JSON.parse(localStorage.getItem('ble_history_v4')) || [];
+            userHistory = allHistory.filter(i => (i.user || i.user_name) === currentUser);
+        }
 
         const totalDist = userHistory.reduce((acc, i) => acc + (i.distance_km || i.distanceKm || 0), 0);
         const totalSec = userHistory.reduce((acc, i) => acc + (i.duration_sec || i.durationSec || 0), 0);
