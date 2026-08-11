@@ -1769,7 +1769,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v30';
+    const APP_BUILD = 'v31';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -1902,6 +1902,7 @@
     let zeroSpeedStreak = 0;
     let fitshowDeviceState = 0; // 1=END, 2=countdown, 3=RUNNING, 4=STOP, 10=PAUSED
     let fitshowWasRunning = false;
+    let fitshowSessionLive = false; // true šele ko je steza RES tekla (RUNNING + hitrost)
     let pendingFitshowTarget = null; // { speed, incline }
     let fitshowTargetRetryTimer = null;
     let isProgramActive = false;
@@ -4832,6 +4833,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         treadmillBeltStarted = false;
         fitshowDeviceState = 0;
         fitshowWasRunning = false;
+        fitshowSessionLive = false;
         pendingFitshowTarget = null;
 
         // 1) FitShow (FFF0) — prioritetno (večina "FitShow" stez ima tudi nepopoln FTMS)
@@ -4929,15 +4931,11 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         // FitShow: nepreklicno povpraševanje statusa (hitrost, naklon, razdalja)
         if (fitshowStatusPollInterval) clearInterval(fitshowStatusPollInterval);
         if (treadmillProtocol === 'fitshow' && fitshowWriteChar) {
-            let pollToggle = 0;
             fitshowStatusPollInterval = setInterval(() => {
-                pollToggle++;
-                // Status vsakih ~0.6s; občasno tudi SYS_DATA za razdaljo
-                const req = (pollToggle % 4 === 0) ? [0x52, 0x00] : [0x51];
-                fitshowSend(req).catch(() => {});
+                // Samo SYS_STATUS — SYS_DATA (0x52) lahko zmede nekatere module
+                fitshowSend([0x51]).catch(() => {});
                 updateTreadmillListenStatus();
-            }, 600);
-            // Takoj prvi status
+            }, 700);
             fitshowSend([0x51]).catch(() => {});
         }
 
@@ -5102,33 +5100,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             // SYS_STATUS (0x51): state, speed(0.1km/h), incline, time(W), dist(W)...
             if (cmd === 0x51 && payload.length >= 3) {
                 const state = payload[1];
-                const prevState = fitshowDeviceState;
                 fitshowDeviceState = state;
-
-                if (state === 0x02 || state === 0x03) {
-                    fitshowWasRunning = true;
-                }
-                if (state === 0x03 && prevState !== 0x03) {
-                    ignorePhysicalStopUntil = Math.min(ignorePhysicalStopUntil, Date.now() + 1500);
-                }
-
-                // Pavza / stop / safety na stezi → ustavi app
-                if (
-                    fitshowWasRunning &&
-                    (state === 0x01 || state === 0x04 || state === 0x05 || state === 0x06 || state === 0x0A) &&
-                    (isWorkoutActive || startTime || isProgramActive) &&
-                    Date.now() > ignorePhysicalStopUntil
-                ) {
-                    console.log('FitShow fizični stop/pavza, state=', state);
-                    fitshowWasRunning = false;
-                    pendingFitshowTarget = null;
-                    currentSpeed = 0;
-                    lastBleUpdateMs = Date.now();
-                    stopWorkout('physical_stop');
-                    updateUI();
-                    updateTreadmillListenStatus();
-                    return;
-                }
 
                 const speed = (payload[2] || 0) / 10.0;
                 const incline = payload.length > 3 ? (payload[3] || 0) : currentIncline;
@@ -5143,12 +5115,6 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 if (speed >= 0 && speed < 30) {
                     currentSpeed = speed;
                     lastBleUpdateMs = Date.now();
-                    // Če uporabnik ročno spremeni hitrost na stezi, ne vsiljuj več cilja programa
-                    if (pendingFitshowTarget && Math.abs(speed - pendingFitshowTarget.speed) > 0.6 && Date.now() > ignorePhysicalStopUntil) {
-                        // še vedno v grace obdobju za naš zagon — pusti retry
-                    } else if (pendingFitshowTarget && Math.abs(speed - pendingFitshowTarget.speed) <= 0.35) {
-                        pendingFitshowTarget = null;
-                    }
                 }
                 if (incline >= 0 && incline <= 25) {
                     currentIncline = incline;
@@ -5157,6 +5123,36 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 if (distKm != null && distKm >= 0 && distKm < 100) {
                     deviceReportsDistance = true;
                     currentDistance = distKm;
+                }
+
+                // Seja je "živa" šele ko res teče — NE med 3-2-1 (state 2)
+                if (state === 0x03 && speed > 0.45) {
+                    fitshowSessionLive = true;
+                    fitshowWasRunning = true;
+                    zeroSpeedStreak = 0;
+                    if (pendingFitshowTarget && Math.abs(speed - pendingFitshowTarget.speed) <= 0.35) {
+                        pendingFitshowTarget = null;
+                    }
+                }
+
+                // Fizični stop/pavza — SAMO po tem, ko je seja že tekla (sicer ugasnemo display med zagonom!)
+                const isStoppedState = (state === 0x01 || state === 0x04 || state === 0x05 || state === 0x06 || state === 0x0A);
+                if (
+                    fitshowSessionLive &&
+                    isStoppedState &&
+                    (isWorkoutActive || startTime || isProgramActive) &&
+                    Date.now() > ignorePhysicalStopUntil
+                ) {
+                    console.log('FitShow fizični stop/pavza po aktivni seji, state=', state);
+                    fitshowSessionLive = false;
+                    fitshowWasRunning = false;
+                    pendingFitshowTarget = null;
+                    currentSpeed = 0;
+                    lastBleUpdateMs = Date.now();
+                    stopWorkout('physical_stop');
+                    updateUI();
+                    updateTreadmillListenStatus();
+                    return;
                 }
 
                 onTreadmillLiveTelemetry();
@@ -5169,16 +5165,20 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
     }
 
     function onTreadmillLiveTelemetry() {
-        if (treadmillProtocol === 'fitshow' &&
-            (fitshowDeviceState === 0x01 || fitshowDeviceState === 0x04 || fitshowDeviceState === 0x0A || fitshowDeviceState === 0x06)) {
-            currentSpeed = 0;
+        // Med countdownom (state 2) hitrost 0 je normalna — NE ustavljaj
+        if (fitshowDeviceState === 0x02 || Date.now() < ignorePhysicalStopUntil) {
+            if (currentSpeed > 0.35) {
+                hasHadSpeedBefore = true;
+                zeroSpeedStreak = 0;
+            }
+            return;
         }
 
         if (currentSpeed > 0.35) {
             hasHadSpeedBefore = true;
+            fitshowSessionLive = true;
             zeroSpeedStreak = 0;
             if (!startTime && !isProgramActive) {
-                // Samodejni zagon samo, če uporabnik zažene stezo ročno (brez intervalnega programa)
                 startTime = Date.now();
                 startTimer();
                 isWorkoutActive = true;
@@ -5190,18 +5190,21 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 const stopBtn = document.getElementById('btnStopWorkout');
                 if (stopBtn) stopBtn.disabled = false;
             }
-        } else if (currentSpeed < 0.2) {
-            zeroSpeedStreak++;
+            return;
         }
 
-        // Hitrost 0 / pavza — ustavi trening (tudi če FitShow state ni prišel)
+        if (currentSpeed < 0.2) zeroSpeedStreak++;
+
+        // Ustavi app šele ko je seja že tekla in hitrost ostane 0
         if (
+            fitshowSessionLive &&
             (isWorkoutActive || isProgramActive) &&
             hasHadSpeedBefore &&
-            zeroSpeedStreak >= 2 &&
+            zeroSpeedStreak >= 3 &&
             Date.now() > ignorePhysicalStopUntil
         ) {
-            console.log('Steza hitrost≈0 — ustavljam app/program');
+            console.log('Steza hitrost≈0 po aktivni seji — ustavljam app');
+            fitshowSessionLive = false;
             fitshowWasRunning = false;
             pendingFitshowTarget = null;
             stopWorkout('physical_stop');
@@ -5369,29 +5372,34 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
 
         try {
             if (treadmillProtocol === 'ftms') {
-                // Request Control + Start/Resume (obvezno pred nastavitvijo hitrosti)
                 await bleWrite(controlPointChar, new Uint8Array([0x00]));
                 await sleepMs(200);
                 await bleWrite(controlPointChar, new Uint8Array([0x07]));
                 await sleepMs(400);
             } else if (treadmillProtocol === 'fitshow') {
-                // FitShow: user → ready/start → počakaj countdown → šele nato TARGET
                 const weight = Math.max(30, Math.min(200, Math.round(realWeightKg || 70)));
                 const height = Math.max(120, Math.min(230, Math.round(userProfiles[currentUser]?.heightCm || 175)));
                 const age = Math.max(10, Math.min(100, Math.round(userProfiles[currentUser]?.age || 30)));
                 const gender = userProfiles[currentUser]?.gender === 'female' ? 1 : 0;
-                ignorePhysicalStopUntil = Date.now() + 9000;
+
+                // Dolga zaščita: med 3-2-1 NIKOLI ne pošlji STOP / physical_stop
+                ignorePhysicalStopUntil = Date.now() + 14000;
                 zeroSpeedStreak = 0;
                 fitshowWasRunning = false;
+                fitshowSessionLive = false;
                 fitshowDeviceState = 0;
 
                 await fitshowSend([0x53, 0x00, 0x01, gender, weight & 0xff, age & 0xff, height & 0xff, 0xAA]);
-                await sleepMs(300);
-                // ready/start (daljši paket kot v FitShow/QZ)
-                await fitshowSend([0x53, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-                await sleepMs(400);
-                // Med odštevanjem 3-2-1 status še ni RUNNING — počakaj
-                await waitForFitshowRunning(6500);
+                await sleepMs(250);
+                // Kratek START paket (daljši je pri nekaterih stezah ugasnil display)
+                await fitshowSend([0x53, 0x01, 0x00]);
+
+                // Počakaj odštevanje ~3–4 s (piski), ne prekini ob state=1 flikeju
+                for (let i = 0; i < 12; i++) {
+                    try { await fitshowSend([0x51]); } catch (_) {}
+                    await sleepMs(350);
+                    if (fitshowDeviceState === 0x03) break; // RUNNING
+                }
             }
             treadmillBeltStarted = true;
             return true;
@@ -5401,7 +5409,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         }
     }
 
-    async function stopTreadmillBelt() {
+    async function stopTreadmillBelt({ force = true } = {}) {
         try {
             if (fitshowTargetRetryTimer) {
                 clearInterval(fitshowTargetRetryTimer);
@@ -5413,13 +5421,18 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 await sleepMs(150);
                 await setTreadmillSpeed(0);
             } else if (treadmillProtocol === 'fitshow' && fitshowWriteChar) {
-                await fitshowSend([0x53, 0x03]);
+                // Če je steza že ustavljena/pavzirana, NE pošlji STOP znova (ugasne display)
+                const alreadyStopped = fitshowDeviceState === 0x01 || fitshowDeviceState === 0x04 || fitshowDeviceState === 0x0A;
+                if (force || !alreadyStopped) {
+                    await fitshowSend([0x53, 0x03]);
+                }
             }
         } catch (e) {
             console.warn('Ustavitev steze:', e);
         }
         treadmillBeltStarted = false;
         fitshowWasRunning = false;
+        fitshowSessionLive = false;
     }
 
     async function applyTreadmillTargets(speedKmh, inclinePercent, { start = false } = {}) {
@@ -5432,8 +5445,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         const safeIncline = Math.min(Math.max(0, inclinePercent), maxInclineLimit);
         lastTargetSpeed = safeSpeed > 0 ? safeSpeed : lastTargetSpeed;
         lastTargetIncline = safeIncline;
-        // Po ukazu s tablice zaščiti pred lažno fizično ustavitvijo med rampo / countdownom
-        ignorePhysicalStopUntil = Date.now() + (start || !treadmillBeltStarted ? 9000 : 3500);
+        ignorePhysicalStopUntil = Date.now() + (start || !treadmillBeltStarted ? 14000 : 4000);
         zeroSpeedStreak = 0;
 
         try {
@@ -5443,14 +5455,12 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             }
 
             if (treadmillProtocol === 'fitshow') {
-                // Takoj + retry dokler BLE ne potrdi hitrosti (countdown pogosto požre prvi ukaz)
-                pendingFitshowTarget = { speed: safeSpeed, incline: safeIncline };
-                for (let attempt = 0; attempt < 3; attempt++) {
+                // Po countdownu pošlji ciljno hitrost (več poskusov)
+                for (let attempt = 0; attempt < 4; attempt++) {
                     await sendFitshowSpeedIncline(safeSpeed, safeIncline);
-                    await sleepMs(250);
-                    if (fitshowDeviceState === 0x03 && Math.abs(currentSpeed - safeSpeed) <= 0.4) break;
-                    // Če smo še v countdownu, počakaj RUNNING
-                    if (fitshowDeviceState === 0x02) await sleepMs(500);
+                    await sleepMs(400);
+                    try { await fitshowSend([0x51]); } catch (_) {}
+                    if (fitshowDeviceState === 0x03 && Math.abs(currentSpeed - safeSpeed) <= 0.45) break;
                 }
                 scheduleFitshowTargetRetries(safeSpeed, safeIncline);
             } else {
@@ -6064,19 +6074,25 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         if (activeProgramInterval) clearInterval(activeProgramInterval);
 
         activeProgramInterval = setInterval(async () => {
-            const liveSpd = getEffectiveSpeedKmh();
-            // Pavza / hitrost 0 na stezi → ne štej časa programa; po ~2 s ustavi trening
-            if (liveSpd < 0.2 && Date.now() > ignorePhysicalStopUntil) {
-                zeroSpeedStreak = (zeroSpeedStreak || 0) + 1;
+            // Med zagonom / countdownom program teče naprej (ne ustavljaj)
+            if (Date.now() < ignorePhysicalStopUntil || fitshowDeviceState === 0x02) {
+                stepTimeRemaining--;
                 updateHudProgramProgress();
-                if (zeroSpeedStreak >= 2 && hasHadSpeedBefore) {
-                    stopWorkout('physical_stop');
+            } else {
+                const liveSpd = getEffectiveSpeedKmh();
+                // Po aktivni seji: pavza/0 → ustavi štetje; po 3 s ustavi trening
+                if (fitshowSessionLive && liveSpd < 0.2) {
+                    zeroSpeedStreak = (zeroSpeedStreak || 0) + 1;
+                    updateHudProgramProgress();
+                    if (zeroSpeedStreak >= 3) {
+                        stopWorkout('physical_stop');
+                    }
+                    return;
                 }
-                return;
+                zeroSpeedStreak = 0;
+                stepTimeRemaining--;
+                updateHudProgramProgress();
             }
-            zeroSpeedStreak = 0;
-            stepTimeRemaining--;
-            updateHudProgramProgress();
             if (stepTimeRemaining <= 0) {
                 currentStepIdx++;
                 if (currentStepIdx < programSteps.length) {
@@ -6620,6 +6636,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             fitshowTargetRetryTimer = null;
         }
         fitshowWasRunning = false;
+        fitshowSessionLive = false;
         const float = document.getElementById('workoutViewSwitcher');
         if (float) {
             float.classList.remove('visible');
@@ -6630,8 +6647,8 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         releaseWorkoutWakeLock();
         updateLiveMusicBarVisibility();
 
-        // 1. Ustavitev steze (FTMS Stop ali FitShow Stop)
-        stopTreadmillBelt();
+        // 1. Ustavitev steze — pri fizičnem STOP/pavzi NE pošlji STOP znova (ugasne display)
+        stopTreadmillBelt({ force: reason !== 'physical_stop' });
         currentSpeed = 0.0;
         zeroSpeedStreak = 0;
 
