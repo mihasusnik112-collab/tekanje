@@ -1129,6 +1129,18 @@
                 <button class="btn btn-secondary" onclick="askGeminiQuestion('Kakšen je moj idealen utrip za kurjenje maščobe glede na podatke ure?')">
                     ❤️ Optimalen Utrip (HR)
                 </button>
+                <button class="btn btn-secondary" onclick="runGeminiProgressCoach()">
+                    📈 Analiziraj moj progress
+                </button>
+            </div>
+
+            <div id="geminiProgressCard" style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.3); padding: 0.85rem; border-radius: 0.85rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.85rem; font-weight: 700; color: var(--accent-green); margin-bottom: 0.35rem;">
+                    📈 Gemini spremlja tvoj progress
+                </div>
+                <div id="geminiProgressText" style="font-size: 0.82rem; line-height: 1.5; color: var(--text-main);">
+                    Po vsakem shranjenem treningu Gemini lahko predlaga naslednje korake. Klikni “Analiziraj moj progress” ali končaj vadbo.
+                </div>
             </div>
 
             <!-- CHAT Z GEMINI VIRTUALNIM ASISTENTOM -->
@@ -1218,9 +1230,15 @@
             </div>
             
             <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                <button class="btn btn-purple" style="flex: 1;" onclick="startCustomProgram()">🚀 ZAŽENI PROGRAM NA STEZI</button>
+                <button class="btn btn-purple" style="flex: 1;" onclick="startCustomProgram()">🚀 ZAŽENI PROGRAM (odpre ZAČNI TEK)</button>
                 <button class="btn btn-primary" onclick="saveProgramToSupabase()">💾 Shrani program</button>
                 <button class="btn btn-danger" onclick="stopCustomProgram()">⏹ Prekini Program</button>
+            </div>
+            <div style="margin-top: 0.85rem;">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Shranjeni programi (ta profil):</div>
+                <div id="savedProgramsList" style="display:flex;flex-direction:column;gap:0.35rem;max-height:160px;overflow-y:auto;">
+                    <div style="font-size:0.78rem;color:var(--text-muted);">Ni še shranjenih programov.</div>
+                </div>
             </div>
         </div>
     </div>
@@ -1404,9 +1422,10 @@
 
             <div id="wizProgramSelectContainer" style="display: none; margin-top: 0.75rem;">
                 <select id="wizProgramSelect" style="width: 100%;">
+                    <option value="current">📋 Trenutni program (iz Intervalnih programov)</option>
                     <option value="tibialis">🦵 Tibialis Relief (35 min) - Strma Hoja (Miha)</option>
                     <option value="fatburn">🔥 Fat Burn Low Impact (20 min)</option>
-                    <option value="ai">✨ AI Progressive Incline (30 min)</option>
+                    <option value="ai">✨ AI Progressive Incline (generiraj nov)</option>
                 </select>
             </div>
         </div>
@@ -2052,6 +2071,7 @@
         await syncWorkoutsBidirectional(false);
         await renderHistoryTable();
         loadStats();
+        loadGeminiCoachNoteUi();
         await loadSavedYouTubeVideos();
         await loadSavedYouTubeAudio();
     }
@@ -2623,6 +2643,7 @@
     async function openStartWorkoutWizard() {
         await populateWizardVideosDropdown();
         await populateWizardAudioDropdown();
+        await refreshWizardProgramOptions();
         const useVideo = document.getElementById('wizUseVideo');
         const videoSelect = document.getElementById('wizVideoSelect');
         if (useVideo && videoSelect) {
@@ -2788,11 +2809,33 @@
 
         if (progType === 'program') {
             const progChoice = document.getElementById('wizProgramSelect').value;
-            if (progChoice === 'tibialis') loadTibialisReliefProgram();
-            else if (progChoice === 'fatburn') loadFatBurnProgram();
-            else generateAndApplyAiWorkout();
+            if (progChoice === 'current') {
+                if (!programSteps.length) {
+                    isWorkoutActive = false;
+                    alert('Trenutni program je prazen. Najprej sestavi ali naloži program.');
+                    return;
+                }
+            } else if (progChoice.startsWith('saved:')) {
+                const savedName = progChoice.slice('saved:'.length);
+                const loaded = await loadSavedProgramByName(savedName, false);
+                if (!loaded) {
+                    isWorkoutActive = false;
+                    alert('Shranjenega programa ni bilo mogoče naložiti.');
+                    return;
+                }
+            } else if (progChoice === 'tibialis') {
+                loadTibialisReliefProgram({ silent: true });
+            } else if (progChoice === 'fatburn') {
+                loadFatBurnProgram({ silent: true });
+            } else if (progChoice === 'ai') {
+                await generateAndApplyAiWorkout({ stayOnGemini: false, skipSavePrompt: true });
+                if (!programSteps.length) {
+                    isWorkoutActive = false;
+                    return;
+                }
+            }
 
-            await startCustomProgram();
+            await runIntervalProgramOnTreadmill();
             document.getElementById('btnStopWorkout').disabled = false;
             return;
         }
@@ -2813,7 +2856,7 @@
     }
 
     // --- GEMINI AI VIRTUALNI ASISTENT, TRENER IN UVOZ SLIK ---
-    const APP_BUILD = 'v14';
+    const APP_BUILD = 'v16';
     const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest'];
     // Ključ ni v plaintextu — XOR + razpršeni bajti (prepis v localStorage lahko preglasi)
     function _resolveEmbeddedGeminiKey() {
@@ -2904,6 +2947,32 @@
         return false;
     }
 
+    function getCoachNotesKey(user = currentUser) {
+        return `ble_gemini_coach_${user}`;
+    }
+
+    function getRecentWorkoutsForGemini(limit = 12) {
+        const list = getLocalHistoryAll()
+            .filter(i => (i.user || i.user_name) === currentUser)
+            .slice(0, limit);
+        if (!list.length) return 'Ni še shranjenih treningov.';
+        return list.map((w, idx) => {
+            const dateStr = w.created_at ? new Date(w.created_at).toLocaleDateString('sl-SI') : (w.date || '?');
+            const mins = Math.round((w.duration_sec || w.durationSec || 0) / 60);
+            const dist = Number(w.distance_km || w.distanceKm || 0).toFixed(2);
+            const cals = w.calories || 0;
+            const hr = w.avg_hr || w.avgHr || 0;
+            return `${idx + 1}. ${dateStr}: ${mins} min, ${dist} km, ${cals} kcal, avg HR ${hr || '—'}`;
+        }).join('\n');
+    }
+
+    function loadGeminiCoachNoteUi() {
+        const el = document.getElementById('geminiProgressText');
+        if (!el) return;
+        const saved = localStorage.getItem(getCoachNotesKey());
+        if (saved) el.innerHTML = formatGeminiHtml(saved);
+    }
+
     function buildGeminiUserContext() {
         const prof = userProfiles[currentUser] || {};
         const gender = prof.gender === 'female' ? 'ženska' : 'moški';
@@ -2920,6 +2989,8 @@
         } else if (currentUser === 'Veronika') {
             note = 'Upoštevaj ženski fiziološki profil, regeneracijo in varnost pri intenziteti.';
         }
+
+        const lastCoach = localStorage.getItem(getCoachNotesKey()) || '';
 
         return `AKTIVNI PROFIL UPORABNIKA:
 - Ime: ${currentUser}
@@ -2941,7 +3012,55 @@ TRENUTNO STANJE SEJE:
 - Tek aktiven: ${isWorkoutActive ? 'da' : 'ne'}
 - Intervalni program aktiven: ${isProgramActive ? 'da' : 'ne'}
 
+ZGODOVINA TRENINGOV (najnovejši najprej):
+${getRecentWorkoutsForGemini(12)}
+
+${lastCoach ? `ZADNJI GEMINI COACH ZAPIS:\n${lastCoach}\n` : ''}
 ${note}`;
+    }
+
+    async function runGeminiProgressCoach(opts = {}) {
+        const { quiet = false, afterWorkout = false } = opts;
+        if (!geminiApiKey) {
+            if (!quiet) requireGeminiApiKey();
+            return;
+        }
+        if (geminiBusy && !quiet) return;
+        const wasBusy = geminiBusy;
+        if (!wasBusy) geminiBusy = true;
+
+        const progressEl = document.getElementById('geminiProgressText');
+        const out = document.getElementById('geminiOutputText');
+        if (progressEl && !quiet) progressEl.innerHTML = '⏳ Gemini analizira tvoj progress…';
+        if (out && !quiet) out.innerHTML = `<span style="color:var(--accent-green);">📈 Analiziram zgodovino treningov…</span>`;
+
+        try {
+            const prompt = `${buildGeminiUserContext()}
+
+Naloga: Si osebni trener, ki SPREMLJA progress profila ${currentUser}.
+${afterWorkout ? 'Pravkar je bil shranjen nov trening — vključi kratek povzetek zadnje vadbe in naslednji korak.' : 'Naredi analizo napredka na podlagi zgodovine.'}
+
+Odgovori v slovenščini, kratko (max ~220 besed), v strukturi:
+1) Ocena progressa (trend razdalje/časa/kalorij/HR)
+2) Kaj deluje / kaj popraviti
+3) Konkretni predlogi za naslednje 2–3 treninge (km/h, %, minute)
+4) Ena motivacijska opomba
+Za Miho upoštevaj tibialis (naklon ~8 %, zmerna hitrost).`;
+
+            const { text, model } = await callGeminiGenerate({ userText: prompt, temperature: 0.55 });
+            localStorage.setItem(getCoachNotesKey(), text);
+            if (progressEl) progressEl.innerHTML = formatGeminiHtml(text);
+            if (out && !quiet) {
+                out.innerHTML = `<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">Progress coach · ${model}</div>
+                <strong style="color:var(--accent-green);">📈 Progress za ${currentUser}:</strong><br><br>${formatGeminiHtml(text)}`;
+            }
+        } catch (err) {
+            console.warn('runGeminiProgressCoach:', err);
+            if (!quiet) setGeminiOutputError(err);
+            else if (progressEl) progressEl.textContent = 'Progress analize trenutno ni na voljo (preveri Gemini ključ).';
+        } finally {
+            if (!wasBusy) geminiBusy = false;
+        }
     }
 
     function getGeminiSystemInstruction() {
@@ -3175,7 +3294,8 @@ Odgovori v slovenščini, strukturirano.`;
         }
     }
 
-    async function generateAndApplyAiWorkout() {
+    async function generateAndApplyAiWorkout(opts = {}) {
+        const { stayOnGemini = true, skipSavePrompt = false } = opts;
         if (!requireGeminiApiKey()) return;
         if (geminiBusy) return;
         geminiBusy = true;
@@ -3185,8 +3305,8 @@ Odgovori v slovenščini, strukturirano.`;
             const prompt = `${buildGeminiUserContext()}
 
 Naloga: Ustvari intervalni program za tekalno stezo (~20–35 min).
-Vrni SAMO veljaven JSON array (brez markdown), vsak korak:
-{"duration": sekunde (number), "speed": km/h, "incline": odstotek (max ${maxInclineLimit}), "name": "kratek naziv"}
+Vrni SAMO veljaven JSON objekt:
+{"program_name":"kratko ime programa","steps":[{"duration":sekunde,"speed":km/h,"incline":%,"name":"korak"}]}
 Pravila: vključi ogrevanje in hlajenje; incline nikoli nad ${maxInclineLimit}; speed med 3.5 in 8.0; za Miho preferiraj strm naklon + zmerno hitrost.`;
 
             const { text, model } = await callGeminiGenerate({ userText: prompt, jsonMode: true, temperature: 0.4 });
@@ -3194,32 +3314,55 @@ Pravila: vključi ogrevanje in hlajenje; incline nikoli nad ${maxInclineLimit}; 
             try {
                 parsed = JSON.parse(text);
             } catch (_) {
-                const m = text.match(/\[[\s\S]*\]/);
+                const m = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
                 if (m) parsed = JSON.parse(m[0]);
             }
-            if (!Array.isArray(parsed) || parsed.length === 0) {
+
+            let aiName = `AI trening ${new Date().toLocaleDateString('sl-SI')}`;
+            let stepsArr = null;
+            if (Array.isArray(parsed)) {
+                stepsArr = parsed;
+            } else if (parsed && Array.isArray(parsed.steps)) {
+                stepsArr = parsed.steps;
+                if (parsed.program_name) aiName = String(parsed.program_name);
+            }
+            if (!stepsArr || stepsArr.length === 0) {
                 throw new Error('Gemini ni vrnil veljavnega seznama korakov.');
             }
 
-            programSteps = parsed.map((s, i) => ({
+            programSteps = stepsArr.map((s, i) => ({
                 duration: Math.max(30, Math.round(Number(s.duration) || 60)),
                 speed: Math.max(3.0, Math.min(12, Number(s.speed) || 5)),
                 incline: Math.max(0, Math.min(maxInclineLimit, Number(s.incline) || 0)),
                 name: String(s.name || `AI Korak ${i + 1}`)
             }));
 
+            const nameEl = document.getElementById('progNameInput');
+            if (nameEl) nameEl.value = aiName;
+            const label = document.getElementById('progCurrentNameLabel');
+            if (label) label.textContent = aiName;
+
             renderStepsList();
-            saveProgramToSupabase();
+            if (!skipSavePrompt) {
+                await saveProgramToSupabase({ suggestedName: aiName, fromAi: true });
+            } else {
+                await persistProgramQuiet(aiName);
+            }
+
             const out = document.getElementById('geminiOutputText');
             out.innerHTML = `<strong style="color:var(--accent-green);">✨ AI trening pripravljen</strong> <span style="color:var(--text-muted);font-size:0.75rem;">(${model})</span><br>
-            ${programSteps.length} korakov je vnesenih v Intervalne programe.<br><br>
-            ${programSteps.map(s => `• ${s.name}: ${(s.duration/60).toFixed(1)} min · ${s.speed} km/h · ${s.incline}%`).join('<br>')}`;
-            switchSection('secPrograms', { currentTarget: document.querySelectorAll('.selector-btn')[3] });
-            alert(`✨ Gemini AI je generiral personaliziran trening za ${currentUser}!`);
+            Ime: <strong>${aiName}</strong><br>
+            ${programSteps.length} korakov je v Intervalnih programih.<br><br>
+            ${programSteps.map(s => `• ${s.name}: ${(s.duration/60).toFixed(1)} min · ${s.speed} km/h · ${s.incline}%`).join('<br>')}<br><br>
+            Klikni <strong>ZAŽENI PROGRAM</strong> — odpre se ZAČNI TEK z nastavitvami.`;
+            if (!stayOnGemini) {
+                switchSection('secPrograms', { currentTarget: document.querySelectorAll('.selector-btn')[3] });
+            } else {
+                switchSection('secPrograms', { currentTarget: document.querySelectorAll('.selector-btn')[3] });
+            }
         } catch (err) {
             console.error(err);
             setGeminiOutputError(err);
-            // Fallback lokalni program, da gumb ne "umre"
             const isFemale = userProfiles[currentUser]?.gender === 'female';
             programSteps = [
                 { duration: 300, speed: 4.5, incline: 1.0, name: 'AI Ogrevanje' },
@@ -3228,8 +3371,13 @@ Pravila: vključi ogrevanje in hlajenje; incline nikoli nad ${maxInclineLimit}; 
                 { duration: 240, speed: isFemale ? 4.8 : 5.0, incline: Math.min(8.0, maxInclineLimit), name: 'AI Vzpon 2' },
                 { duration: 180, speed: 4.0, incline: 0.0, name: 'AI Hlajenje' }
             ];
+            const fallbackName = `AI fallback ${new Date().toLocaleDateString('sl-SI')}`;
+            const nameEl = document.getElementById('progNameInput');
+            if (nameEl) nameEl.value = fallbackName;
             renderStepsList();
-            saveProgramToSupabase();
+            if (!skipSavePrompt) await saveProgramToSupabase({ suggestedName: fallbackName, fromAi: true });
+            else await persistProgramQuiet(fallbackName);
+            switchSection('secPrograms', { currentTarget: document.querySelectorAll('.selector-btn')[3] });
         } finally {
             geminiBusy = false;
         }
@@ -3278,7 +3426,8 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
     }
 
     // TIBIALIS RELIEF PROGRAM (35 MIN - MIHA)
-    function loadTibialisReliefProgram() {
+    function loadTibialisReliefProgram(opts = {}) {
+        const { silent = false } = opts;
         programSteps = [
             { duration: 300, speed: 4.8, incline: 0.0, name: 'Ogrevanje' },
             { duration: 180, speed: 5.0, incline: 8.0, name: 'Strma Hoja (Cikel 1)' },
@@ -3299,11 +3448,20 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             { duration: 150, speed: 4.0, incline: 0.0, name: 'Hlajenje 2' }
         ];
 
+        const pname = 'Tibialis Relief (35 min)';
+        const nameEl = document.getElementById('progNameInput');
+        if (nameEl) nameEl.value = pname;
+        const label = document.getElementById('progCurrentNameLabel');
+        if (label) label.textContent = pname;
         renderStepsList();
-        saveProgramToSupabase();
+        if (!silent) {
+            persistProgramQuiet(pname);
+            alert(`Program '${pname}' je naložen. Klikni ZAŽENI PROGRAM ali Shrani program.`);
+        }
     }
 
-    function loadFatBurnProgram() {
+    function loadFatBurnProgram(opts = {}) {
+        const { silent = false } = opts;
         const isFemale = userProfiles[currentUser]?.gender === 'female';
         programSteps = [
             { duration: 180, speed: 4.5, incline: 1.0, name: 'Ogrevanje' },
@@ -3314,9 +3472,16 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             { duration: 180, speed: 4.0, incline: 0.0, name: 'Hlajenje' }
         ];
 
+        const pname = 'Fat Burn Low Impact (20 min)';
+        const nameEl = document.getElementById('progNameInput');
+        if (nameEl) nameEl.value = pname;
+        const label = document.getElementById('progCurrentNameLabel');
+        if (label) label.textContent = pname;
         renderStepsList();
-        saveProgramToSupabase();
-        alert(`Program 'Fat Burn Low Impact (20 min)' prilagojen za ${currentUser}!`);
+        if (!silent) {
+            persistProgramQuiet(pname);
+            alert(`Program '${pname}' prilagojen za ${currentUser}. Klikni ZAŽENI PROGRAM ali Shrani program.`);
+        }
     }
 
     // --- POSODABLJANJE STANJA GUMBOV PREDVAJAJ / USTAVI ZA MEDIJE ---
@@ -4267,51 +4432,212 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
     }
 
     // SINHRONIZACIJA INTERVALNIH PROGRAMOV Z SUPABASE
+    function getSavedProgramsStorageKey(user = currentUser) {
+        return `ble_saved_programs_v1_${user}`;
+    }
+
+    function getLocalSavedPrograms() {
+        return JSON.parse(localStorage.getItem(getSavedProgramsStorageKey())) || [];
+    }
+
+    function setLocalSavedPrograms(list) {
+        localStorage.setItem(getSavedProgramsStorageKey(), JSON.stringify(list || []));
+    }
+
+    function sanitizeProgramKey(name) {
+        return String(name || 'program')
+            .trim()
+            .replace(/[^\w\-ščćžŠČĆŽäöüÄÖÜ\s]/gi, '')
+            .replace(/\s+/g, '_')
+            .slice(0, 60) || 'program';
+    }
+
     async function fetchIntervalPrograms() {
-        if (!supabaseClient) return;
+        await refreshSavedProgramsList();
+        // Naloži zadnji privzeti program uporabnika
+        if (!supabaseClient) {
+            const local = JSON.parse(localStorage.getItem(`ble_program_${currentUser}`)) || [];
+            const localName = localStorage.getItem(`ble_program_name_${currentUser}`) || 'Moj program';
+            if (local.length) {
+                programSteps = local;
+                const nameEl = document.getElementById('progNameInput');
+                if (nameEl) nameEl.value = localName;
+                renderStepsList();
+            }
+            return;
+        }
 
         try {
             const progName = `${currentUser}_Program`;
             const { data, error } = await supabaseClient.from('interval_programs').select('*').eq('program_name', progName);
-            if (data && data.length > 0 && data[0].steps && data[0].steps.length > 0) {
+            if (!error && data && data.length > 0 && data[0].steps && data[0].steps.length > 0) {
                 programSteps = data[0].steps;
+                const nameEl = document.getElementById('progNameInput');
+                if (nameEl && !nameEl.value) nameEl.value = 'Moj program';
                 renderStepsList();
-            } else {
-                loadTibialisReliefProgram();
             }
         } catch (e) {
             console.warn("Napaka pri branju programov iz Supabase:", e);
-            loadTibialisReliefProgram();
         }
+        await refreshSavedProgramsList();
     }
 
-    async function saveProgramToSupabase() {
-        if (programSteps.length === 0) return alert("Sestavite program pred shranjevanjem.");
+    async function persistProgramQuiet(displayName) {
+        const customName = (displayName || document.getElementById('progNameInput')?.value || 'Moj program').trim();
+        const progName = `${currentUser}_${sanitizeProgramKey(customName)}`;
+        localStorage.setItem(`ble_program_${currentUser}`, JSON.stringify(programSteps));
+        localStorage.setItem(`ble_program_name_${currentUser}`, customName);
 
-        const customName = (document.getElementById('progNameInput')?.value || '').trim() || 'Moj program';
-        const progName = `${currentUser}_${customName}`.replace(/\s+/g, '_');
+        let list = getLocalSavedPrograms().filter(p => p.name !== customName);
+        list.unshift({ name: customName, steps: programSteps, updated_at: new Date().toISOString() });
+        setLocalSavedPrograms(list.slice(0, 40));
 
         if (supabaseClient) {
             try {
-                const { error } = await supabaseClient.from('interval_programs').upsert(
-                    { program_name: progName, steps: programSteps },
-                    { onConflict: 'program_name' }
-                );
-                // Ohrani tudi privzeti slot uporabnika
-                await supabaseClient.from('interval_programs').upsert(
-                    { program_name: `${currentUser}_Program`, steps: programSteps },
-                    { onConflict: 'program_name' }
-                );
-                if (error) console.warn("Supabase program save error:", error);
-                else alert(`Program '${customName}' je shranjen.`);
+                // upsert po imenu: najprej poišči, nato update/insert
+                const { data: existing } = await supabaseClient
+                    .from('interval_programs')
+                    .select('id,program_name')
+                    .eq('program_name', progName)
+                    .maybeSingle();
+                if (existing?.id) {
+                    await supabaseClient.from('interval_programs').update({ steps: programSteps }).eq('id', existing.id);
+                } else {
+                    await supabaseClient.from('interval_programs').insert({ program_name: progName, steps: programSteps });
+                }
+                // privzeti slot
+                const { data: def } = await supabaseClient
+                    .from('interval_programs')
+                    .select('id')
+                    .eq('program_name', `${currentUser}_Program`)
+                    .maybeSingle();
+                if (def?.id) {
+                    await supabaseClient.from('interval_programs').update({ steps: programSteps }).eq('id', def.id);
+                } else {
+                    await supabaseClient.from('interval_programs').insert({ program_name: `${currentUser}_Program`, steps: programSteps });
+                }
             } catch (e) {
-                console.warn(`Napaka pri shranjevanju v Supabase: ${e.message}`);
+                console.warn('persistProgramQuiet:', e);
             }
-        } else {
-            localStorage.setItem(`ble_program_${currentUser}`, JSON.stringify(programSteps));
-            localStorage.setItem(`ble_program_name_${currentUser}`, customName);
-            alert(`Program '${customName}' je shranjen lokalno.`);
         }
+        await refreshSavedProgramsList();
+        return customName;
+    }
+
+    async function saveProgramToSupabase(opts = {}) {
+        if (programSteps.length === 0) return alert("Sestavite program pred shranjevanjem.");
+
+        const suggested = (opts.suggestedName || document.getElementById('progNameInput')?.value || 'Moj program').trim();
+        let customName = suggested;
+
+        if (opts.fromAi) {
+            const choice = prompt(
+                `Gemini predlaga ime programa:\n\n"${suggested}"\n\nPotrdi ali vpiši svoje ime:`,
+                suggested
+            );
+            if (choice === null) return; // preklicano
+            customName = choice.trim() || suggested;
+        } else {
+            const choice = prompt('Ime programa za shranjevanje:', suggested);
+            if (choice === null) return;
+            customName = choice.trim();
+            if (!customName) return alert('Ime programa ne sme biti prazno.');
+        }
+
+        const nameEl = document.getElementById('progNameInput');
+        if (nameEl) nameEl.value = customName;
+        const label = document.getElementById('progCurrentNameLabel');
+        if (label) label.textContent = customName;
+
+        try {
+            await persistProgramQuiet(customName);
+            alert(`✅ Program '${customName}' je shranjen v Intervalne programe (sinhronizirano za ${currentUser}).`);
+            await refreshSavedProgramsList();
+            await refreshWizardProgramOptions();
+        } catch (e) {
+            console.warn(e);
+            alert('Shranjevanje ni uspelo: ' + (e.message || e));
+        }
+    }
+
+    async function refreshSavedProgramsList() {
+        const box = document.getElementById('savedProgramsList');
+        if (!box) return;
+
+        let programs = getLocalSavedPrograms();
+
+        if (supabaseClient) {
+            try {
+                const { data } = await supabaseClient
+                    .from('interval_programs')
+                    .select('program_name,steps')
+                    .like('program_name', `${currentUser}_%`);
+                if (data?.length) {
+                    data.forEach(row => {
+                        if (!row.program_name || row.program_name === `${currentUser}_Program`) return;
+                        const display = row.program_name.replace(new RegExp(`^${currentUser}_`), '').replace(/_/g, ' ');
+                        if (!programs.some(p => p.name === display)) {
+                            programs.push({ name: display, steps: row.steps || [], updated_at: null });
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+
+        if (!programs.length) {
+            box.innerHTML = `<div style="font-size:0.78rem;color:var(--text-muted);">Ni še shranjenih programov.</div>`;
+            return;
+        }
+
+        box.innerHTML = programs.map(p => {
+            const mins = Math.round(((p.steps || []).reduce((a, s) => a + (s.duration || 0), 0) / 60) * 10) / 10;
+            const safe = String(p.name).replace(/'/g, "\\'");
+            return `<div style="display:flex;justify-content:space-between;gap:0.5rem;align-items:center;background:rgba(255,255,255,0.04);padding:0.45rem 0.65rem;border-radius:0.5rem;">
+                <span style="font-size:0.82rem;"><strong>${p.name}</strong> <span style="color:var(--text-muted);">· ${mins} min · ${(p.steps||[]).length} korakov</span></span>
+                <button class="btn btn-secondary" style="padding:0.2rem 0.55rem;font-size:0.75rem;" onclick="loadSavedProgramByName('${safe}')">Naloži</button>
+            </div>`;
+        }).join('');
+    }
+
+    async function loadSavedProgramByName(name, showAlert = true) {
+        let found = getLocalSavedPrograms().find(p => p.name === name);
+        if ((!found || !found.steps?.length) && supabaseClient) {
+            const key = `${currentUser}_${sanitizeProgramKey(name)}`;
+            try {
+                const { data } = await supabaseClient.from('interval_programs').select('*').eq('program_name', key).maybeSingle();
+                if (data?.steps?.length) found = { name, steps: data.steps };
+            } catch (e) {}
+        }
+        if (!found?.steps?.length) {
+            if (showAlert) alert('Programa ni mogoče naložiti.');
+            return false;
+        }
+        programSteps = found.steps;
+        const nameEl = document.getElementById('progNameInput');
+        if (nameEl) nameEl.value = name;
+        const label = document.getElementById('progCurrentNameLabel');
+        if (label) label.textContent = name;
+        renderStepsList();
+        if (showAlert) alert(`Program '${name}' je naložen.`);
+        return true;
+    }
+
+    async function refreshWizardProgramOptions() {
+        const select = document.getElementById('wizProgramSelect');
+        if (!select) return;
+        const currentVal = select.value;
+        select.innerHTML = `
+            <option value="current">📋 Trenutni program (iz Intervalnih programov)</option>
+            <option value="tibialis">🦵 Tibialis Relief (35 min) - Strma Hoja (Miha)</option>
+            <option value="fatburn">🔥 Fat Burn Low Impact (20 min)</option>
+            <option value="ai">✨ AI Progressive Incline (generiraj nov)</option>
+        `;
+        getLocalSavedPrograms().forEach(p => {
+            select.innerHTML += `<option value="saved:${p.name}">💾 ${p.name}</option>`;
+        });
+        if ([...select.options].some(o => o.value === currentVal)) select.value = currentVal;
     }
 
     function createNewIntervalProgram() {
@@ -4401,12 +4727,11 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         renderStepsList();
     }
 
-    async function startCustomProgram() {
-        if (programSteps.length === 0) return alert("Najprej sestavite ali izberite program!");
-
-        const connected = await ensureTreadmillConnected();
-        if (!connected) {
-            return alert("⚠️ Steza ni povezana. Program se ne more zagnati.");
+    /** Zažene trenutni intervalni program na stezi (brez čarovnika). */
+    async function runIntervalProgramOnTreadmill() {
+        if (programSteps.length === 0) {
+            alert('Najprej sestavite ali izberite program!');
+            return false;
         }
 
         if (!startTime) {
@@ -4424,7 +4749,35 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         buildHudProgramProgressTrack();
         await executeStep(programSteps[currentStepIdx], true);
         document.getElementById('btnStopWorkout').disabled = false;
-        switchSection('secLive', { currentTarget: document.querySelectorAll('.selector-btn')[0] });
+        if (!document.getElementById('fullscreenHudOverlay')?.classList.contains('active')) {
+            switchSection('secLive', { currentTarget: document.querySelectorAll('.selector-btn')[0] });
+        }
+        return true;
+    }
+
+    /**
+     * ZAŽENI PROGRAM → prednastavi čarovnik ZAČNI TEK (intervalni + trenutni program + HUD)
+     * in takoj požene PRIČNI TEK SEDAJ.
+     */
+    async function startCustomProgram() {
+        if (programSteps.length === 0) return alert('Najprej sestavite ali izberite program!');
+
+        await refreshWizardProgramOptions();
+        await populateWizardVideosDropdown();
+        await populateWizardAudioDropdown();
+
+        const progRadio = document.querySelector('input[name="wizProgramType"][value="program"]');
+        if (progRadio) {
+            progRadio.checked = true;
+            toggleWizardProgramSelect(true);
+        }
+        const sel = document.getElementById('wizProgramSelect');
+        if (sel) sel.value = 'current';
+
+        const hud = document.getElementById('wizUseFullscreenHud');
+        if (hud) hud.checked = true;
+
+        await executeStartWorkoutWizard();
     }
 
     async function executeStep(step, isFirstStep = false) {
@@ -5259,6 +5612,7 @@ Uporabi null, če vrednosti ni.`;
         initManualWorkoutForm();
         await renderHistoryTable();
         loadStats();
+        runGeminiProgressCoach({ quiet: true, afterWorkout: true }).catch(() => {});
         alert('Vadba je shranjena' + (cloudRow ? ' in sinhronizirana med napravami.' : ' lokalno.'));
     }
 
@@ -5420,6 +5774,8 @@ Uporabi null, če vrednosti ni.`;
 
         renderHistoryTable();
         loadStats();
+        // Gemini coach: po shranjenem treningu predlagaj naslednje korake
+        runGeminiProgressCoach({ quiet: true, afterWorkout: true }).catch(() => {});
     }
 
     async function renderHistoryTable() {
