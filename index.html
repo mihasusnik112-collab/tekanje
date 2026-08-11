@@ -1561,6 +1561,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
+    const APP_BUILD = 'v20';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -3000,11 +3001,8 @@
     }
 
     // --- GEMINI AI VIRTUALNI ASISTENT, TRENER IN UVOZ SLIK ---
-    const APP_BUILD = 'v19';
-    // Samo aktivni modeli (1.5.x in flash-latest sta ukinjena)
-    const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
-    const GEMINI_MIN_INTERVAL_MS = 2500;
-    const GEMINI_MAX_CALLS_PER_MIN = 14;
+    const GEMINI_MODEL_PRIMARY = 'gemini-2.5-flash';
+    const GEMINI_MODEL_FALLBACK = 'gemini-2.5-flash-lite';
     // Ključ ni v plaintextu — XOR + razpršeni bajti (prepis v localStorage lahko preglasi)
     function _resolveEmbeddedGeminiKey() {
         const x = 90;
@@ -3014,7 +3012,6 @@
     let geminiApiKey = localStorage.getItem('ble_gemini_api_key') || _resolveEmbeddedGeminiKey();
     let geminiChatHistory = [];
     let geminiBusy = false;
-    let geminiNextAllowedMs = 0;
     let geminiQuotaBlockedUntil = 0;
 
     function parseGeminiRetrySeconds(msg) {
@@ -3027,30 +3024,27 @@
     }
 
     function isGeminiModelUnavailableError(msg) {
-        return /no longer available|not available to new users|deprecated|has been shut down|update your code to use a newer model|gemini-1\.5/i.test(String(msg || ''));
+        return /no longer available|not available to new users|deprecated|has been shut down|update your code to use a newer model|gemini-1\.5|gemini-2\.0-flash([^-]|$)|models\/gemini-2\.0-flash/i.test(String(msg || ''));
     }
 
-    function geminiClientRateLimitCheck() {
-        const key = 'ble_gemini_call_times_v1';
-        const now = Date.now();
-        const times = JSON.parse(localStorage.getItem(key) || '[]').filter(t => now - t < 60000);
-        if (times.length >= GEMINI_MAX_CALLS_PER_MIN) {
-            throw new Error('Preveč Gemini zahtev v zadnji minuti (free kvota ~20/min). Počakaj 30–60 s in poskusi znova.');
-        }
-        times.push(now);
-        localStorage.setItem(key, JSON.stringify(times));
+    async function geminiApiFetch(model, body, authMode = 'header') {
+        const base = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+        const url = authMode === 'query'
+            ? `${base}?key=${encodeURIComponent(geminiApiKey)}`
+            : base;
+        const headers = { 'Content-Type': 'application/json' };
+        if (authMode === 'header') headers['x-goog-api-key'] = geminiApiKey;
+        const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+        const data = await res.json().catch(() => ({}));
+        return { res, data };
     }
 
-    async function geminiThrottleWait() {
-        const now = Date.now();
-        if (now < geminiQuotaBlockedUntil) {
-            const waitSec = Math.ceil((geminiQuotaBlockedUntil - now) / 1000);
-            throw new Error(`Gemini kvota je začasno polna. Počakaj še ~${waitSec} s in poskusi znova.`);
-        }
-        if (now < geminiNextAllowedMs) {
-            await new Promise(r => setTimeout(r, geminiNextAllowedMs - now));
-        }
-        geminiNextAllowedMs = Date.now() + GEMINI_MIN_INTERVAL_MS;
+    function extractGeminiText(data) {
+        return (data?.candidates || [])
+            .flatMap(c => c?.content?.parts || [])
+            .map(p => p.text || '')
+            .join('')
+            .trim();
     }
 
     function initGeminiApiKeyUi() {
@@ -3279,15 +3273,15 @@ OBVEZNO:
 
     async function callGeminiGenerate({ userText, imageDataUrl = null, jsonMode = false, temperature = 0.7 } = {}) {
         if (!geminiApiKey) throw new Error('Manjka Gemini API ključ.');
-        await geminiThrottleWait();
-        geminiClientRateLimitCheck();
+        if (Date.now() < geminiQuotaBlockedUntil) {
+            const waitSec = Math.ceil((geminiQuotaBlockedUntil - Date.now()) / 1000);
+            throw new Error(`Gemini začasno zaseden. Počakaj še ~${waitSec} s (Google rate limit).`);
+        }
 
         const parts = [];
         if (imageDataUrl) {
             const m = String(imageDataUrl).match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
-            if (m) {
-                parts.push({ inlineData: { mimeType: m[1], data: m[2] } });
-            }
+            if (m) parts.push({ inlineData: { mimeType: m[1], data: m[2] } });
         }
         parts.push({ text: userText });
 
@@ -3296,77 +3290,48 @@ OBVEZNO:
             contents: [{ role: 'user', parts }],
             generationConfig: {
                 temperature,
-                maxOutputTokens: 2048,
+                maxOutputTokens: jsonMode ? 1024 : 1536,
                 ...(jsonMode ? { responseMimeType: 'application/json' } : {})
             }
         };
 
+        const models = [GEMINI_MODEL_PRIMARY, GEMINI_MODEL_FALLBACK];
         let lastError = null;
-        for (const model of GEMINI_MODELS) {
-            const attempts = [
-                {
-                    url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-                    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiApiKey }
-                },
-                {
-                    url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(geminiApiKey)}`,
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            ];
 
-            for (const attempt of attempts) {
-                let retriedQuota = false;
-                while (true) {
-                    try {
-                        const res = await fetch(attempt.url, {
-                            method: 'POST',
-                            headers: attempt.headers,
-                            body: JSON.stringify(body)
-                        });
-                        const data = await res.json().catch(() => ({}));
-                        if (!res.ok) {
-                            const msg = data?.error?.message || `HTTP ${res.status}`;
-                            if (isGeminiQuotaError(msg, res.status)) {
-                                const retrySec = parseGeminiRetrySeconds(msg) || 30;
-                                geminiQuotaBlockedUntil = Date.now() + retrySec * 1000;
-                                if (!retriedQuota && retrySec > 0 && retrySec <= 90) {
-                                    retriedQuota = true;
-                                    await new Promise(r => setTimeout(r, (retrySec * 1000) + 400));
-                                    geminiQuotaBlockedUntil = 0;
-                                    continue;
-                                }
-                                throw new Error(`Gemini kvota (free tier): ${msg.split('.')[0]}. Počakaj ~${retrySec} s.`);
-                            }
-                            lastError = new Error(`${model}: ${msg}`);
-                            if (res.status === 404 || isGeminiModelUnavailableError(msg) || /not found|not supported|not available/i.test(msg)) {
-                                break;
-                            }
-                            continue;
-                        }
-                        geminiQuotaBlockedUntil = 0;
-                        const text = (data?.candidates || [])
-                            .flatMap(c => c?.content?.parts || [])
-                            .map(p => p.text || '')
-                            .join('')
-                            .trim();
-                        if (!text) {
-                            const block = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
-                            lastError = new Error(`${model}: prazen odgovor${block ? ` (${block})` : ''}.`);
-                            break;
-                        }
-                        return { text, model, raw: data };
-                    } catch (e) {
-                        if (isGeminiQuotaError(e?.message)) throw e;
-                        lastError = e;
-                        break;
-                    }
-                }
+        for (const model of models) {
+            let { res, data } = await geminiApiFetch(model, body, 'header');
+
+            // Samo ob auth napaki poskusi drug način (ne pri kvoti/modelu!)
+            if (res.status === 401 || res.status === 403) {
+                ({ res, data } = await geminiApiFetch(model, body, 'query'));
             }
+
+            if (!res.ok) {
+                const msg = data?.error?.message || `HTTP ${res.status}`;
+                if (isGeminiQuotaError(msg, res.status)) {
+                    const retrySec = parseGeminiRetrySeconds(msg) || 30;
+                    geminiQuotaBlockedUntil = Date.now() + retrySec * 1000;
+                    throw new Error(
+                        `Google API omejitev (ne nujno 20/min — lahko dnevna kvota ali prejšnji podvojeni klici). ` +
+                        `Počakaj ~${retrySec} s in poskusi znova z enim gumbom.`
+                    );
+                }
+                lastError = new Error(`${model}: ${msg}`);
+                if (isGeminiModelUnavailableError(msg) || res.status === 404) continue;
+                throw lastError;
+            }
+
+            geminiQuotaBlockedUntil = 0;
+            const text = extractGeminiText(data);
+            if (!text) {
+                const block = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
+                lastError = new Error(`${model}: prazen odgovor${block ? ` (${block})` : ''}.`);
+                continue;
+            }
+            return { text, model, raw: data };
         }
-        const keyHint = geminiApiKey?.startsWith('AQ.')
-            ? ' Tvoj ključ je tipa AQ. — v AI Studio ustvari novega, omeji na Gemini API only, prilepi pod Napredno in klikni Testiraj.'
-            : '';
-        throw lastError || new Error('Noben Gemini model ni na voljo. Osveži aplikacijo (build ' + APP_BUILD + ') z hard refresh.');
+
+        throw lastError || new Error(`Gemini ni na voljo. Osveži na build ${APP_BUILD}.`);
     }
 
     function setGeminiOutputLoading(msg) {
@@ -3388,12 +3353,10 @@ OBVEZNO:
                 hint = `<br><br><strong>Zastarel model (npr. gemini-1.5).</strong> Osveži aplikacijo na build <strong>${APP_BUILD}</strong>: zapri PWA, odpri znova ali Ctrl+F5.<br>
                 Če še vedno piše star build (v15/v16), v brskalniku izbriši cache za to stran.`;
             } else if (isGeminiQuotaError(msg)) {
-                hint = `<br><br><strong>Zakaj?</strong> Brezplačni Gemini API ima omejitev (~20 klicov/min). Aplikacija zdaj ne pošilja več podvojenih zahtev.<br><br>
-                <strong>Kaj narediti:</strong><br>
-                • Počakaj 30–60 s in poskusi znova (en gumb naenkrat).<br>
-                • Uporabi <em>svoj</em> ključ iz AI Studio (Napredno) — ima ločeno kvoto od vgrajenega.<br>
-                • Za več klicov: v Google AI Studio vklopi plačljiv načrt / billing.<br>
-                • Spremljanje: <a href="https://ai.dev/rate-limit" target="_blank" rel="noopener" style="color:var(--accent-cyan);">ai.dev/rate-limit</a>`;
+                hint = `<br><br><strong>To NI nujno 20 klicov/min.</strong> Google šteje tudi neuspešne poskuse (stara različica je poslala 4–6 klicev na en gumb). Build <strong>${APP_BUILD}</strong> pošlje <strong>1 klic</strong> na sliko.<br><br>
+                • Počakaj 30–60 s, nato samo <em>en</em> gumb.<br>
+                • Uporabi svoj ključ iz <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent-cyan);">AI Studio</a>.<br>
+                • Kvota: <a href="https://ai.dev/rate-limit" target="_blank" rel="noopener" style="color:var(--accent-cyan);">ai.dev/rate-limit</a>`;
             }
             out.innerHTML = `<strong style="color:var(--accent-red);">❌ Gemini napaka:</strong><br>${formatGeminiHtml(msg)}${hint}`;
         }
