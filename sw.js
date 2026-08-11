@@ -1,4 +1,4 @@
-const CACHE_NAME = 'treadmill-pro-v24';
+const CACHE_NAME = 'treadmill-pro-v25';
 const ASSETS_TO_CACHE = [
   './manifest.json',
   './icon.svg'

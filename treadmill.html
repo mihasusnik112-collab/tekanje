@@ -1561,7 +1561,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v24';
+    const APP_BUILD = 'v25';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -3338,7 +3338,7 @@ OBVEZNO:
             }
         };
 
-        const models = [GEMINI_MODEL_PRIMARY, GEMINI_MODEL_FALLBACK];
+        const models = [GEMINI_MODEL_PRIMARY];
         let lastError = null;
 
         for (const model of models) {
