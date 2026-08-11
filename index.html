@@ -1151,12 +1151,39 @@
 
             <!-- GEMINI ODGOVOR IN PRIPOROČILA -->
             <div id="geminiOutputCard" style="background: rgba(11, 15, 25, 0.7); border: 1px solid var(--card-border); padding: 1.2rem; border-radius: 1rem; min-height: 150px;">
-                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--accent-cyan); font-weight: 700; margin-bottom: 0.5rem;">
-                    💡 PRIPOROČILO GEMINI AI ASISTENTA:
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--accent-cyan); font-weight: 700;">
+                        💡 PRIPOROČILO GEMINI AI ASISTENTA:
+                    </div>
+                    <span id="geminiHealthSyncStatus" style="font-size:0.72rem;color:var(--text-muted);"></span>
                 </div>
-                <div id="geminiOutputText" style="font-size: 0.9rem; line-height: 1.6; color: var(--text-main);">
+                <div id="geminiOutputText" style="font-size: 0.9rem; line-height: 1.6; color: var(--text-main); white-space: normal; max-height: none;">
                     Kliknite zgornji gumb '⚡ Celostna AI Analiza' ali naložite sliko tehtnice/ure. Gemini bo analiziral vaše podatke in pripravil celosten zdravstveni načrt!
                 </div>
+            </div>
+
+            <!-- ZGODOVINA: priporočila, pogovori, slike — shranjeno v profilu (Supabase) -->
+            <div id="geminiHealthHistoryCard" style="margin-top:1rem;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.35);padding:1rem;border-radius:1rem;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.65rem;">
+                    <div style="font-size:0.9rem;font-weight:700;color:var(--accent-pink);">
+                        🗂️ Zdravstvena zgodovina profila <span id="geminiHealthUserLabel"></span>
+                    </div>
+                    <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+                        <button class="btn btn-secondary" style="font-size:0.75rem;padding:0.35rem 0.65rem;" onclick="refreshGeminiHealthHistory()">↺ Osveži</button>
+                        <button class="btn btn-secondary" style="font-size:0.75rem;padding:0.35rem 0.65rem;" onclick="clearGeminiHealthHistory()">🗑️ Počisti</button>
+                    </div>
+                </div>
+                <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.75rem;line-height:1.45;">
+                    Celotna priporočila, pogovori in analize slik (z datumom prenosa) se shranjujejo v tvoj profil na Supabase — Gemini jih uporabi za boljše nasvete o zdravju, treningu in prehrani.
+                </p>
+                <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.75rem;">
+                    <button type="button" class="btn btn-purple gemini-hist-tab active" data-hist="recs" onclick="switchGeminiHistoryTab('recs')" style="font-size:0.78rem;padding:0.4rem 0.7rem;">💡 Priporočila</button>
+                    <button type="button" class="btn btn-secondary gemini-hist-tab" data-hist="chat" onclick="switchGeminiHistoryTab('chat')" style="font-size:0.78rem;padding:0.4rem 0.7rem;">💬 Pogovori</button>
+                    <button type="button" class="btn btn-secondary gemini-hist-tab" data-hist="images" onclick="switchGeminiHistoryTab('images')" style="font-size:0.78rem;padding:0.4rem 0.7rem;">📸 Slike &amp; poročila</button>
+                </div>
+                <div id="geminiHistoryRecs" class="gemini-hist-panel" style="max-height:420px;overflow:auto;"></div>
+                <div id="geminiHistoryChat" class="gemini-hist-panel" style="display:none;max-height:420px;overflow:auto;"></div>
+                <div id="geminiHistoryImages" class="gemini-hist-panel" style="display:none;max-height:520px;overflow:auto;"></div>
             </div>
         </div>
     </div>
@@ -1561,7 +1588,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v26';
+    const APP_BUILD = 'v27';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -1962,7 +1989,13 @@
             syncWorkoutsBidirectional(false);
         }
         if (secId === 'secStats') loadStats();
-        if (secId === 'secGemini') initGeminiApiKeyUi();
+        if (secId === 'secGemini') {
+            initGeminiApiKeyUi();
+            syncGeminiHealth().then(() => {
+                renderGeminiHealthHistory();
+                showLatestGeminiRecommendation();
+            });
+        }
     }
 
     function renderUserSwitcher() {
@@ -2213,6 +2246,7 @@
         await renderHistoryTable();
         loadStats();
         loadGeminiCoachNoteUi();
+        await syncGeminiHealth(name);
         await loadSavedYouTubeVideos();
         await loadSavedYouTubeAudio();
     }
@@ -3058,6 +3092,403 @@
     let geminiChatHistory = [];
     let geminiBusy = false;
     let geminiQuotaBlockedUntil = 0;
+    let geminiHealthByUser = {};
+    let geminiHistoryActiveTab = 'recs';
+
+    function emptyGeminiHealth() {
+        return { recommendations: [], chat: [], images: [], lastRecommendation: '', updated_at: null };
+    }
+
+    function getGeminiHealthKey(user = currentUser) {
+        return `ble_gemini_health_${user}`;
+    }
+
+    function getGeminiHealthRouteName(user = currentUser) {
+        return `GEMINI_HEALTH::${user}`;
+    }
+
+    function getGeminiHealth(user = currentUser) {
+        if (!user) return emptyGeminiHealth();
+        if (!geminiHealthByUser[user]) {
+            try {
+                const raw = localStorage.getItem(getGeminiHealthKey(user));
+                geminiHealthByUser[user] = raw ? { ...emptyGeminiHealth(), ...JSON.parse(raw) } : emptyGeminiHealth();
+            } catch (_) {
+                geminiHealthByUser[user] = emptyGeminiHealth();
+            }
+        }
+        const h = geminiHealthByUser[user];
+        h.recommendations = Array.isArray(h.recommendations) ? h.recommendations : [];
+        h.chat = Array.isArray(h.chat) ? h.chat : [];
+        h.images = Array.isArray(h.images) ? h.images : [];
+        return h;
+    }
+
+    function persistGeminiHealthLocal(user = currentUser) {
+        const h = getGeminiHealth(user);
+        h.updated_at = new Date().toISOString();
+        try {
+            localStorage.setItem(getGeminiHealthKey(user), JSON.stringify(h));
+        } catch (e) {
+            // Prevelik payload — shrani brez thumbnailov
+            const slim = {
+                ...h,
+                images: (h.images || []).map(img => ({ ...img, thumbDataUrl: '' }))
+            };
+            try { localStorage.setItem(getGeminiHealthKey(user), JSON.stringify(slim)); } catch (_) {}
+        }
+        geminiChatHistory = (h.chat || []).map(c => ({ role: c.role, text: c.text })).slice(-20);
+    }
+
+    async function saveGeminiHealthToSupabase(user = currentUser) {
+        if (!supabaseClient || !user) return false;
+        const h = getGeminiHealth(user);
+        h.updated_at = new Date().toISOString();
+        const routeName = getGeminiHealthRouteName(user);
+        const payloadForCloud = {
+            ...h,
+            // V oblaku omeji thumbnail velikost — poročila in datumi ostanejo
+            images: (h.images || []).map(img => ({
+                id: img.id,
+                fileName: img.fileName,
+                transferred_at: img.transferred_at,
+                report: img.report,
+                metrics: img.metrics || null,
+                thumbDataUrl: (img.thumbDataUrl && img.thumbDataUrl.length < 120000) ? img.thumbDataUrl : ''
+            }))
+        };
+        let json = JSON.stringify(payloadForCloud);
+        if (json.length > 900000) {
+            payloadForCloud.images = payloadForCloud.images.map(img => ({ ...img, thumbDataUrl: '' }));
+            json = JSON.stringify(payloadForCloud);
+        }
+        try {
+            const { data: rows } = await supabaseClient
+                .from('routes')
+                .select('id')
+                .eq('name', routeName)
+                .order('id', { ascending: false })
+                .limit(1);
+            if (rows?.length) {
+                const { error } = await supabaseClient.from('routes').update({ video_url: json }).eq('id', rows[0].id);
+                if (error) throw error;
+            } else {
+                const { error } = await supabaseClient.from('routes').insert({ name: routeName, video_url: json });
+                if (error) throw error;
+            }
+            setGeminiHealthSyncStatus('✅ Sinhronizirano s Supabase');
+            return true;
+        } catch (e) {
+            console.warn('Gemini health save:', e);
+            setGeminiHealthSyncStatus('⚠️ Lokalno shranjeno (Supabase ni uspel)');
+            return false;
+        }
+    }
+
+    async function loadGeminiHealthFromSupabase(user = currentUser) {
+        if (!supabaseClient || !user) return null;
+        try {
+            const { data, error } = await supabaseClient
+                .from('routes')
+                .select('video_url,name,id')
+                .eq('name', getGeminiHealthRouteName(user))
+                .order('id', { ascending: false })
+                .limit(1);
+            if (error || !data?.length) return null;
+            const raw = data[0].video_url;
+            if (!raw) return null;
+            const obj = typeof raw === 'object' ? raw : JSON.parse(String(raw));
+            if (!obj || typeof obj !== 'object') return null;
+            return { ...emptyGeminiHealth(), ...obj };
+        } catch (e) {
+            console.warn('Gemini health fetch:', e);
+            return null;
+        }
+    }
+
+    function mergeGeminiHealth(localH, remoteH) {
+        if (!remoteH) return localH || emptyGeminiHealth();
+        if (!localH) return remoteH;
+        const localTs = Date.parse(localH.updated_at || 0) || 0;
+        const remoteTs = Date.parse(remoteH.updated_at || 0) || 0;
+        const base = remoteTs >= localTs ? remoteH : localH;
+        const other = remoteTs >= localTs ? localH : remoteH;
+        const byId = (arr, key = 'id') => {
+            const map = new Map();
+            [...(other[arr] || []), ...(base[arr] || [])].forEach(item => {
+                const k = item?.[key] || `${item?.created_at || item?.transferred_at}|${(item?.text || item?.report || '').slice(0, 40)}`;
+                map.set(k, item);
+            });
+            return Array.from(map.values());
+        };
+        return {
+            recommendations: byId('recommendations').sort((a, b) => Date.parse(b.created_at || 0) - Date.parse(a.created_at || 0)).slice(0, 40),
+            chat: byId('chat').sort((a, b) => Date.parse(a.created_at || 0) - Date.parse(b.created_at || 0)).slice(-60),
+            images: byId('images').sort((a, b) => Date.parse(b.transferred_at || 0) - Date.parse(a.transferred_at || 0)).slice(0, 20),
+            lastRecommendation: (remoteTs >= localTs ? remoteH.lastRecommendation : localH.lastRecommendation) || base.lastRecommendation || '',
+            updated_at: new Date(Math.max(localTs, remoteTs)).toISOString()
+        };
+    }
+
+    async function syncGeminiHealth(user = currentUser) {
+        const local = getGeminiHealth(user);
+        const remote = await loadGeminiHealthFromSupabase(user);
+        const merged = mergeGeminiHealth(local, remote);
+        geminiHealthByUser[user] = merged;
+        persistGeminiHealthLocal(user);
+        geminiChatHistory = (merged.chat || []).map(c => ({ role: c.role, text: c.text })).slice(-20);
+        renderGeminiHealthHistory();
+        showLatestGeminiRecommendation();
+        return merged;
+    }
+
+    function setGeminiHealthSyncStatus(msg) {
+        const el = document.getElementById('geminiHealthSyncStatus');
+        if (el) el.textContent = msg || '';
+    }
+
+    function geminiHealthUid(prefix = 'g') {
+        return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function formatGeminiDate(iso) {
+        if (!iso) return '—';
+        try {
+            return new Date(iso).toLocaleString('sl-SI', { dateStyle: 'medium', timeStyle: 'short' });
+        } catch (_) {
+            return String(iso);
+        }
+    }
+
+    async function compressImageDataUrl(dataUrl, maxW = 420, quality = 0.55) {
+        return new Promise(resolve => {
+            try {
+                const img = new Image();
+                img.onload = () => {
+                    const scale = Math.min(1, maxW / img.width);
+                    const w = Math.max(1, Math.round(img.width * scale));
+                    const h = Math.max(1, Math.round(img.height * scale));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
+                };
+                img.onerror = () => resolve('');
+                img.src = dataUrl;
+            } catch (_) {
+                resolve('');
+            }
+        });
+    }
+
+    async function recordGeminiRecommendation({ type, text, model = '' }) {
+        if (!text) return;
+        const h = getGeminiHealth();
+        const entry = {
+            id: geminiHealthUid('rec'),
+            type: type || 'analiza',
+            text,
+            model,
+            created_at: new Date().toISOString()
+        };
+        h.recommendations.unshift(entry);
+        h.recommendations = h.recommendations.slice(0, 40);
+        h.lastRecommendation = text;
+        persistGeminiHealthLocal();
+        localStorage.setItem(getCoachNotesKey(), text);
+        await saveGeminiHealthToSupabase();
+        renderGeminiHealthHistory();
+        showLatestGeminiRecommendation();
+    }
+
+    async function recordGeminiChat(role, text) {
+        if (!text) return;
+        const h = getGeminiHealth();
+        h.chat.push({
+            id: geminiHealthUid('chat'),
+            role: role === 'model' ? 'model' : 'user',
+            text,
+            created_at: new Date().toISOString()
+        });
+        h.chat = h.chat.slice(-60);
+        persistGeminiHealthLocal();
+        await saveGeminiHealthToSupabase();
+        renderGeminiHealthHistory();
+    }
+
+    async function recordGeminiImageAnalysis({ fileName, dataUrl, report, metrics = null, model = '' }) {
+        const h = getGeminiHealth();
+        const thumbDataUrl = dataUrl ? await compressImageDataUrl(dataUrl) : '';
+        const entry = {
+            id: geminiHealthUid('img'),
+            fileName: fileName || 'slika',
+            transferred_at: new Date().toISOString(),
+            thumbDataUrl,
+            report: report || '',
+            metrics,
+            model
+        };
+        h.images.unshift(entry);
+        h.images = h.images.slice(0, 20);
+        if (report) {
+            h.recommendations.unshift({
+                id: geminiHealthUid('rec'),
+                type: 'analiza_slike',
+                text: report,
+                model,
+                created_at: entry.transferred_at,
+                imageId: entry.id,
+                fileName: entry.fileName
+            });
+            h.recommendations = h.recommendations.slice(0, 40);
+            h.lastRecommendation = report;
+        }
+        persistGeminiHealthLocal();
+        await saveGeminiHealthToSupabase();
+        renderGeminiHealthHistory();
+        showLatestGeminiRecommendation();
+        switchGeminiHistoryTab('images');
+    }
+
+    function switchGeminiHistoryTab(tab) {
+        geminiHistoryActiveTab = tab || 'recs';
+        document.querySelectorAll('.gemini-hist-tab').forEach(btn => {
+            const on = btn.getAttribute('data-hist') === geminiHistoryActiveTab;
+            btn.classList.toggle('active', on);
+            btn.classList.toggle('btn-purple', on);
+            btn.classList.toggle('btn-secondary', !on);
+        });
+        const map = { recs: 'geminiHistoryRecs', chat: 'geminiHistoryChat', images: 'geminiHistoryImages' };
+        Object.entries(map).forEach(([k, id]) => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = k === geminiHistoryActiveTab ? 'block' : 'none';
+        });
+    }
+
+    function showLatestGeminiRecommendation() {
+        const h = getGeminiHealth();
+        const out = document.getElementById('geminiOutputText');
+        if (!out || !h.lastRecommendation) return;
+        // Ne prepiši, če trenutno teče nova zahteva
+        if (geminiBusy) return;
+        const latest = h.recommendations[0];
+        const meta = latest
+            ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">${formatGeminiDate(latest.created_at)} · ${latest.type || 'priporočilo'}${latest.model ? ' · ' + latest.model : ''}</div>`
+            : '';
+        out.innerHTML = `${meta}${formatGeminiHtml(h.lastRecommendation)}`;
+    }
+
+    function renderGeminiHealthHistory() {
+        const h = getGeminiHealth();
+        const label = document.getElementById('geminiHealthUserLabel');
+        if (label) label.textContent = currentUser ? `(${currentUser})` : '';
+
+        const recsEl = document.getElementById('geminiHistoryRecs');
+        const chatEl = document.getElementById('geminiHistoryChat');
+        const imgsEl = document.getElementById('geminiHistoryImages');
+
+        if (recsEl) {
+            if (!h.recommendations.length) {
+                recsEl.innerHTML = `<div style="font-size:0.82rem;color:var(--text-muted);">Še ni shranjenih priporočil. Zaženi celostno analizo ali progress.</div>`;
+            } else {
+                recsEl.innerHTML = h.recommendations.map(r => `
+                    <details style="margin-bottom:0.65rem;background:rgba(0,0,0,0.25);border:1px solid var(--card-border);border-radius:0.75rem;padding:0.65rem 0.75rem;">
+                        <summary style="cursor:pointer;font-size:0.85rem;font-weight:700;color:var(--accent-cyan);">
+                            ${formatGeminiDate(r.created_at)} · ${escapeHtmlLite(r.type || 'priporočilo')}${r.fileName ? ' · ' + escapeHtmlLite(r.fileName) : ''}
+                        </summary>
+                        <div style="margin-top:0.55rem;font-size:0.85rem;line-height:1.55;color:var(--text-main);">${formatGeminiHtml(r.text)}</div>
+                    </details>`).join('');
+            }
+        }
+
+        if (chatEl) {
+            if (!h.chat.length) {
+                chatEl.innerHTML = `<div style="font-size:0.82rem;color:var(--text-muted);">Še ni pogovorov. Vprašaj Gemini spodaj.</div>`;
+            } else {
+                chatEl.innerHTML = [...h.chat].reverse().map(c => {
+                    const isUser = c.role === 'user';
+                    return `<div style="margin-bottom:0.55rem;padding:0.65rem 0.75rem;border-radius:0.75rem;background:${isUser ? 'rgba(56,189,248,0.1)' : 'rgba(236,72,153,0.1)'};border:1px solid ${isUser ? 'rgba(56,189,248,0.25)' : 'rgba(236,72,153,0.25)'};">
+                        <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:0.25rem;">${isUser ? 'Ti' : 'Gemini'} · ${formatGeminiDate(c.created_at)}</div>
+                        <div style="font-size:0.85rem;line-height:1.5;">${formatGeminiHtml(c.text)}</div>
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        if (imgsEl) {
+            if (!h.images.length) {
+                imgsEl.innerHTML = `<div style="font-size:0.82rem;color:var(--text-muted);">Še ni prenesenih slik. Naloži sliko ure / tehtnice zgoraj.</div>`;
+            } else {
+                imgsEl.innerHTML = h.images.map(img => `
+                    <div style="margin-bottom:0.85rem;padding:0.75rem;border-radius:0.85rem;background:rgba(0,0,0,0.28);border:1px solid var(--card-border);">
+                        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:flex-start;">
+                            ${img.thumbDataUrl ? `<img src="${img.thumbDataUrl}" alt="" style="width:96px;height:96px;object-fit:cover;border-radius:0.5rem;border:1px solid var(--card-border);">` : `<div style="width:96px;height:96px;border-radius:0.5rem;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:1.6rem;">📸</div>`}
+                            <div style="flex:1;min-width:180px;">
+                                <div style="font-size:0.85rem;font-weight:700;color:var(--accent-cyan);">${escapeHtmlLite(img.fileName || 'Slika')}</div>
+                                <div style="font-size:0.75rem;color:var(--text-muted);margin:0.2rem 0 0.45rem;">Preneseno: ${formatGeminiDate(img.transferred_at)}</div>
+                                <details open>
+                                    <summary style="cursor:pointer;font-size:0.8rem;color:var(--accent-pink);">Poročilo o sliki</summary>
+                                    <div style="margin-top:0.4rem;font-size:0.82rem;line-height:1.5;">${formatGeminiHtml(img.report || 'Brez poročila')}</div>
+                                </details>
+                            </div>
+                        </div>
+                    </div>`).join('');
+            }
+        }
+        switchGeminiHistoryTab(geminiHistoryActiveTab);
+    }
+
+    function escapeHtmlLite(s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    async function refreshGeminiHealthHistory() {
+        setGeminiHealthSyncStatus('⏳ Osvežujem…');
+        await syncGeminiHealth();
+        setGeminiHealthSyncStatus('✅ Posodobljeno');
+    }
+
+    async function clearGeminiHealthHistory() {
+        if (!confirm(`Počisti vso Gemini zdravstveno zgodovino za profil ${currentUser}?`)) return;
+        geminiHealthByUser[currentUser] = emptyGeminiHealth();
+        geminiChatHistory = [];
+        persistGeminiHealthLocal();
+        localStorage.removeItem(getCoachNotesKey());
+        await saveGeminiHealthToSupabase();
+        renderGeminiHealthHistory();
+        const out = document.getElementById('geminiOutputText');
+        if (out) out.textContent = 'Zgodovina počiščena. Naredi novo analizo ali naloži sliko.';
+        const progressEl = document.getElementById('geminiProgressText');
+        if (progressEl) progressEl.textContent = 'Po vsakem shranjenem treningu Gemini lahko predlaga naslednje korake.';
+    }
+
+    function buildGeminiHealthContextForPrompt() {
+        const h = getGeminiHealth();
+        const parts = [];
+        if (h.images?.length) {
+            parts.push('ANALIZE PRENESENIH SLIK (ura/tehtnica) — z datumom prenosa:');
+            h.images.slice(0, 8).forEach((img, i) => {
+                parts.push(`${i + 1}) ${formatGeminiDate(img.transferred_at)} · datoteka: ${img.fileName || 'slika'}`);
+                if (img.metrics) parts.push(`   Metrike: ${JSON.stringify(img.metrics)}`);
+                parts.push(`   Poročilo: ${(img.report || '').slice(0, 900)}`);
+            });
+        }
+        if (h.recommendations?.length) {
+            parts.push('\nPREJŠNJA PRIPOROČILA / ANALIZE:');
+            h.recommendations.slice(0, 5).forEach((r, i) => {
+                parts.push(`${i + 1}) [${r.type}] ${formatGeminiDate(r.created_at)}: ${(r.text || '').slice(0, 700)}`);
+            });
+        }
+        if (h.chat?.length) {
+            parts.push('\nZGODOVINA POGOVORA (najnovejše):');
+            h.chat.slice(-10).forEach(c => {
+                parts.push(`${c.role === 'user' ? 'Uporabnik' : 'Gemini'}: ${(c.text || '').slice(0, 400)}`);
+            });
+        }
+        return parts.join('\n');
+    }
 
     function parseGeminiRetrySeconds(msg) {
         const m = String(msg || '').match(/retry in ([0-9.]+)s/i);
@@ -3259,7 +3690,8 @@
             note = 'Upoštevaj ženski fiziološki profil, regeneracijo in varnost pri intenziteti.';
         }
 
-        const lastCoach = localStorage.getItem(getCoachNotesKey()) || '';
+        const lastCoach = localStorage.getItem(getCoachNotesKey()) || getGeminiHealth().lastRecommendation || '';
+        const healthCtx = buildGeminiHealthContextForPrompt();
 
         return `AKTIVNI PROFIL UPORABNIKA:
 - Ime: ${currentUser}
@@ -3285,6 +3717,7 @@ ZGODOVINA TRENINGOV (najnovejši najprej):
 ${getRecentWorkoutsForGemini(12)}
 
 ${lastCoach ? `ZADNJI GEMINI COACH ZAPIS:\n${lastCoach}\n` : ''}
+${healthCtx ? `\nZDRAVSTVENA ZGODOVINA PROFILA (Supabase / lokalno):\n${healthCtx}\n` : ''}
 ${note}`;
     }
 
@@ -3318,10 +3751,10 @@ Odgovori v slovenščini, kratko (max ~220 besed), v strukturi:
 Za Miho upoštevaj tibialis (naklon ~8 %, zmerna hitrost).`;
 
             const { text, model } = await callGeminiGenerate({ userText: prompt, temperature: 0.55 });
-            localStorage.setItem(getCoachNotesKey(), text);
+            await recordGeminiRecommendation({ type: 'progress', text, model });
             if (progressEl) progressEl.innerHTML = formatGeminiHtml(text);
             if (out && !quiet) {
-                out.innerHTML = `<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">Progress coach · ${model}</div>
+                out.innerHTML = `<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">${formatGeminiDate(new Date().toISOString())} · Progress coach · ${model}</div>
                 <strong style="color:var(--accent-green);">📈 Progress za ${currentUser}:</strong><br><br>${formatGeminiHtml(text)}`;
             }
         } catch (err) {
@@ -3345,7 +3778,8 @@ OBVEZNO:
 - Nisi zdravnik: pri bolečinah, bolezni ali sumu na poškodbo priporoči strokovno pomoč.
 - Ne izmišljuj si meritev, ki niso v kontekstu; lahko oceniš na podlagi profila.
 - Strukturiraj odgovore s kratkimi odstavki / alinejami.
-- Če uporabnik prosi za celostno analizo, vključi: oceno stanja, Zone 2, predlog treninga na stezi, prehrano/regeneracijo po vadbi.`;
+- Če uporabnik prosi za celostno analizo, vključi: oceno stanja, Zone 2, predlog treninga na stezi, prehrano/regeneracijo po vadbi.
+- Upoštevaj zgodovino prejšnjih analiz, pogovorov in poročil o slikah (tehtnica/ura) z datumi — predlagaj izboljšave in prehrano na podlagi trendov.`;
     }
 
     function formatGeminiHtml(text) {
@@ -3381,7 +3815,7 @@ OBVEZNO:
             contents: [{ role: 'user', parts }],
             generationConfig: {
                 temperature,
-                maxOutputTokens: jsonMode ? 1024 : 1536,
+                maxOutputTokens: jsonMode ? 1024 : 4096,
                 ...(jsonMode ? { responseMimeType: 'application/json' } : {})
             }
         };
@@ -3486,10 +3920,12 @@ Uporabi null, če vrednosti ni mogoče zanesljivo prebrati.
                 });
 
                 // Poskusi izluščiti JSON in posodobiti težo
+                let metrics = null;
                 const jsonMatch = text.match(/\{[\s\S]*?"weight_kg"[\s\S]*?\}/);
                 if (jsonMatch) {
                     try {
                         const parsed = JSON.parse(jsonMatch[0]);
+                        metrics = parsed;
                         if (parsed.weight_kg && Number(parsed.weight_kg) > 30 && Number(parsed.weight_kg) < 250) {
                             const detectedWeight = Math.round(Number(parsed.weight_kg) * 10) / 10;
                             userProfiles[currentUser].weightKg = detectedWeight;
@@ -3503,6 +3939,7 @@ Uporabi null, če vrednosti ni mogoče zanesljivo prebrati.
                                     );
                                 } catch (e2) {}
                             }
+                            saveProfileMetaToSupabase(userProfiles[currentUser]).catch(() => {});
                             renderUserSwitcher();
                             if (document.getElementById('geminiActiveUserText')) {
                                 document.getElementById('geminiActiveUserText').textContent = `${currentUser} - ${detectedWeight} kg`;
@@ -3513,9 +3950,19 @@ Uporabi null, če vrednosti ni mogoče zanesljivo prebrati.
                     }
                 }
 
-                resultDiv.innerHTML = `<div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.35rem;">Model: ${model}</div>${formatGeminiHtml(text)}`;
+                resultDiv.innerHTML = `<div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.35rem;">Preneseno: ${formatGeminiDate(new Date().toISOString())} · Model: ${model}</div>${formatGeminiHtml(text)}`;
                 const out = document.getElementById('geminiOutputText');
                 if (out) out.innerHTML = resultDiv.innerHTML;
+
+                await recordGeminiImageAnalysis({
+                    fileName: file.name,
+                    dataUrl: e.target.result,
+                    report: text,
+                    metrics,
+                    model
+                });
+                await recordGeminiChat('user', `Naložena slika: ${file.name}`);
+                await recordGeminiChat('model', text);
             } catch (err) {
                 console.error(err);
                 resultDiv.innerHTML = `<span style="color:var(--accent-red);">Napaka: ${formatGeminiHtml(err.message || err)}</span>`;
@@ -3545,10 +3992,12 @@ Vključi:
 Odgovori v slovenščini, strukturirano.`;
 
             const { text, model } = await callGeminiGenerate({ userText: prompt, temperature: 0.6 });
-            geminiChatHistory.push({ role: 'user', text: 'Celostna AI analiza' });
-            geminiChatHistory.push({ role: 'model', text });
+            await recordGeminiChat('user', 'Celostna AI analiza');
+            await recordGeminiChat('model', text);
+            await recordGeminiRecommendation({ type: 'celostna_analiza', text, model });
             const out = document.getElementById('geminiOutputText');
-            out.innerHTML = `<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">Model: ${model}</div>${formatGeminiHtml(text)}`;
+            out.innerHTML = `<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">${formatGeminiDate(new Date().toISOString())} · Celostna analiza · ${model}</div>${formatGeminiHtml(text)}`;
+            switchGeminiHistoryTab('recs');
         } catch (err) {
             console.error(err);
             setGeminiOutputError(err);
@@ -3673,13 +4122,14 @@ ${q}
 Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija, tekalna steza …). Upoštevaj profil in meritev.`;
 
             const { text, model } = await callGeminiGenerate({ userText: prompt, temperature: 0.7 });
-            geminiChatHistory.push({ role: 'user', text: q });
-            geminiChatHistory.push({ role: 'model', text });
-            if (geminiChatHistory.length > 20) geminiChatHistory = geminiChatHistory.slice(-20);
+            await recordGeminiChat('user', q);
+            await recordGeminiChat('model', text);
+            await recordGeminiRecommendation({ type: 'pogovor', text, model });
 
-            out.innerHTML = `<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">Model: ${model}</div>
+            out.innerHTML = `<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">${formatGeminiDate(new Date().toISOString())} · Pogovor · ${model}</div>
             <strong style="color:var(--accent-pink);">💬 Odgovor za ${currentUser}:</strong><br><br>${formatGeminiHtml(text)}`;
             input.value = '';
+            switchGeminiHistoryTab('chat');
         } catch (err) {
             console.error(err);
             setGeminiOutputError(err);
@@ -3786,6 +4236,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                         !item.name.startsWith('[AUDIO]') &&
                         !item.name.startsWith('WORKOUT_IMG::') &&
                         !item.name.startsWith('PROFILE_META::') &&
+                        !item.name.startsWith('GEMINI_HEALTH::') &&
                         item.video_url &&
                         String(item.video_url).trim() !== '' &&
                         !String(item.video_url).startsWith('data:image') &&
@@ -4650,6 +5101,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                     !r.name.startsWith('[AUDIO]') &&
                     !r.name.startsWith('WORKOUT_IMG::') &&
                     !r.name.startsWith('PROFILE_META::') &&
+                    !r.name.startsWith('GEMINI_HEALTH::') &&
                     !(r.video_url && String(r.video_url).startsWith('data:image')) &&
                     !(r.video_url && String(r.video_url).trim().startsWith('{'))
                 );
