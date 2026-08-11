@@ -843,6 +843,7 @@
         <div class="brand-title">
             <img src="icon.svg" style="width: 38px; height: 38px; border-radius: 0.6rem; filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.8));" alt="Tekalna Steza Logo">
             <span>TEKALNA STEZA PRO</span>
+            <span id="headerBuildBadge" style="font-size:0.65rem;font-weight:600;color:var(--accent-cyan);opacity:0.85;margin-left:0.35rem;">…</span>
         </div>
 
         <div class="header-controls">
@@ -1717,8 +1718,13 @@
     // PWA REGISTRACIJA SERVICE WORKER-JA IN NAMESTITVENI DOGODEK
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('PWA Service Worker uspešno registriran!'))
+            navigator.serviceWorker.register('./sw.js?v=32')
+                .then(reg => {
+                    console.log('PWA Service Worker uspešno registriran!', reg.scope);
+                    // Vsak zagon preveri novo verzijo SW
+                    try { reg.update(); } catch (_) {}
+                    setInterval(() => { try { reg.update(); } catch (_) {} }, 60_000);
+                })
                 .catch(err => console.warn('Service Worker napaka:', err));
         });
     }
@@ -1769,7 +1775,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v31';
+    const APP_BUILD = 'v32';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -1986,10 +1992,22 @@
                     await Promise.all(regs.map(r => r.unregister()));
                 } catch (_) {}
             }
-            location.reload();
+            if (window.caches && caches.keys) {
+                try {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map(k => caches.delete(k)));
+                } catch (_) {}
+            }
+            // Hard reload z cache-bust
+            const u = new URL(location.href);
+            u.searchParams.set('b', APP_BUILD);
+            location.replace(u.toString());
             return;
         }
         localStorage.setItem('ble_app_build_seen', APP_BUILD);
+
+        const headerBuild = document.getElementById('headerBuildBadge');
+        if (headerBuild) headerBuild.textContent = APP_BUILD;
 
         checkPwaInstalledState();
         setupAppLifecycleGuards();

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'treadmill-pro-v31';
+const CACHE_NAME = 'treadmill-pro-v32';
 const ASSETS_TO_CACHE = [
   './manifest.json',
   './icon.svg'
@@ -15,12 +15,11 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.map((key) => (key !== CACHE_NAME ? caches.delete(key) : null)))
-    )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// HTML/JS: najprej omrežje (da dobiš posodobitve), sicer cache
+// HTML + SW: vedno omrežje najprej (da pride nova verzija)
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
@@ -29,13 +28,16 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('.html') ||
     url.pathname.endsWith('/') ||
     url.pathname.endsWith('/tekanje');
+  const isSw = url.pathname.endsWith('/sw.js') || url.pathname.endsWith('sw.js');
 
-  if (isHtml) {
+  if (isHtml || isSw) {
     event.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-store' })
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
+          if (isHtml && res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
+          }
           return res;
         })
         .catch(() =>
@@ -46,13 +48,14 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
+    fetch(req)
+      .then((res) => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
+        }
         return res;
-      }).catch(() => caches.match('./index.html'));
-    })
+      })
+      .catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
   );
 });
