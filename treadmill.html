@@ -623,6 +623,151 @@
             overflow: hidden;
         }
 
+        /* HR HUD — krivulja, Max HR, cone */
+        .hr-hud-panel {
+            background: linear-gradient(160deg, rgba(20, 8, 24, 0.75), rgba(8, 12, 20, 0.55));
+            border: 1px solid rgba(236, 72, 153, 0.35);
+            border-radius: 0.9rem;
+            padding: 0.75rem 0.85rem 0.65rem;
+            box-shadow: 0 0 28px rgba(236, 72, 153, 0.12);
+        }
+
+        .hr-hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.45rem;
+        }
+
+        .hr-hud-bpm {
+            font-size: 2.4rem;
+            font-weight: 800;
+            line-height: 1;
+            color: #fda4af;
+            text-shadow: 0 0 18px rgba(244, 63, 94, 0.55);
+        }
+
+        .hr-hud-bpm span {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.55);
+            margin-left: 0.2rem;
+        }
+
+        .hr-hud-zone-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.7rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.35);
+            color: #fff;
+            transition: background 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+        }
+
+        .hr-hud-zone-badge.pulse {
+            animation: hrZonePulse 1.1s ease-in-out infinite;
+        }
+
+        @keyframes hrZonePulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.15); }
+            50% { transform: scale(1.04); box-shadow: 0 0 18px 2px var(--hr-zone-glow, rgba(236,72,153,0.45)); }
+        }
+
+        .hr-hud-meta {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            text-align: right;
+            line-height: 1.35;
+        }
+
+        .hr-chart-box {
+            height: 180px;
+            position: relative;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 0.65rem;
+            padding: 0.25rem;
+        }
+
+        .hr-zone-strip {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.3rem;
+            margin-top: 0.55rem;
+        }
+
+        .hr-zone-cell {
+            border-radius: 0.45rem;
+            padding: 0.35rem 0.25rem;
+            text-align: center;
+            font-size: 0.62rem;
+            font-weight: 700;
+            color: #fff;
+            opacity: 0.45;
+            border: 1px solid transparent;
+            transition: opacity 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+            line-height: 1.2;
+        }
+
+        .hr-zone-cell.active {
+            opacity: 1;
+            transform: translateY(-1px);
+            box-shadow: 0 0 14px var(--hr-zone-glow, rgba(255,255,255,0.35));
+            border-color: rgba(255, 255, 255, 0.35);
+            animation: hrZonePulse 1.1s ease-in-out infinite;
+        }
+
+        .hr-zone-cell .z-range {
+            display: block;
+            font-weight: 500;
+            opacity: 0.85;
+            font-size: 0.58rem;
+            margin-top: 0.1rem;
+        }
+
+        .workout-view-switcher {
+            display: none;
+            position: fixed;
+            left: 50%;
+            bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+            transform: translateX(-50%);
+            z-index: 95000;
+            gap: 0.4rem;
+            padding: 0.4rem;
+            border-radius: 999px;
+            background: rgba(8, 12, 20, 0.88);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+        }
+
+        .workout-view-switcher.visible {
+            display: flex;
+        }
+
+        .workout-view-switcher .btn {
+            padding: 0.45rem 0.85rem;
+            font-size: 0.8rem;
+            border-radius: 999px;
+        }
+
+        .workout-view-switcher .btn.active-view {
+            background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+            border-color: transparent;
+            color: #fff;
+        }
+
+        .fullscreen-hud .workout-view-switcher-inline {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+        }
+
         .chart-box {
             position: relative;
             height: 250px;
@@ -863,12 +1008,15 @@
         </div>
     </div>
 
-    <!-- CELOZASLONSKI HUD DISPLAY (metrike + graf + dinamično ozadje) -->
+    <!-- CELOZASLONSKI HUD DISPLAY (metrike + HR krivulja + graf + dinamično ozadje) -->
     <div id="fullscreenHudOverlay" class="fullscreen-hud" aria-hidden="true">
         <div class="fullscreen-hud-top">
             <div class="fullscreen-hud-title">📊 HUD DISPLAY — <span id="fsHudUserLabel">Miha</span></div>
-            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                <button class="btn btn-purple" style="padding:0.55rem 0.9rem;" onclick="toggleVideoFullscreen()" id="fsHudVideoFsBtn" title="Cel zaslon za video">📺 Video</button>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+                <div class="workout-view-switcher-inline" id="fsHudViewSwitch">
+                    <button class="btn btn-purple active-view" style="padding:0.5rem 0.85rem;" onclick="setWorkoutView('hud')" id="fsBtnViewHud" title="Celozaslonski HUD">📊 HUD</button>
+                    <button class="btn btn-secondary" style="padding:0.5rem 0.85rem;" onclick="setWorkoutView('video')" id="fsBtnViewVideo" title="Video z rahlim HUD">📺 Video</button>
+                </div>
                 <button class="btn btn-danger" style="padding:0.55rem 1.1rem;font-weight:800;" onclick="stopWorkout('manual')">⏹ USTAVI TEK</button>
             </div>
         </div>
@@ -919,14 +1067,47 @@
                 </div>
                 <div class="hud-track-title" id="fsHudTrackTitle" style="position:relative;opacity:0.55;pointer-events:none;font-size:0.95rem;min-height:1.2em;"></div>
 
+                <!-- NAPREDNI HR HUD -->
+                <div class="hr-hud-panel" id="hrHudPanel">
+                    <div class="hr-hud-header">
+                        <div>
+                            <div style="font-size:0.72rem;font-weight:700;color:var(--accent-pink);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:0.2rem;">❤️ Srčni utrip v realnem času</div>
+                            <div class="hr-hud-bpm"><span id="hrHudBpmValue">--</span><span>BPM</span></div>
+                            <div id="hrHudZoneBadge" class="hr-hud-zone-badge" style="margin-top:0.45rem;">Cona: —</div>
+                        </div>
+                        <div class="hr-hud-meta">
+                            <div>Max HR: <strong id="hrHudMaxHr" style="color:#fda4af;">—</strong> BPM</div>
+                            <div id="hrHudPctOfMax">0 % Max HR</div>
+                            <div id="hrHudZoneRange" style="margin-top:0.2rem;">—</div>
+                        </div>
+                    </div>
+                    <div class="hr-chart-box">
+                        <canvas id="hrLiveChart"></canvas>
+                    </div>
+                    <div class="hr-zone-strip" id="hrZoneStrip">
+                        <div class="hr-zone-cell" data-zone="1" style="background:#3b82f6;">Z1 Ogrevanje<span class="z-range" id="hrZ1Range">50–60%</span></div>
+                        <div class="hr-zone-cell" data-zone="2" style="background:#22c55e;">Z2 Maščoba<span class="z-range" id="hrZ2Range">60–70%</span></div>
+                        <div class="hr-zone-cell" data-zone="3" style="background:#eab308;">Z3 Aerobna<span class="z-range" id="hrZ3Range">70–80%</span></div>
+                        <div class="hr-zone-cell" data-zone="4" style="background:#f97316;">Z4 Anaerobna<span class="z-range" id="hrZ4Range">80–90%</span></div>
+                        <div class="hr-zone-cell" data-zone="5" style="background:#ef4444;">Z5 Ekstrem<span class="z-range" id="hrZ5Range">90–100%</span></div>
+                    </div>
+                </div>
+
                 <div>
-                    <div style="font-size:0.85rem;font-weight:700;color:rgba(255,255,255,0.8);margin-bottom:0.35rem;">📈 Graf v realnem času</div>
-                    <div class="chart-box" style="height:200px;background:rgba(0,0,0,0.2);border-radius:0.75rem;padding:0.35rem;">
+                    <div style="font-size:0.85rem;font-weight:700;color:rgba(255,255,255,0.8);margin-bottom:0.35rem;">📈 Hitrost &amp; naklon</div>
+                    <div class="chart-box" style="height:140px;background:rgba(0,0,0,0.2);border-radius:0.75rem;padding:0.35rem;">
                         <canvas id="liveChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Preklop HUD ↔ Video med vadbo (plavajoči) -->
+    <div id="workoutViewSwitcher" class="workout-view-switcher" aria-hidden="true">
+        <button class="btn btn-secondary" id="floatBtnViewHud" onclick="setWorkoutView('hud')">📊 HUD</button>
+        <button class="btn btn-secondary" id="floatBtnViewVideo" onclick="setWorkoutView('video')">📺 Video</button>
+        <button class="btn btn-danger" onclick="stopWorkout('manual')" title="Ustavi tek">⏹</button>
     </div>
 
     <!-- SEKCIJA: PROFILI, NASTAVITVE & NAMESTITEV APLIKACIJE -->
@@ -1468,7 +1649,7 @@
                     <input type="checkbox" id="wizUseVideo" onchange="toggleWizardVideoSelect(this.checked)" style="margin-top: 0.2rem;">
                     <span>
                         🎬 <strong>Video proga</strong>
-                        <span style="display:block;font-size:0.78rem;color:var(--text-muted);">Lahek video HUD (hitrost, naklon …) + progress bar pri intervalih</span>
+                        <span style="display:block;font-size:0.78rem;color:var(--text-muted);">Lahek video HUD (hitrost, naklon, cona HR) + progress bar pri intervalih</span>
                     </span>
                 </label>
                 <select id="wizVideoSelect" style="width: 100%;" disabled>
@@ -1479,7 +1660,7 @@
                     <input type="checkbox" id="wizUseFullscreenHud" checked style="margin-top: 0.2rem;">
                     <span>
                         📊 <strong>HUD display</strong>
-                        <span style="display:block;font-size:0.78rem;color:var(--text-muted);">Cel zaslon: metrike, graf, dinamično ozadje (lahko skupaj z videom)</span>
+                        <span style="display:block;font-size:0.78rem;color:var(--text-muted);">Cel zaslon: HR krivulja, Max HR, cone + metrike. Med tekom preklopi na Video.</span>
                     </span>
                 </label>
             </div>
@@ -1588,7 +1769,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v27';
+    const APP_BUILD = 'v28';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -1764,7 +1945,11 @@
 
     let timerInterval = null;
     let liveChart = null;
+    let hrLiveChart = null;
     let gpxProfileChart = null;
+    let hrSeriesLabels = [];
+    let hrSeriesValues = [];
+    let hrSeriesMaxLine = [];
 
     // SAMODEJNI VSTOP V CELOZASLONSKI NAČIN OB ODPRTJU ALI PRVI INTERAKCIJI
     function autoEnterFullscreen() {
@@ -2246,6 +2431,8 @@
         await renderHistoryTable();
         loadStats();
         loadGeminiCoachNoteUi();
+        refreshHrZoneLabels();
+        updateHrHudUi(currentHr);
         await syncGeminiHealth(name);
         await loadSavedYouTubeVideos();
         await loadSavedYouTubeAudio();
@@ -2817,7 +3004,7 @@
     }
 
     // --- INTERAKTIVNI ČAROVNIK ZA ZAGON TEKA ("ZAČNI TEK" Z AVDIO MOŽNOSTJO) ---
-    let workoutDisplayMode = { video: false, fullscreenHud: false };
+    let workoutDisplayMode = { video: false, fullscreenHud: false, view: 'hud', hasVideo: false };
 
     async function openStartWorkoutWizard() {
         await populateWizardVideosDropdown();
@@ -2877,6 +3064,169 @@
         switchSection('secLive', { currentTarget: document.querySelectorAll('.selector-btn')[0] });
     }
 
+    function getProfileMaxHr(user = currentUser) {
+        const prof = userProfiles[user] || {};
+        if (prof.maxHr && Number(prof.maxHr) > 80) return Math.round(Number(prof.maxHr));
+        const age = Number(prof.age) || 30;
+        return Math.round(220 - age);
+    }
+
+    function getHrZoneInfo(hr, maxHr) {
+        const max = Math.max(100, Number(maxHr) || 180);
+        const bpm = Number(hr) || 0;
+        const pct = bpm > 0 ? (bpm / max) * 100 : 0;
+        const zones = [
+            { zone: 1, name: 'Ogrevanje', color: '#3b82f6', glow: 'rgba(59,130,246,0.55)', minPct: 0, maxPct: 60 },
+            { zone: 2, name: 'Izgorevanje maščob', color: '#22c55e', glow: 'rgba(34,197,94,0.55)', minPct: 60, maxPct: 70 },
+            { zone: 3, name: 'Aerobna', color: '#eab308', glow: 'rgba(234,179,8,0.55)', minPct: 70, maxPct: 80 },
+            { zone: 4, name: 'Anaerobna', color: '#f97316', glow: 'rgba(249,115,22,0.55)', minPct: 80, maxPct: 90 },
+            { zone: 5, name: 'Ekstremna', color: '#ef4444', glow: 'rgba(239,68,68,0.55)', minPct: 90, maxPct: 200 }
+        ];
+        let info = zones[0];
+        if (bpm <= 0) {
+            return { ...info, name: 'Ni signala', pct: 0, bpm: 0, maxHr: max, minBpm: Math.round(max * 0.5), maxBpm: Math.round(max * 0.6) };
+        }
+        for (const z of zones) {
+            if (pct >= z.minPct && pct < z.maxPct) { info = z; break; }
+            if (z.zone === 5 && pct >= 90) info = z;
+        }
+        return {
+            ...info,
+            pct: Math.round(pct),
+            bpm,
+            maxHr: max,
+            minBpm: Math.round(max * (info.minPct / 100)),
+            maxBpm: Math.round(max * Math.min(1, info.maxPct / 100))
+        };
+    }
+
+    function refreshHrZoneLabels() {
+        const maxHr = getProfileMaxHr();
+        const setRange = (id, lo, hi) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = `${Math.round(maxHr * lo)}–${Math.round(maxHr * hi)}`;
+        };
+        setRange('hrZ1Range', 0.50, 0.60);
+        setRange('hrZ2Range', 0.60, 0.70);
+        setRange('hrZ3Range', 0.70, 0.80);
+        setRange('hrZ4Range', 0.80, 0.90);
+        setRange('hrZ5Range', 0.90, 1.00);
+        const maxEl = document.getElementById('hrHudMaxHr');
+        if (maxEl) maxEl.textContent = String(maxHr);
+        if (hrLiveChart) {
+            hrLiveChart.options.scales.y.max = Math.ceil(maxHr / 10) * 10 + 10;
+            hrLiveChart.update('none');
+        }
+    }
+
+    function updateHrHudUi(hr = currentHr) {
+        const maxHr = getProfileMaxHr();
+        const info = getHrZoneInfo(hr, maxHr);
+        const bpmEl = document.getElementById('hrHudBpmValue');
+        const badge = document.getElementById('hrHudZoneBadge');
+        const pctEl = document.getElementById('hrHudPctOfMax');
+        const rangeEl = document.getElementById('hrHudZoneRange');
+        const maxEl = document.getElementById('hrHudMaxHr');
+        if (maxEl) maxEl.textContent = String(maxHr);
+        if (bpmEl) bpmEl.textContent = info.bpm > 0 ? String(info.bpm) : '--';
+        if (pctEl) pctEl.textContent = `${info.pct} % Max HR`;
+        if (rangeEl) rangeEl.textContent = info.bpm > 0 ? `${info.minBpm}–${info.maxBpm} BPM` : 'Počakaj na signal ure';
+        if (badge) {
+            badge.textContent = info.bpm > 0 ? `Z${info.zone} · ${info.name}` : 'Cona: —';
+            badge.style.background = info.bpm > 0 ? info.color : 'rgba(0,0,0,0.35)';
+            badge.style.setProperty('--hr-zone-glow', info.glow);
+            badge.classList.toggle('pulse', info.bpm > 0);
+        }
+        document.querySelectorAll('#hrZoneStrip .hr-zone-cell').forEach(cell => {
+            const z = Number(cell.getAttribute('data-zone'));
+            const on = info.bpm > 0 && z === info.zone;
+            cell.classList.toggle('active', on);
+            cell.style.setProperty('--hr-zone-glow', info.glow);
+        });
+
+        // Rahli video HUD: barva utripa glede na cono
+        const hudHr = document.getElementById('hudHr');
+        if (hudHr) {
+            const color = info.bpm > 0 ? info.color : 'var(--accent-red)';
+            hudHr.style.color = color;
+            hudHr.innerHTML = `${info.bpm > 0 ? info.bpm : '--'} <span style="font-size: 0.75rem;">bpm</span>`;
+        }
+    }
+
+    function resetHrSeries() {
+        hrSeriesLabels = [];
+        hrSeriesValues = [];
+        hrSeriesMaxLine = [];
+        if (hrLiveChart) {
+            hrLiveChart.data.labels = [];
+            hrLiveChart.data.datasets[0].data = [];
+            hrLiveChart.data.datasets[1].data = [];
+            refreshHrZoneLabels();
+            hrLiveChart.update('none');
+        }
+        if (liveChart) {
+            liveChart.data.labels = [];
+            liveChart.data.datasets.forEach(ds => { ds.data = []; });
+            liveChart.update('none');
+        }
+        updateHrHudUi(0);
+    }
+
+    function updateWorkoutViewSwitcherUi() {
+        const view = workoutDisplayMode.view || 'hud';
+        const float = document.getElementById('workoutViewSwitcher');
+        const active = !!(isWorkoutActive || startTime);
+        if (float) {
+            float.classList.toggle('visible', active);
+            float.setAttribute('aria-hidden', active ? 'false' : 'true');
+            // V polnem HUD je switcher že v headerju — plavajoči skrij, da ne podvaja
+            const hudOpen = document.getElementById('fullscreenHudOverlay')?.classList.contains('active');
+            if (hudOpen && view === 'hud') float.classList.remove('visible');
+        }
+        const mark = (id, on) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.toggle('active-view', on);
+            el.classList.toggle('btn-purple', on);
+            el.classList.toggle('btn-secondary', !on);
+        };
+        mark('fsBtnViewHud', view === 'hud');
+        mark('fsBtnViewVideo', view === 'video');
+        mark('floatBtnViewHud', view === 'hud');
+        mark('floatBtnViewVideo', view === 'video');
+    }
+
+    function setWorkoutView(mode) {
+        const view = mode === 'video' ? 'video' : 'hud';
+        workoutDisplayMode.view = view;
+
+        if (view === 'hud') {
+            // Polni HUD: metrike + HR krivulja (brez vgrajenega videa — čistejši prikaz)
+            openFullscreenHud({ withVideo: false });
+            workoutDisplayMode.fullscreenHud = true;
+        } else {
+            // Video način z rahlim HUD overlayjem
+            closeFullscreenHud();
+            workoutDisplayMode.fullscreenHud = false;
+            showLiveVideoCardOnly();
+            if (workoutDisplayMode.hasVideo || workoutDisplayMode.video) {
+                const url = document.getElementById('youtubeUrlInput')?.value?.trim();
+                if (url && !isVideoPlaying) {
+                    try { loadYouTubeVideo(); } catch (_) {}
+                }
+            } else {
+                // Brez izbrane proge — vseeno pokaži lahek HUD na video kartici
+                const title = document.getElementById('hudTrackTitle');
+                if (title && !title.textContent) title.textContent = 'Video način · lahek HUD';
+            }
+        }
+        updateWorkoutViewSwitcherUi();
+        requestAnimationFrame(() => {
+            try { if (hrLiveChart) hrLiveChart.resize(); } catch (_) {}
+            try { if (liveChart) liveChart.resize(); } catch (_) {}
+        });
+    }
+
     function openFullscreenHud({ withVideo = false } = {}) {
         const overlay = document.getElementById('fullscreenHudOverlay');
         if (!overlay) return;
@@ -2887,6 +3237,9 @@
         const videoPanel = document.getElementById('fsHudVideoPanel');
         const fsHost = document.getElementById('fsHudVideoHost');
         const box = document.getElementById('videoContainerBox');
+
+        refreshHrZoneLabels();
+        updateHrHudUi(currentHr);
 
         if (withVideo && box && fsHost) {
             fsHost.appendChild(box);
@@ -2900,10 +3253,13 @@
 
         overlay.classList.add('active');
         overlay.setAttribute('aria-hidden', 'false');
+        workoutDisplayMode.view = 'hud';
         updateFullscreenHudEffortBg();
         if (isProgramActive) buildHudProgramProgressTrack();
+        updateWorkoutViewSwitcherUi();
         requestAnimationFrame(() => {
             try { if (liveChart) liveChart.resize(); } catch (e) {}
+            try { if (hrLiveChart) hrLiveChart.resize(); } catch (e) {}
         });
     }
 
@@ -2915,6 +3271,7 @@
         parkVideoContainer();
         const videoPanel = document.getElementById('fsHudVideoPanel');
         if (videoPanel) videoPanel.style.display = 'none';
+        updateWorkoutViewSwitcherUi();
     }
 
     function updateFullscreenHudEffortBg() {
@@ -2946,30 +3303,37 @@
         const videoUrl = document.getElementById('wizVideoSelect').value;
         const hasVideo = useVideo && videoUrl && videoUrl !== 'none';
 
-        workoutDisplayMode = { video: hasVideo, fullscreenHud: useHud };
+        workoutDisplayMode = {
+            video: hasVideo,
+            hasVideo,
+            fullscreenHud: useHud,
+            view: useHud ? 'hud' : (hasVideo ? 'video' : 'hud')
+        };
 
         isWorkoutActive = true;
         hasHadSpeedBefore = false;
         treadmillBeltStarted = false;
         updateLiveMusicBarVisibility();
         await requestWorkoutWakeLock();
+        resetHrSeries();
+        refreshHrZoneLabels();
 
-        // 1. Video
+        // 1. Video (naloži v ozadju; prikaz glede na view)
         if (hasVideo) {
             document.getElementById('youtubeUrlInput').value = videoUrl;
             loadYouTubeVideo();
-            if (!useHud) {
-                showLiveVideoCardOnly();
-            }
         } else {
             parkVideoContainer();
         }
 
-        // 2. Celozaslonski HUD (lahko skupaj z videom)
+        // 2. Začetni prikaz: HUD ali video z rahlim HUD
         if (useHud) {
-            openFullscreenHud({ withVideo: hasVideo });
+            setWorkoutView('hud');
+        } else if (hasVideo) {
+            setWorkoutView('video');
         } else {
             closeFullscreenHud();
+            updateWorkoutViewSwitcherUi();
         }
 
         // 3. Avdio / Glasba
@@ -4837,7 +5201,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
 
         if (document.getElementById('hudSpeed')) document.getElementById('hudSpeed').innerHTML = `${spd.toFixed(1)} <span style="font-size: 0.75rem;">km/h</span>`;
         if (document.getElementById('hudIncline')) document.getElementById('hudIncline').innerHTML = `${currentIncline.toFixed(1)} <span style="font-size: 0.75rem;">%</span>`;
-        if (document.getElementById('hudHr')) document.getElementById('hudHr').innerHTML = `${currentHr > 0 ? currentHr : '--'} <span style="font-size: 0.75rem;">bpm</span>`;
+        updateHrHudUi(currentHr);
         if (document.getElementById('hudDistance')) document.getElementById('hudDistance').innerHTML = `${currentDistance.toFixed(2)} <span style="font-size: 0.75rem;">km</span>`;
     }
 
@@ -5066,6 +5430,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         const hrFormat = flags & 0x01;
         currentHr = (hrFormat === 0) ? data.getUint8(1) : data.getUint16(1, true);
         document.getElementById('valHr').textContent = currentHr;
+        updateHrHudUi(currentHr);
     }
 
     function updateUI() {
@@ -5881,38 +6246,131 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             data: {
                 labels: [],
                 datasets: [
-                    { label: 'Hitrost (km/h)', borderColor: '#10b981', data: [], borderWidth: 2, yAxisID: 'y' },
-                    { label: 'Naklon (%)', borderColor: '#06b6d4', data: [], borderWidth: 2, yAxisID: 'y1' },
-                    { label: 'Srčni Utrip (BPM)', borderColor: '#ef4444', data: [], borderWidth: 2, yAxisID: 'y2' }
+                    { label: 'Hitrost (km/h)', borderColor: '#10b981', data: [], borderWidth: 2, tension: 0.25, pointRadius: 0, yAxisID: 'y' },
+                    { label: 'Naklon (%)', borderColor: '#06b6d4', data: [], borderWidth: 2, tension: 0.25, pointRadius: 0, yAxisID: 'y1' }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: false,
+                plugins: { legend: { labels: { color: '#94a3b8', boxWidth: 12, font: { size: 10 } } } },
                 scales: {
-                    x: { ticks: { color: '#94a3b8' } },
-                    y: { type: 'linear', position: 'left', ticks: { color: '#10b981' } },
-                    y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#06b6d4' } },
-                    y2: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#ef4444' } }
+                    x: { ticks: { color: '#94a3b8', maxTicksLimit: 6, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                    y: { type: 'linear', position: 'left', ticks: { color: '#10b981', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } },
+                    y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#06b6d4', font: { size: 10 } } }
                 }
             }
         });
+
+        const hrCanvas = document.getElementById('hrLiveChart');
+        if (hrCanvas) {
+            const maxHr = getProfileMaxHr();
+            const ctxHr = hrCanvas.getContext('2d');
+            const grad = ctxHr.createLinearGradient(0, 0, 0, 180);
+            grad.addColorStop(0, 'rgba(244, 63, 94, 0.45)');
+            grad.addColorStop(1, 'rgba(236, 72, 153, 0.02)');
+
+            hrLiveChart = new Chart(ctxHr, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'HR',
+                            data: [],
+                            borderColor: '#fb7185',
+                            backgroundColor: grad,
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.35,
+                            pointRadius: 0,
+                            pointHoverRadius: 3,
+                            shadowOffsetX: 0,
+                            shadowOffsetY: 0
+                        },
+                        {
+                            label: 'Max HR',
+                            data: [],
+                            borderColor: 'rgba(248, 113, 113, 0.95)',
+                            borderWidth: 2,
+                            borderDash: [7, 6],
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ctx.dataset.label === 'Max HR'
+                                    ? `Max HR: ${ctx.parsed.y} BPM`
+                                    : `Utrip: ${ctx.parsed.y} BPM`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8', maxTicksLimit: 8, font: { size: 10 } },
+                            grid: { color: 'rgba(255,255,255,0.04)' }
+                        },
+                        y: {
+                            min: 60,
+                            max: Math.ceil(maxHr / 10) * 10 + 10,
+                            ticks: { color: '#fda4af', font: { size: 10 } },
+                            grid: { color: 'rgba(244,63,94,0.08)' },
+                            title: { display: true, text: 'BPM', color: '#fda4af', font: { size: 11, weight: '700' } }
+                        }
+                    }
+                }
+            });
+            refreshHrZoneLabels();
+        }
     }
 
     function updateLiveChart(t, speed, incline, hr) {
-        if (!liveChart) return;
-        liveChart.data.labels.push(`${t}s`);
-        liveChart.data.datasets[0].data.push(speed);
-        liveChart.data.datasets[1].data.push(incline);
-        liveChart.data.datasets[2].data.push(hr);
-
-        if (liveChart.data.labels.length > 60) {
-            liveChart.data.labels.shift();
-            liveChart.data.datasets[0].data.shift();
-            liveChart.data.datasets[1].data.shift();
-            liveChart.data.datasets[2].data.shift();
+        const label = `${Math.floor(Number(t) || 0)}s`;
+        if (liveChart) {
+            liveChart.data.labels.push(label);
+            liveChart.data.datasets[0].data.push(speed);
+            liveChart.data.datasets[1].data.push(incline);
+            if (liveChart.data.labels.length > 90) {
+                liveChart.data.labels.shift();
+                liveChart.data.datasets[0].data.shift();
+                liveChart.data.datasets[1].data.shift();
+            }
+            liveChart.update('none');
         }
-        liveChart.update('none');
+
+        if (hrLiveChart) {
+            const maxHr = getProfileMaxHr();
+            const hrVal = (Number(hr) > 0) ? Number(hr) : null;
+            hrSeriesLabels.push(label);
+            hrSeriesValues.push(hrVal);
+            hrSeriesMaxLine.push(maxHr);
+
+            // Celoten trening (do ~45 min pri 1 Hz); potem proredi
+            const maxPoints = 2700;
+            if (hrSeriesLabels.length > maxPoints) {
+                hrSeriesLabels.shift();
+                hrSeriesValues.shift();
+                hrSeriesMaxLine.shift();
+            }
+
+            hrLiveChart.data.labels = hrSeriesLabels;
+            hrLiveChart.data.datasets[0].data = hrSeriesValues;
+            hrLiveChart.data.datasets[1].data = hrSeriesMaxLine;
+            hrLiveChart.options.scales.y.max = Math.ceil(maxHr / 10) * 10 + 10;
+            hrLiveChart.update('none');
+        }
+        updateHrHudUi(hr);
     }
 
     function renderGpxProfileChart() {
@@ -5968,7 +6426,12 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         isGpxFollowingActive = false;
         hideHudProgramProgress();
         closeFullscreenHud();
-        workoutDisplayMode = { video: false, fullscreenHud: false };
+        workoutDisplayMode = { video: false, fullscreenHud: false, view: 'hud', hasVideo: false };
+        const float = document.getElementById('workoutViewSwitcher');
+        if (float) {
+            float.classList.remove('visible');
+            float.setAttribute('aria-hidden', 'true');
+        }
 
         stopTimer();
         releaseWorkoutWakeLock();
