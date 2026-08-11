@@ -2986,8 +2986,11 @@
     }
 
     // --- GEMINI AI VIRTUALNI ASISTENT, TRENER IN UVOZ SLIK ---
-    const APP_BUILD = 'v17';
-    const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest'];
+    const APP_BUILD = 'v18';
+    // gemini-flash-latest → gemini-1.5-flash (nižja free kvota); uporabljamo samo 2.5 modele
+    const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+    const GEMINI_MIN_INTERVAL_MS = 2500;
+    const GEMINI_MAX_CALLS_PER_MIN = 14;
     // Ključ ni v plaintextu — XOR + razpršeni bajti (prepis v localStorage lahko preglasi)
     function _resolveEmbeddedGeminiKey() {
         const x = 90;
@@ -2997,6 +3000,40 @@
     let geminiApiKey = localStorage.getItem('ble_gemini_api_key') || _resolveEmbeddedGeminiKey();
     let geminiChatHistory = [];
     let geminiBusy = false;
+    let geminiNextAllowedMs = 0;
+    let geminiQuotaBlockedUntil = 0;
+
+    function parseGeminiRetrySeconds(msg) {
+        const m = String(msg || '').match(/retry in ([0-9.]+)s/i);
+        return m ? Math.ceil(parseFloat(m[1])) : 0;
+    }
+
+    function isGeminiQuotaError(msg, status) {
+        return status === 429 || /quota|rate.limit|rate_limit|exceeded|resource_exhausted/i.test(String(msg || ''));
+    }
+
+    function geminiClientRateLimitCheck() {
+        const key = 'ble_gemini_call_times_v1';
+        const now = Date.now();
+        const times = JSON.parse(localStorage.getItem(key) || '[]').filter(t => now - t < 60000);
+        if (times.length >= GEMINI_MAX_CALLS_PER_MIN) {
+            throw new Error('Preveč Gemini zahtev v zadnji minuti (free kvota ~20/min). Počakaj 30–60 s in poskusi znova.');
+        }
+        times.push(now);
+        localStorage.setItem(key, JSON.stringify(times));
+    }
+
+    async function geminiThrottleWait() {
+        const now = Date.now();
+        if (now < geminiQuotaBlockedUntil) {
+            const waitSec = Math.ceil((geminiQuotaBlockedUntil - now) / 1000);
+            throw new Error(`Gemini kvota je začasno polna. Počakaj še ~${waitSec} s in poskusi znova.`);
+        }
+        if (now < geminiNextAllowedMs) {
+            await new Promise(r => setTimeout(r, geminiNextAllowedMs - now));
+        }
+        geminiNextAllowedMs = Date.now() + GEMINI_MIN_INTERVAL_MS;
+    }
 
     function initGeminiApiKeyUi() {
         const input = document.getElementById('geminiApiKeyInput');
@@ -3155,6 +3192,7 @@ ${note}`;
             if (!quiet) requireGeminiApiKey();
             return;
         }
+        if (Date.now() < geminiQuotaBlockedUntil) return;
         if (geminiBusy && !quiet) return;
         const wasBusy = geminiBusy;
         if (!wasBusy) geminiBusy = true;
@@ -3223,12 +3261,13 @@ OBVEZNO:
 
     async function callGeminiGenerate({ userText, imageDataUrl = null, jsonMode = false, temperature = 0.7 } = {}) {
         if (!geminiApiKey) throw new Error('Manjka Gemini API ključ.');
+        await geminiThrottleWait();
+        geminiClientRateLimitCheck();
 
         const parts = [];
         if (imageDataUrl) {
             const m = String(imageDataUrl).match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
             if (m) {
-                // REST API: camelCase (inlineData) — deluje z AQ. auth ključi
                 parts.push({ inlineData: { mimeType: m[1], data: m[2] } });
             }
         }
@@ -3248,51 +3287,63 @@ OBVEZNO:
         for (const model of GEMINI_MODELS) {
             const attempts = [
                 {
-                    label: 'header',
                     url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
                     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiApiKey }
                 },
                 {
-                    label: 'query',
                     url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(geminiApiKey)}`,
                     headers: { 'Content-Type': 'application/json' }
                 }
             ];
 
-            let modelResolved = false;
             for (const attempt of attempts) {
-                try {
-                    const res = await fetch(attempt.url, {
-                        method: 'POST',
-                        headers: attempt.headers,
-                        body: JSON.stringify(body)
-                    });
-                    const data = await res.json().catch(() => ({}));
-                    if (!res.ok) {
-                        const msg = data?.error?.message || `HTTP ${res.status}`;
-                        lastError = new Error(`${model}: ${msg}`);
-                        if (res.status === 404 || /not found|not supported|deprecated|not available/i.test(msg)) {
-                            break; // naslednji model
+                let retriedQuota = false;
+                while (true) {
+                    try {
+                        const res = await fetch(attempt.url, {
+                            method: 'POST',
+                            headers: attempt.headers,
+                            body: JSON.stringify(body)
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                            const msg = data?.error?.message || `HTTP ${res.status}`;
+                            if (isGeminiQuotaError(msg, res.status)) {
+                                const retrySec = parseGeminiRetrySeconds(msg) || 30;
+                                geminiQuotaBlockedUntil = Date.now() + retrySec * 1000;
+                                if (!retriedQuota && retrySec > 0 && retrySec <= 90) {
+                                    retriedQuota = true;
+                                    await new Promise(r => setTimeout(r, (retrySec * 1000) + 400));
+                                    geminiQuotaBlockedUntil = 0;
+                                    continue;
+                                }
+                                throw new Error(`Gemini kvota (free tier): ${msg.split('.')[0]}. Počakaj ~${retrySec} s.`);
+                            }
+                            lastError = new Error(`${model}: ${msg}`);
+                            if (res.status === 404 || /not found|not supported|deprecated|not available/i.test(msg)) {
+                                break;
+                            }
+                            continue;
                         }
-                        // poskusi drugi auth način
-                        continue;
+                        geminiQuotaBlockedUntil = 0;
+                        const text = (data?.candidates || [])
+                            .flatMap(c => c?.content?.parts || [])
+                            .map(p => p.text || '')
+                            .join('')
+                            .trim();
+                        if (!text) {
+                            const block = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
+                            lastError = new Error(`${model}: prazen odgovor${block ? ` (${block})` : ''}.`);
+                            break;
+                        }
+                        return { text, model, raw: data };
+                    } catch (e) {
+                        if (isGeminiQuotaError(e?.message)) throw e;
+                        lastError = e;
+                        break;
                     }
-                    const text = (data?.candidates || [])
-                        .flatMap(c => c?.content?.parts || [])
-                        .map(p => p.text || '')
-                        .join('')
-                        .trim();
-                    if (!text) {
-                        const block = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
-                        lastError = new Error(`${model}: prazen odgovor${block ? ` (${block})` : ''}.`);
-                        continue;
-                    }
-                    return { text, model, raw: data };
-                } catch (e) {
-                    lastError = e;
                 }
             }
-            if (modelResolved) break;
         }
         const keyHint = geminiApiKey?.startsWith('AQ.')
             ? ' Tvoj ključ je tipa AQ. — v AI Studio ustvari novega, omeji na Gemini API only, prilepi pod Napredno in klikni Testiraj.'
@@ -3309,13 +3360,21 @@ OBVEZNO:
         const out = document.getElementById('geminiOutputText');
         const msg = err?.message || String(err);
         if (out) {
-            const authHint = /api key|authentication|credential|permission/i.test(msg)
-                ? `<br><br><strong>Kaj narediti:</strong><br>
+            let hint = `<br><br>Preveri omrežje in poskusi znova.`;
+            if (/api key|authentication|credential|permission/i.test(msg)) {
+                hint = `<br><br><strong>Kaj narediti:</strong><br>
                 1. V <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent-cyan);">AI Studio</a> omeji ključ na <em>Gemini API only</em> (ne sme biti Unrestricted).<br>
                 2. Če še ne dela: ustvari nov Auth ključ (začne se z AQ.) in ga vstavi pod <em>Napredno: zamenjaj ključ</em>.<br>
-                3. Stari lokalni ključ lahko počistiš z gumbom <em>Privzeti</em>.`
-                : `<br><br>Preveri omrežje in poskusi znova.`;
-            out.innerHTML = `<strong style="color:var(--accent-red);">❌ Gemini napaka:</strong><br>${formatGeminiHtml(msg)}${authHint}`;
+                3. Stari lokalni ključ lahko počistiš z gumbom <em>Privzeti</em>.`;
+            } else if (isGeminiQuotaError(msg)) {
+                hint = `<br><br><strong>Zakaj?</strong> Brezplačni Gemini API ima omejitev (~20 klicov/min). Aplikacija zdaj ne pošilja več podvojenih zahtev.<br><br>
+                <strong>Kaj narediti:</strong><br>
+                • Počakaj 30–60 s in poskusi znova (en gumb naenkrat).<br>
+                • Uporabi <em>svoj</em> ključ iz AI Studio (Napredno) — ima ločeno kvoto od vgrajenega.<br>
+                • Za več klicov: v Google AI Studio vklopi plačljiv načrt / billing.<br>
+                • Spremljanje: <a href="https://ai.dev/rate-limit" target="_blank" rel="noopener" style="color:var(--accent-cyan);">ai.dev/rate-limit</a>`;
+            }
+            out.innerHTML = `<strong style="color:var(--accent-red);">❌ Gemini napaka:</strong><br>${formatGeminiHtml(msg)}${hint}`;
         }
     }
 
