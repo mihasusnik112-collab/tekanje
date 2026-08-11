@@ -1561,7 +1561,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v25';
+    const APP_BUILD = 'v26';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -3004,6 +3004,50 @@
     // Modeli potrjeni z uporabnikovim ključem (AI Studio /v1beta/models)
     // Samo gemini-2.5-flash — 2.5-pro ni na voljo novim uporabnikom
     const GEMINI_MODEL_PRIMARY = 'gemini-2.5-flash';
+    let geminiModelsCache = null;
+
+    function shortGeminiModelId(name) {
+        return String(name || '').replace(/^models\//, '');
+    }
+
+    function isUsableGeminiModel(entry) {
+        if (!entry?.name || !entry.supportedGenerationMethods?.includes('generateContent')) return false;
+        const id = shortGeminiModelId(entry.name);
+        if (/tts|live|embedding|aqa|image-generation|robotics/i.test(id)) return false;
+        if (/pro/i.test(id)) return false;
+        return /^gemini/i.test(id);
+    }
+
+    function rankGeminiModel(id) {
+        const prefs = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+        const idx = prefs.indexOf(id);
+        if (idx >= 0) return idx;
+        if (/flash/i.test(id)) return 10;
+        return 99;
+    }
+
+    async function resolveGeminiModels(forceRefresh = false) {
+        if (!forceRefresh && geminiModelsCache?.length) return geminiModelsCache;
+        reloadGeminiApiKeyFromStorage();
+        if (!geminiApiKey) return [GEMINI_MODEL_PRIMARY];
+        try {
+            const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(geminiApiKey)}`;
+            const listRes = await fetch(listUrl);
+            const listData = await listRes.json().catch(() => ({}));
+            if (!listRes.ok) return [GEMINI_MODEL_PRIMARY];
+            const seen = new Set();
+            const ordered = (listData.models || [])
+                .filter(isUsableGeminiModel)
+                .map(m => shortGeminiModelId(m.name))
+                .sort((a, b) => rankGeminiModel(a) - rankGeminiModel(b))
+                .filter(id => (seen.has(id) ? false : (seen.add(id), true)));
+            geminiModelsCache = ordered.length ? ordered : [GEMINI_MODEL_PRIMARY];
+            return geminiModelsCache;
+        } catch (_) {
+            return [GEMINI_MODEL_PRIMARY];
+        }
+    }
+
     // Ključ ni v plaintextu — XOR + razpršeni bajti (prepis v localStorage lahko preglasi)
     function _resolveEmbeddedGeminiKey() {
         const x = 90;
@@ -3093,7 +3137,9 @@
                 throw new Error(`Ključ ni veljaven: ${msg}`);
             }
             const modelNames = (listData.models || []).map(m => m.name).filter(n => n.includes('gemini-2.5'));
-            if (out) out.innerHTML += `<br><span style="color:var(--accent-green);font-size:0.82rem;">✓ Ključ velja. Modeli: ${modelNames.slice(0, 3).join(', ') || 'gemini'}</span>`;
+            const picked = await resolveGeminiModels(true);
+            if (out) out.innerHTML += `<br><span style="color:var(--accent-green);font-size:0.82rem;">✓ Ključ velja. Dostopno: ${modelNames.slice(0, 3).join(', ') || 'gemini'}</span>`;
+            if (out) out.innerHTML += `<br><span style="color:var(--accent-cyan);font-size:0.82rem;">→ Uporabljam: ${picked.join(' → ')}</span>`;
 
             // Korak 2: generateContent
             const { text, model } = await callGeminiGenerate({
@@ -3128,6 +3174,7 @@
         }
         geminiApiKey = key;
         geminiQuotaBlockedUntil = 0;
+        geminiModelsCache = null;
         localStorage.setItem('ble_gemini_api_key', key);
         if (input) input.value = '';
         updateGeminiApiKeyStatus();
@@ -3136,6 +3183,7 @@
 
     function clearGeminiApiKeyOverride() {
         localStorage.removeItem('ble_gemini_api_key');
+        geminiModelsCache = null;
         geminiApiKey = _resolveEmbeddedGeminiKey();
         const input = document.getElementById('geminiApiKeyInput');
         if (input) input.value = '';
@@ -3338,7 +3386,7 @@ OBVEZNO:
             }
         };
 
-        const models = [GEMINI_MODEL_PRIMARY];
+        const models = await resolveGeminiModels();
         let lastError = null;
 
         for (const model of models) {
@@ -3392,8 +3440,8 @@ OBVEZNO:
                 2. Če še ne dela: ustvari nov Auth ključ (začne se z AQ.) in ga vstavi pod <em>Napredno: zamenjaj ključ</em>.<br>
                 3. Stari lokalni ključ lahko počistiš z gumbom <em>Privzeti</em>.`;
             } else if (isGeminiModelUnavailableError(msg)) {
-                hint = `<br><br><strong>Model ni dostopen za ta ključ.</strong> Osveži aplikacijo (zapri PWA, odpri znova ali Ctrl+F5) in poskusi znova.<br>
-                Če napaka ostane: ustvari lastni ključ v <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent-cyan);">AI Studio</a> in ga vstavi pod <em>Napredno: zamenjaj ključ</em>.`;
+                hint = `<br><br><strong>Stara verzija ali napačen model.</strong> Če vidiš <em>gemini-2.5-pro</em>, telefon še vedno uporablja star cache — osveži na build ${APP_BUILD} (zapri PWA, odpri znova ali Ctrl+F5).<br>
+                Priporočen model je <em>gemini-2.5-flash</em> (2.5-pro ni na voljo novim uporabnikom).`;
             } else if (isGeminiQuotaError(msg)) {
                 hint = `<br><br><strong>Prekoračena kvota ali model ni dostopen za ta ključ.</strong><br><br>
                 • Počakaj 30–60 s, nato samo <em>en</em> gumb.<br>
