@@ -1561,7 +1561,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v22';
+    const APP_BUILD = 'v23';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -3028,6 +3028,23 @@
         return /no longer available|not available to new users|deprecated|has been shut down|update your code to use a newer model|gemini-1\.5-flash-lite|gemini-2\.0-flash([^-]|$)|models\/gemini-2\.0-flash|flash-latest/i.test(String(msg || ''));
     }
 
+    function reloadGeminiApiKeyFromStorage() {
+        const stored = (localStorage.getItem('ble_gemini_api_key') || '').trim();
+        if (stored) geminiApiKey = stored;
+        else if (!geminiApiKey) geminiApiKey = _resolveEmbeddedGeminiKey();
+        return geminiApiKey;
+    }
+
+    function getGeminiAuthModes() {
+        // AI Studio ključi (AIza…) najbolje delujejo z ?key= v URL (kot pri /models testu)
+        if (geminiApiKey.startsWith('AIza')) return ['query', 'header'];
+        return ['header', 'query'];
+    }
+
+    function isGeminiAuthError(msg, status) {
+        return status === 401 || status === 403 || /api key|API_KEY|authentication|credential|permission|invalid.*key/i.test(String(msg || ''));
+    }
+
     async function geminiApiFetch(model, body, authMode = 'header') {
         const base = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         const url = authMode === 'query'
@@ -3049,6 +3066,7 @@
     }
 
     function initGeminiApiKeyUi() {
+        reloadGeminiApiKeyFromStorage();
         const input = document.getElementById('geminiApiKeyInput');
         if (input) input.value = '';
         const badge = document.getElementById('appBuildBadge');
@@ -3057,11 +3075,27 @@
     }
 
     async function testGeminiConnection() {
+        reloadGeminiApiKeyFromStorage();
+        geminiQuotaBlockedUntil = 0;
         if (!requireGeminiApiKey()) return;
         const out = document.getElementById('geminiOutputText');
         const keyType = geminiApiKey.startsWith('AQ.') ? 'Auth (AQ.)' : (geminiApiKey.startsWith('AIza') ? 'Standard (AIza)' : 'neznan');
-        if (out) out.innerHTML = `<span style="color:var(--accent-cyan);">🔌 Testiram Gemini… (ključ: ${keyType}, build ${APP_BUILD})</span>`;
+        const keyHint = geminiApiKey.slice(0, 8) + '…';
+        if (out) out.innerHTML = `<span style="color:var(--accent-cyan);">🔌 Testiram ključ ${keyHint} (${keyType}, build ${APP_BUILD})…</span>`;
+
         try {
+            // Korak 1: isti test kot v brskalniku — ali ključ sploh deluje?
+            const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(geminiApiKey)}`;
+            const listRes = await fetch(listUrl);
+            const listData = await listRes.json().catch(() => ({}));
+            if (!listRes.ok) {
+                const msg = listData?.error?.message || `HTTP ${listRes.status}`;
+                throw new Error(`Ključ ni veljaven: ${msg}`);
+            }
+            const modelNames = (listData.models || []).map(m => m.name).filter(n => n.includes('gemini-2.5'));
+            if (out) out.innerHTML += `<br><span style="color:var(--accent-green);font-size:0.82rem;">✓ Ključ velja. Modeli: ${modelNames.slice(0, 3).join(', ') || 'gemini'}</span>`;
+
+            // Korak 2: generateContent
             const { text, model } = await callGeminiGenerate({
                 userText: 'Odgovori samo z eno besedo: DELA.',
                 temperature: 0.1
@@ -3069,13 +3103,15 @@
             if (out) {
                 out.innerHTML = `<strong style="color:var(--accent-green);">✅ Gemini deluje</strong><br>
                 Model: ${model}<br>
-                Tip ključa: ${keyType}<br>
+                Ključ: ${keyHint} (${keyType})<br>
                 Odgovor: ${formatGeminiHtml(text)}`;
             }
             alert('✅ Gemini povezava deluje!');
         } catch (e) {
+            console.error('testGeminiConnection:', e);
             setGeminiOutputError(e);
-            alert('❌ Gemini še ne deluje. Ustvari nov ključ v AI Studio (omeji na Gemini API only) in ga prilepi pod Napredno.');
+            const short = (e?.message || String(e)).slice(0, 200);
+            alert(`❌ Gemini test ni uspel:\n\n${short}\n\nPreveri napako spodaj v oknu.`);
         }
     }
 
@@ -3086,11 +3122,16 @@
             alert('Vnesi veljaven Gemini API ključ.');
             return;
         }
+        if (!key.startsWith('AIza') && !key.startsWith('AQ.')) {
+            alert('Ključ mora začeti z AIza… (AI Studio) ali AQ.… (Auth).');
+            return;
+        }
         geminiApiKey = key;
+        geminiQuotaBlockedUntil = 0;
         localStorage.setItem('ble_gemini_api_key', key);
         if (input) input.value = '';
         updateGeminiApiKeyStatus();
-        alert('Nov Gemini API ključ je shranjen (samo na tej napravi).');
+        alert(`Ključ ${key.slice(0, 8)}… je shranjen. Klikni Testiraj Gemini povezavo.`);
     }
 
     function clearGeminiApiKeyOverride() {
@@ -3116,7 +3157,7 @@
     }
 
     function requireGeminiApiKey() {
-        if (!geminiApiKey) geminiApiKey = localStorage.getItem('ble_gemini_api_key') || _resolveEmbeddedGeminiKey();
+        reloadGeminiApiKeyFromStorage();
         if (geminiApiKey) return true;
         const out = document.getElementById('geminiOutputText');
         if (out) {
@@ -3273,6 +3314,7 @@ OBVEZNO:
     }
 
     async function callGeminiGenerate({ userText, imageDataUrl = null, jsonMode = false, temperature = 0.7 } = {}) {
+        reloadGeminiApiKeyFromStorage();
         if (!geminiApiKey) throw new Error('Manjka Gemini API ključ.');
         if (Date.now() < geminiQuotaBlockedUntil) {
             const waitSec = Math.ceil((geminiQuotaBlockedUntil - Date.now()) / 1000);
@@ -3300,23 +3342,22 @@ OBVEZNO:
         let lastError = null;
 
         for (const model of models) {
-            let { res, data } = await geminiApiFetch(model, body, 'header');
-
-            // Samo ob auth napaki poskusi drug način (ne pri kvoti/modelu!)
-            if (res.status === 401 || res.status === 403) {
-                ({ res, data } = await geminiApiFetch(model, body, 'query'));
+            let res, data, lastMsg = '';
+            for (const authMode of getGeminiAuthModes()) {
+                ({ res, data } = await geminiApiFetch(model, body, authMode));
+                if (res.ok) break;
+                lastMsg = data?.error?.message || `HTTP ${res.status}`;
+                if (isGeminiQuotaError(lastMsg, res.status)) {
+                    const retrySec = parseGeminiRetrySeconds(lastMsg) || 30;
+                    geminiQuotaBlockedUntil = Date.now() + retrySec * 1000;
+                    throw new Error(`Google API omejitev. Počakaj ~${retrySec} s in poskusi znova.`);
+                }
+                if (isGeminiModelUnavailableError(lastMsg) || res.status === 404) break;
+                if (!isGeminiAuthError(lastMsg, res.status)) break;
             }
 
             if (!res.ok) {
-                const msg = data?.error?.message || `HTTP ${res.status}`;
-                if (isGeminiQuotaError(msg, res.status)) {
-                    const retrySec = parseGeminiRetrySeconds(msg) || 30;
-                    geminiQuotaBlockedUntil = Date.now() + retrySec * 1000;
-                    throw new Error(
-                        `Google API omejitev (ne nujno 20/min — lahko dnevna kvota ali prejšnji podvojeni klici). ` +
-                        `Počakaj ~${retrySec} s in poskusi znova z enim gumbom.`
-                    );
-                }
+                const msg = lastMsg || data?.error?.message || `HTTP ${res.status}`;
                 lastError = new Error(`${model}: ${msg}`);
                 if (isGeminiModelUnavailableError(msg) || res.status === 404) continue;
                 throw lastError;
