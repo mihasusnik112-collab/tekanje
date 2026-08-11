@@ -37,6 +37,100 @@
             --text-muted: #94a3b8;
         }
 
+        /* 🌸 SVETLA IN NEŽNA ŽENSKA TEMA (preklopi se samodejno) */
+        body.female-theme {
+            --bg-color: #fafaf9; /* Topla smetanova / kamnita barva */
+            --card-bg: rgba(255, 255, 255, 0.9); /* Čista bela prosojna ozadja */
+            --card-border: rgba(120, 113, 108, 0.12); /* Mehke, nemoteče obrobe */
+            --accent-green: #0d9488; /* Mehka teal zelena */
+            --accent-cyan: #0284c7;  /* Pastelno modra */
+            --accent-purple: #9333ea; /* Nežna vijolična */
+            --accent-orange: #ea580c;
+            --accent-red: #e11d48;
+            --accent-pink: #db2777;  /* Izrazitejša rožnata */
+            --text-main: #1c1917;    /* Temno rjavo-siva za mehak kontrast in odlično čitljivost */
+            --text-muted: #78716c;  /* Srednje sivo besedilo */
+
+            /* Nežen prehod iz svetlo rožnate v toplo smetanovo */
+            background: radial-gradient(circle at 50% 0%, #fdf2f8, #fafaf9 85%);
+        }
+
+        /* Izboljšava odzivnosti prehodov barv */
+        body {
+            transition: background 0.8s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s ease;
+        }
+
+        .card, .clean-header, .nav-tabs, .metric-card {
+            transition: background 0.8s ease, border-color 0.8s ease, box-shadow 0.5s ease;
+        }
+
+        /* Prilagoditev tabele v svetlem načinu */
+        body.female-theme th {
+            color: var(--text-muted);
+            border-bottom-color: var(--card-border);
+        }
+
+        body.female-theme td {
+            border-bottom-color: rgba(0, 0, 0, 0.04);
+        }
+
+        body.female-theme .btn-secondary {
+            background: rgba(0, 0, 0, 0.04);
+            color: var(--text-main);
+            border-color: rgba(0, 0, 0, 0.08);
+        }
+
+        body.female-theme .btn-secondary:hover {
+            background: rgba(0, 0, 0, 0.08);
+        }
+
+        body.female-theme .clean-header {
+            background: rgba(255, 255, 255, 0.92);
+        }
+
+        body.female-theme .selector-btn {
+            background: rgba(255, 255, 255, 0.85);
+            color: var(--text-muted);
+        }
+
+        body.female-theme .selector-btn.active {
+            background: linear-gradient(135deg, rgba(13, 148, 136, 0.12), rgba(2, 132, 199, 0.12));
+            color: var(--accent-cyan);
+            border-color: rgba(2, 132, 199, 0.35);
+        }
+
+        body.female-theme .home-hero-card {
+            background:
+                radial-gradient(ellipse 80% 60% at 10% 0%, rgba(219, 39, 119, 0.10), transparent 55%),
+                radial-gradient(ellipse 70% 50% at 90% 10%, rgba(2, 132, 199, 0.10), transparent 50%),
+                radial-gradient(ellipse 60% 40% at 50% 100%, rgba(147, 51, 234, 0.08), transparent 55%),
+                var(--card-bg);
+        }
+
+        body.female-theme .home-greeting {
+            background: linear-gradient(135deg, #9d174d, #db2777 45%, #0284c7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        body.female-theme .home-insight,
+        body.female-theme .metric-card {
+            background: rgba(255, 255, 255, 0.75);
+        }
+
+        body.female-theme .badge {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        body.female-theme input,
+        body.female-theme select,
+        body.female-theme textarea {
+            background: rgba(255, 255, 255, 0.95);
+            color: var(--text-main);
+            border-color: var(--card-border);
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -52,7 +146,6 @@
             padding: 0.75rem;
             display: flex;
             justify-content: center;
-            transition: background 0.5s ease;
         }
 
         .app-container {
@@ -404,7 +497,7 @@
         @media (orientation: landscape) and (max-height: 520px) {
             body { padding: 0.4rem; }
             .clean-header { padding: 0.5rem 0.85rem; }
-            .metrics-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+            .metrics-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
             .metric-card { padding: 0.45rem; }
             .metric-value { font-size: 1.35rem; }
             .chart-box { height: 140px; }
@@ -414,7 +507,7 @@
         @media (min-width: 900px) and (orientation: landscape) {
             .app-container { max-width: 1280px; }
             .media-grid { grid-template-columns: 1.2fr 0.8fr; }
-            .metrics-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+            .metrics-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
         }
 
         .video-container {
@@ -833,6 +926,80 @@
 
         .section-view { display: none; flex-direction: column; gap: 1rem; }
         .section-view.active { display: flex; }
+
+        .home-hero-card {
+            position: relative;
+            overflow: hidden;
+            background:
+                radial-gradient(ellipse 80% 60% at 10% 0%, rgba(16, 185, 129, 0.22), transparent 55%),
+                radial-gradient(ellipse 70% 50% at 90% 10%, rgba(6, 182, 212, 0.18), transparent 50%),
+                radial-gradient(ellipse 60% 40% at 50% 100%, rgba(139, 92, 246, 0.12), transparent 55%),
+                var(--card-bg);
+        }
+        .home-hero-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.03) 100%);
+            pointer-events: none;
+        }
+        .home-greeting {
+            font-size: clamp(1.55rem, 3.5vw, 2.15rem);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+            margin-bottom: 0.55rem;
+            background: linear-gradient(135deg, #fff, #a5f3fc 55%, #6ee7b7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .home-motivation {
+            font-size: 1.05rem;
+            color: #e2e8f0;
+            line-height: 1.45;
+            max-width: 42rem;
+            margin-bottom: 0.45rem;
+        }
+        .home-ready {
+            font-size: 0.95rem;
+            color: var(--accent-cyan);
+            font-weight: 600;
+            margin-bottom: 1.15rem;
+        }
+        .home-quick-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .home-chip {
+            border: 1px solid var(--card-border);
+            background: rgba(255,255,255,0.05);
+            color: var(--text-main);
+            border-radius: 999px;
+            padding: 0.45rem 0.85rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .home-chip:hover { background: rgba(6, 182, 212, 0.15); border-color: rgba(6, 182, 212, 0.4); }
+        .home-insight-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 0.65rem;
+            margin-top: 1.15rem;
+        }
+        .home-insight {
+            background: rgba(11, 15, 25, 0.55);
+            border: 1px solid var(--card-border);
+            border-radius: 0.85rem;
+            padding: 0.75rem 0.85rem;
+        }
+        .home-insight .label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; }
+        .home-insight .value { font-size: 1.05rem; font-weight: 700; color: var(--text-main); }
+        .home-insight .hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; }
     </style>
 </head>
 <body>
@@ -860,24 +1027,27 @@
 
     <!-- MINIMALISTIČNI IZBIRNIK -->
     <div class="clean-selector" id="appCleanSelector">
-        <button class="selector-btn active" onclick="switchSection('secLive', event)">🏃♂️ Tek v Živo</button>
-        <button class="selector-btn" onclick="switchSection('secProfiles', event)">⚙️ Profili & Nastavitve</button>
-        <button class="selector-btn" onclick="switchSection('secGemini', event)">🤖 Gemini AI Asistent & Trener</button>
-        <button class="selector-btn" onclick="switchSection('secPrograms', event)">⏱️ Intervalni Programi</button>
-        <button class="selector-btn" onclick="switchSection('secGpx', event)">🗺️ GPX & Supabase Proge</button>
-        <button class="selector-btn" onclick="switchSection('secHistory', event)">📜 Zgodovina Vadb</button>
-        <button class="selector-btn" onclick="switchSection('secStats', event)">📊 Statistika</button>
+        <button class="selector-btn active" data-section="secLive" onclick="switchSection('secLive', event)">🏃♂️ Tek v Živo</button>
+        <button class="selector-btn" data-section="secMedia" onclick="switchSection('secMedia', event)">🎬 Video in Audio</button>
+        <button class="selector-btn" data-section="secProfiles" onclick="switchSection('secProfiles', event)">⚙️ Profili & Nastavitve</button>
+        <button class="selector-btn" data-section="secGemini" onclick="switchSection('secGemini', event)">🤖 Gemini AI Asistent & Trener</button>
+        <button class="selector-btn" data-section="secPrograms" onclick="switchSection('secPrograms', event)">⏱️ Intervalni Programi</button>
+        <button class="selector-btn" data-section="secGpx" onclick="switchSection('secGpx', event)">🗺️ GPX & Supabase Proge</button>
+        <button class="selector-btn" data-section="secHistory" onclick="switchSection('secHistory', event)">📜 Zgodovina Vadb</button>
+        <button class="selector-btn" data-section="secStats" onclick="switchSection('secStats', event)">📊 Statistika</button>
     </div>
 
-    <!-- SEKCIJA 1: TEK V ŽIVO -->
+    <!-- SEKCIJA 1: TEK V ŽIVO — motivacijska domača stran -->
     <div id="secLive" class="section-view active">
-        <div class="card">
-            <!-- GLAVNI INTERAKTIVNI GUMB "ZAČNI TEK" -->
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+        <div class="card home-hero-card">
+            <div class="home-greeting" id="homeGreetingTitle">Pozdravljen!</div>
+            <div class="home-motivation" id="homeMotivationText">Vsak korak šteje — danes gradiš močnejše telo.</div>
+            <div class="home-ready" id="homeReadyText">Si pripravljen/a na novo vadbo? Pritisni ZAČNI TEK.</div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.85rem; position: relative; z-index: 1;">
                 <button class="btn btn-huge-start" onclick="openStartWorkoutWizard()">
                     🚀 ZAČNI TEK
                 </button>
-                
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     <button id="btnConnect" class="btn btn-primary" onclick="connectTreadmillBLE()">🔌 Poveži Stezo (FTMS)</button>
                     <button id="btnConnectHr" class="btn btn-secondary" onclick="connectHeartRateBLE()">❤️ Ura</button>
@@ -885,15 +1055,89 @@
                 </div>
             </div>
 
-            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.35rem; position: relative; z-index: 1;">
                 <div class="badge"><span class="dot" id="dotTreadmill"></span> Steza: <span id="textTreadmill">Ni povezano</span></div>
                 <div class="badge"><span class="dot" id="dotHr"></span> Ura: <span id="textHr">Ni povezano</span></div>
                 <div class="badge"><span class="dot" id="dotSupabase"></span> Supabase: <span id="textSupabase">Lokalno</span></div>
                 <div class="badge" style="border-color: var(--accent-pink);"><span id="textGenderBadge">👨 Moški profil</span></div>
             </div>
 
-            <!-- HITRA GLASBA MED TEKOM — OSEBNA / SKUPNA PLAYLISTA -->
-            <div class="live-music-bar" id="liveMusicBar">
+            <div class="home-insight-grid" id="homeInsightGrid">
+                <div class="home-insight">
+                    <div class="label">Zadnja vadba</div>
+                    <div class="value" id="homeLastWorkout">—</div>
+                    <div class="hint" id="homeLastWorkoutHint">Še ni zabeleženih treningov</div>
+                </div>
+                <div class="home-insight">
+                    <div class="label">Priporočen tlak</div>
+                    <div class="value" id="homeKpaTip">—</div>
+                    <div class="hint">Glede na tvojo trenutno težo</div>
+                </div>
+                <div class="home-insight">
+                    <div class="label">Današnji fokus</div>
+                    <div class="value" id="homeFocusTip" style="font-size:0.95rem;">Mehak korak</div>
+                    <div class="hint" id="homeFocusHint">Krajši korak, mirna postava</div>
+                </div>
+            </div>
+
+            <div class="home-quick-row">
+                <button type="button" class="home-chip" onclick="switchSectionById('secPrograms')">⏱️ Intervalni programi</button>
+                <button type="button" class="home-chip" onclick="switchSectionById('secMedia')">🎬 Video in glasba</button>
+                <button type="button" class="home-chip" onclick="switchSectionById('secStats')">📊 Moja statistika</button>
+                <button type="button" class="home-chip" onclick="switchSectionById('secGemini')">🤖 AI trener</button>
+            </div>
+        </div>
+
+        <!-- KARTICA ZA PRILAGODITEV KPA BLAŽENJA (KUBISPORT) -->
+        <div class="card" id="liveKpaCard" style="border-color: var(--accent-cyan); background: radial-gradient(circle at top left, rgba(6, 182, 212, 0.1), var(--card-bg) 70%); margin-top: 1rem;">
+            <div class="card-header" style="margin-bottom: 0.75rem;">
+                <div class="card-title" style="color: var(--accent-cyan); display: flex; align-items: center; gap: 0.5rem;">
+                    📐 Prilagoditev tlaka blaženja (kPa)
+                </div>
+                <span class="badge" style="border-color: var(--accent-green); color: var(--accent-green); font-weight: 700;" id="liveKpaBadge">35 kPa</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.88rem; line-height: 1.5; color: #cbd5e1;">
+                <p>
+                    Za optimalno zaščito golenic in meč priporočamo nastavitev tlaka blaženja glede na tvojo težo. Za profil
+                    <strong id="liveKpaUser" style="color: var(--accent-pink);">Miha</strong>
+                    (teža <span id="liveKpaWeight" style="font-weight: 700;">89.9</span> kg) je priporočen tlak:
+                    <strong style="color: var(--accent-green); font-size: 1rem;" id="liveKpaRecVal">35 kPa</strong>.
+                </p>
+
+                <div style="background: rgba(11, 15, 25, 0.6); padding: 0.85rem; border-radius: 0.85rem; border: 1px solid var(--card-border);">
+                    <strong style="color: var(--accent-cyan); display: block; margin-bottom: 0.35rem;">👉 NAVODILA ZA ROČNO NASTAVITEV (NA KONZOLI):</strong>
+                    Pritisni gumb <strong style="color: var(--text-main);">Shock Absorption -</strong> na konzoli steze, da zmanjšaš zračni tlak v blažilnikih na priporočeno vrednost. Mehkejša tekaška deska bo drastično zmanjšala udarce ob stiku s tlemi in razbremenila tvojo pokostnico.
+                    <span style="display: block; margin-top: 0.25rem; font-size: 0.78rem; color: var(--text-muted);">
+                        (Vrednost v kPa se med tekom izmenično prikazuje na spodnjem okroglem zaslonu steze na vsakih 5 sekund.)
+                    </span>
+                </div>
+
+                <details style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); padding: 0.75rem; border-radius: 0.75rem; transition: all 0.3s ease;">
+                    <summary style="cursor: pointer; font-weight: 700; color: var(--accent-purple); outline: none; user-select: none;">⚖️ Kako deluje inteligentna funkcija zaznavanja teže?</summary>
+                    <ol style="padding-left: 1.25rem; margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.82rem; color: var(--text-muted);">
+                        <li>Pred začetkom stopi s tekaške steze (bodi povsem izven nje na tleh; ne stoj na pasu ali tirnicah).</li>
+                        <li>Izvleci rdeči varnostni ključ in ga takoj vtakni nazaj v konzolo (ni določenega časa, ko mora biti zunaj – dovolj je že hiter reset).</li>
+                        <li>Počakaj <strong>5–8 sekund</strong> v mirovanju izven steze (da se umeri ničelna točka senzorjev).</li>
+                        <li><strong>Šele po tem času</strong> stopi na stranske plastične tirnice (steza bo prek senzorjev v stojalu zaznala in izmerila tvojo realno težo).</li>
+                        <li>Po zagonu bo steza sama določila in nastavila idealen kPa tlak blaženja, prilagojen tvoji teži.</li>
+                    </ol>
+                </details>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEKCIJA: VIDEO IN AUDIO (playlista + video proge) -->
+    <div id="secMedia" class="section-view">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">🎬 Video in Audio</div>
+            </div>
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem;">
+                Upravljaj YouTube playlista in video proge. Med tekom lahko vseeno predvajaš prek čarovnika ZAČNI TEK.
+            </p>
+
+            <!-- HITRA GLASBA / PLAYLISTA -->
+            <div class="live-music-bar visible" id="liveMusicBar" style="margin-bottom: 0;">
                 <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent-pink);">
                     🎵 Playlista — <span id="liveMusicOwnerLabel">profil</span>
                     <span id="liveMusicScopeHint" style="font-weight: 500; color: var(--text-muted); font-size: 0.78rem;"></span>
@@ -924,7 +1168,7 @@
             </div>
         </div>
 
-        <!-- SKUPNE YOUTUBE VIDEO PROGE (vidne vsem profilom) -->
+        <!-- SKUPNE YOUTUBE VIDEO PROGE -->
         <div class="card" id="liveVideoLibraryCard">
             <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem;">
                 <div class="card-title">🎬 Video Proge (Skupne za vse)</div>
@@ -968,6 +1212,21 @@
                         <div class="hud-chip">
                             <span class="hud-label">Utrip</span>
                             <span class="hud-value" id="hudHr" style="color: var(--accent-red);">-- <span style="font-size: 0.75rem;">bpm</span></span>
+                        </div>
+                        <!-- Kadenca v HUDu -->
+                        <div class="hud-chip">
+                            <span class="hud-label">Kadenca</span>
+                            <span class="hud-value" id="hudCadence" style="color: var(--accent-orange);">0 <span style="font-size: 0.75rem;">kor/m</span></span>
+                        </div>
+
+                        <!-- SVG Obroč za vizualni prikaz območja utripa -->
+                        <div class="hud-chip" style="position: relative; width: 85px; height: 55px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0.2rem 0.5rem;">
+                            <span class="hud-label" style="font-size: 0.58rem; margin-bottom: 2px;">Cona</span>
+                            <svg width="28" height="28" viewBox="0 0 36 36" style="transform: rotate(-90deg);">
+                                <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3"></circle>
+                                <circle id="hudHrCircle" cx="18" cy="18" r="15.915" fill="none" stroke="#94a3b8" stroke-width="3.5" stroke-dasharray="100 100" stroke-dashoffset="100" style="transition: stroke-dashoffset 0.5s ease, stroke 0.5s ease;"></circle>
+                            </svg>
+                            <span id="hudHrPct" style="position: absolute; top: 22px; font-size: 0.65rem; font-weight: 800; color: #fff;">0%</span>
                         </div>
                         <div class="hud-chip">
                             <span class="hud-label">Čas</span>
@@ -1056,6 +1315,11 @@
                         <div class="metric-label">Kalorije</div>
                         <div class="metric-value" id="valCalories">0</div>
                         <div class="metric-unit">kcal</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Kadenca</div>
+                        <div class="metric-value" id="valCadence">0</div>
+                        <div class="metric-unit">kor/min</div>
                     </div>
                 </div>
 
@@ -1182,7 +1446,7 @@
                         <div style="display: flex; gap: 0.5rem;">
                             <div style="flex: 1;">
                                 <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Teža (kg) <span style="color: var(--accent-green);">(Auto-sync)</span>:</label>
-                                <input type="number" id="profInputWeight" step="0.1" placeholder="kg" style="width: 100%;">
+                                <input type="number" id="profInputWeight" step="0.1" placeholder="kg" style="width: 100%;" oninput="updateWeightAndGravity(this.value)" onchange="updateWeightAndGravity(this.value)">
                             </div>
                             <div style="flex: 1;">
                                 <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Višina (cm):</label>
@@ -1251,7 +1515,7 @@
             </div>
 
             <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.5;">
-                Gemini AI neprekinjeno spremlja vaš srčni utrip iz pametne ure, hitrost in naklon tekalne steze ter fiziološki profil (<strong id="geminiActiveUserText">Miha - 78 kg</strong>). Naložite lahko tudi slike zaslona aplikacije Huawei Health ali pametne tehtnice za popolno celostno obravnavo!
+                Gemini AI neprekinjeno spremlja vaš srčni utrip iz pametne ure, hitrost in naklon tekalne steze ter fiziološki profil (<strong id="geminiActiveUserText">Miha - 89.9 kg</strong>). Naložite lahko tudi slike zaslona aplikacije Huawei Health ali pametne tehtnice za popolno celostno obravnavo!
             </p>
 
             <!-- GEMINI API — ključ je vgrajen (ni viden v UI) -->
@@ -1261,6 +1525,9 @@
                 </div>
                 <div id="geminiApiKeyStatus" style="font-size: 0.78rem; color: var(--text-muted);">
                     Ključ je nastavljen v ozadju.
+                </div>
+                <div id="geminiRequestStatsLabel" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">
+                    API klici: 0× generate · 0× models
                 </div>
                 <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.55rem;">
                     <button class="btn btn-primary" onclick="testGeminiConnection()">🔌 Testiraj Gemini povezavo</button>
@@ -1308,7 +1575,7 @@
                 <button class="btn btn-primary" onclick="generateAndApplyAiWorkout()">
                     ✨ Generiraj & Vnesi Nov AI Trening
                 </button>
-                <button class="btn btn-secondary" onclick="askGeminiQuestion('Kakšen je moj idealen utrip za kurjenje maščobe glede na podatke ure?')">
+                <button class="btn btn-secondary" onclick="answerOptimalHrWithGemini()">
                     ❤️ Optimalen Utrip (HR)
                 </button>
                 <button class="btn btn-secondary" onclick="runGeminiProgressCoach()">
@@ -1601,6 +1868,13 @@
                     <div style="font-size: 0.8rem; color: var(--accent-cyan);">kcal</div>
                 </div>
             </div>
+
+            <div style="margin-top: 1.5rem;">
+                <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">📈 Biomehanski in kardio trend zadnjih 10 vadb</h4>
+                <div class="chart-box" style="height: 280px; background: rgba(0,0,0,0.2); border-radius: 1rem; padding: 0.5rem; border: 1px solid var(--card-border);">
+                    <canvas id="statsProgressChart"></canvas>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -1610,6 +1884,15 @@
     <div class="modal-card" style="border-color: var(--accent-green);">
         <h3 style="font-size: 1.35rem; color: var(--accent-green); text-align: center;">🚀 ČAROVNIK ZA ZAGON TEKA</h3>
         <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center;">Izberite želene nastavitve, video progo in glasbo za današnji trening.</p>
+
+        <!-- Dinamični priporočeni tlak glede na težo aktivnega profila -->
+        <div style="background: rgba(6, 182, 212, 0.12); border: 1px solid rgba(6, 182, 212, 0.45); padding: 0.85rem 1rem; border-radius: 0.85rem; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <div style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.35;">
+                💨 Priporočen tlak zračnih blazin za <strong id="wizKpaUser" style="color: var(--accent-cyan);">Miha</strong>
+                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem;">Izračunano iz trenutne teže profila (realWeightKg)</div>
+            </div>
+            <div id="wizKpaVal" style="font-size: 1.35rem; font-weight: 800; color: var(--accent-green); white-space: nowrap;">35 kPa</div>
+        </div>
 
         <!-- KORAK 1: NAČIN UPRAVLJANJA -->
         <div style="background: rgba(255,255,255,0.04); padding: 1rem; border-radius: 0.85rem;">
@@ -1718,7 +2001,7 @@
     // PWA REGISTRACIJA SERVICE WORKER-JA IN NAMESTITVENI DOGODEK
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js?v=34')
+            navigator.serviceWorker.register('./sw.js?v=43')
                 .then(reg => {
                     console.log('PWA Service Worker uspešno registriran!', reg.scope);
                     // Vsak zagon preveri novo verzijo SW
@@ -1775,7 +2058,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v34';
+    const APP_BUILD = 'v43';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -1799,8 +2082,8 @@
 
     // PROFILI SA PRILAGOJENIM FIZIOLOŠKIM MERITVAM & DATUMOM ROJSTVA
     let defaultUserProfiles = {
-        'Miha': { name: 'Miha', weightKg: 78.0, heightCm: 182, birthdate: '1992-05-14', age: 34, gender: 'male', maxHr: 188, bmrFactor: 1.0, maxInclineLimit: 18.0 },
-        'Veronika': { name: 'Veronika', weightKg: 62.0, heightCm: 168, birthdate: '1995-09-21', age: 31, gender: 'female', maxHr: 194, bmrFactor: 0.92, maxInclineLimit: 18.0 }
+        'Miha': { name: 'Miha', weightKg: 89.9, heightCm: 180, birthdate: '1979-05-14', age: 46, gender: 'male', maxHr: 174, bmrFactor: 1.0, maxInclineLimit: 18.0 },
+        'Veronika': { name: 'Veronika', weightKg: 62.0, heightCm: 168, birthdate: '1995-09-21', age: 31, gender: 'female', maxHr: 189, bmrFactor: 0.92, maxInclineLimit: 18.0 }
     };
 
     let userProfiles = JSON.parse(localStorage.getItem('ble_user_profiles_v3')) || defaultUserProfiles;
@@ -1841,6 +2124,29 @@
                 p.updated_at = new Date(0).toISOString();
                 changed = true;
             }
+        }
+
+        // Enkratna posodobitev zastarelih privzetih vrednosti (Miha '92/78 kg → '79/89.9 kg)
+        const miha = userProfiles['Miha'];
+        if (miha) {
+            const legacyBirth = normalizeBirthdate(miha.birthdate) === '1992-05-14';
+            const legacyWeight = Math.abs(Number(miha.weightKg) - 78) < 0.05;
+            const legacyAge = Number(miha.age) === 34;
+            if (legacyBirth || legacyWeight || legacyAge) {
+                const def = defaultUserProfiles['Miha'];
+                miha.weightKg = def.weightKg;
+                miha.heightCm = def.heightCm;
+                miha.birthdate = def.birthdate;
+                miha.age = def.age;
+                miha.maxHr = def.maxHr;
+                miha.updated_at = new Date().toISOString();
+                changed = true;
+            }
+        }
+        const vero = userProfiles['Veronika'];
+        if (vero && Number(vero.maxHr) === 194) {
+            vero.maxHr = defaultUserProfiles['Veronika'].maxHr;
+            changed = true;
         }
 
         if (changed) {
@@ -1925,7 +2231,7 @@
     let isWorkoutActive = false;
     let hasHadSpeedBefore = false;
 
-    let realWeightKg = 78.0;
+    let realWeightKg = userProfiles[currentUser]?.weightKg || defaultUserProfiles['Miha'].weightKg;
     let currentSpeed = 0.0;
     let currentIncline = 0.0;
     let currentHr = 0;
@@ -1935,6 +2241,7 @@
     let lastWorkoutTickMs = null;
     let workoutTickInterval = null;
     let fitshowStatusPollInterval = null;
+    let zoneTimes = { ogrevanje: 0, fatburn: 0, aerobno: 0, anaerobno: 0, ekstremno: 0 };
 
     let gpxPoints = [];
     let gpxTotalLength = 0.0;
@@ -1960,6 +2267,8 @@
     let liveChart = null;
     let hrLiveChart = null;
     let gpxProfileChart = null;
+    let statsProgressChart = null;
+    let lastExportWorkoutLog = [];
     let hrSeriesLabels = [];
     let hrSeriesValues = [];
     let hrSeriesMaxLine = [];
@@ -2183,13 +2492,30 @@
         }
     }
 
+    function switchSectionById(secId) {
+        const btn = document.querySelector(`.selector-btn[data-section="${secId}"]`);
+        switchSection(secId, btn ? { currentTarget: btn } : null);
+    }
+
     function switchSection(secId, evt) {
         document.querySelectorAll('.selector-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.section-view').forEach(view => view.classList.remove('active'));
 
-        if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
-        document.getElementById(secId).classList.add('active');
+        if (evt && evt.currentTarget) {
+            evt.currentTarget.classList.add('active');
+        } else {
+            const btn = document.querySelector(`.selector-btn[data-section="${secId}"]`);
+            if (btn) btn.classList.add('active');
+        }
+        const section = document.getElementById(secId);
+        if (section) section.classList.add('active');
 
+        if (secId === 'secLive') refreshHomeDashboard();
+        if (secId === 'secMedia') {
+            updateLiveMusicBarVisibility();
+            loadSavedYouTubeVideos().catch(() => {});
+            loadSavedYouTubeAudio().catch(() => {});
+        }
         if (secId === 'secProfiles') {
             syncProfilesFromSupabase().then(() => populateProfileForm());
         }
@@ -2206,6 +2532,94 @@
                 showLatestGeminiRecommendation();
             });
         }
+    }
+
+    function refreshHomeDashboard() {
+        const prof = userProfiles[currentUser] || {};
+        const isFemale = prof.gender === 'female';
+        const greetEl = document.getElementById('homeGreetingTitle');
+        const motEl = document.getElementById('homeMotivationText');
+        const readyEl = document.getElementById('homeReadyText');
+        if (greetEl) {
+            greetEl.textContent = isFemale
+                ? `Pozdravljena, ${currentUser}`
+                : `Pozdravljen, ${currentUser}`;
+        }
+
+        const motivations = isFemale ? [
+            'Tvoje telo je danes pripravljeno na napredek — dihaj mirno in uživaj v ritmu.',
+            'Vsaka vadba gradi vzdržljivost. Danes si še korak bližje svojim ciljem.',
+            'Moč ni samo hitrost — je tudi doslednost. Ti si že tukaj, in to šteje.',
+            'Naj bo današnji tek lahkoten: krajši korak, mehak pristanek, pokončna drža.'
+        ] : (currentUser === 'Miha' ? [
+            'Danes je priložnost za tibialis-friendly vadbo: naklon, miren tempo, manj udarcev.',
+            'Vsak korak na stezi gradi močnejšo golenico in boljšo držo. Greva počasi in pametno.',
+            'Disciplina > motivacija. Ti si že odprl aplikacijo — zdaj samo pritisni ZAČNI TEK.',
+            'Fokus: krajši korak, mehak pristanek, enakomeren dih. Telo se ti zahvali.'
+        ] : [
+            'Vsak korak šteje — danes gradiš močnejše in bolj vzdržljivo telo.',
+            'Najboljša vadba je tista, ki jo začneš. Si že na pravi strani.',
+            'Dihaj, drži ritem, uživaj v gibanju. Napredek pride z doslednostjo.',
+            'Danes ni treba biti popoln — samo vztrajen.'
+        ]);
+        const dayIdx = new Date().getDate() % motivations.length;
+        if (motEl) motEl.textContent = motivations[dayIdx];
+        if (readyEl) {
+            readyEl.textContent = isFemale
+                ? 'Si pripravljena na novo vadbo? Pritisni ZAČNI TEK.'
+                : 'Si pripravljen na novo vadbo? Pritisni ZAČNI TEK.';
+        }
+
+        const kpa = getRecommendedKpa(realWeightKg || prof.weightKg || 70, currentUser);
+        const kpaEl = document.getElementById('homeKpaTip');
+        if (kpaEl) kpaEl.textContent = `${kpa} kPa`;
+
+        const focuses = currentUser === 'Miha'
+            ? [
+                { t: 'Tibialis relief', h: 'Naklon ~8 %, tempo ~5 km/h' },
+                { t: 'Mehak korak', h: 'Krajši korak, manj udarca' },
+                { t: 'Stabilna drža', h: 'Ramena sproščena, pogled naprej' }
+            ]
+            : [
+                { t: 'Mehak korak', h: 'Krajši korak, mirna postava' },
+                { t: 'Ritem dihanja', h: 'Dihaj v ritmu korakov' },
+                { t: 'Fat burn fokus', h: 'Utrip v coni 60–70 % Max HR' }
+            ];
+        const f = focuses[dayIdx % focuses.length];
+        const focusEl = document.getElementById('homeFocusTip');
+        const focusHint = document.getElementById('homeFocusHint');
+        if (focusEl) focusEl.textContent = f.t;
+        if (focusHint) focusHint.textContent = f.h;
+
+        // Zadnja vadba iz lokalne zgodovine
+        try {
+            const hist = getLocalHistoryAll()
+                .filter(i => (i.user || i.user_name) === currentUser)
+                .sort((a, b) => {
+                    const da = new Date(a.created_at || a.date || 0).getTime() || 0;
+                    const db = new Date(b.created_at || b.date || 0).getTime() || 0;
+                    return db - da;
+                });
+            const last = hist[0];
+            const lastEl = document.getElementById('homeLastWorkout');
+            const lastHint = document.getElementById('homeLastWorkoutHint');
+            if (!last) {
+                if (lastEl) lastEl.textContent = 'Prva vadba te čaka';
+                if (lastHint) lastHint.textContent = 'Še ni zabeleženih treningov';
+            } else {
+                const km = Number(last.distance_km || last.distanceKm || 0).toFixed(2);
+                const min = Math.round(Number(last.duration_sec || last.durationSec || 0) / 60);
+                const kcal = Math.round(Number(last.calories || 0));
+                if (lastEl) lastEl.textContent = `${km} km · ${min} min`;
+                if (lastHint) {
+                    const when = last.created_at
+                        ? new Date(last.created_at).toLocaleDateString('sl-SI', { day: 'numeric', month: 'short' })
+                        : (String(last.date || '').split(',')[0] || 'nedavno');
+                    lastHint.textContent = `${when}${kcal ? ` · ${kcal} kcal` : ''}`;
+                }
+            }
+        } catch (_) {}
+        updateLiveKpaCard();
     }
 
     function renderUserSwitcher() {
@@ -2440,15 +2854,24 @@
         const prof = userProfiles[name];
         const isFemale = prof.gender === 'female';
 
+        // 🎭 DINAMIČNI PREKLOP VIZUALNE TEME M / Ž
+        if (isFemale) {
+            document.body.classList.add('female-theme');
+        } else {
+            document.body.classList.remove('female-theme');
+        }
+
         document.getElementById('historyUserName').textContent = name;
         document.getElementById('textGenderBadge').textContent = isFemale ? `👩 Ženski profil (${name})` : `👨 Moški profil (${name})`;
         if (document.getElementById('geminiActiveUserText')) {
             document.getElementById('geminiActiveUserText').textContent = `${name} - ${prof.weightKg} kg`;
         }
 
-        realWeightKg = prof.weightKg;
+        realWeightKg = Number(prof.weightKg) || realWeightKg;
         loadMaxInclineFromProfile(name);
         populateProfileForm();
+        updateWizardKpaUi();
+        refreshHomeDashboard();
         updateLiveMusicBarVisibility();
         initManualWorkoutForm();
         await fetchIntervalPrograms();
@@ -2461,6 +2884,79 @@
         await syncGeminiHealth(name);
         await loadSavedYouTubeVideos();
         await loadSavedYouTubeAudio();
+        updateLiveKpaCard();
+    }
+
+    // 1. Dinamični izračun priporočenega tlaka glede na težo in profil
+    function getRecommendedKpa(weight, user) {
+        if (user === 'Miha') {
+            // Miha potrebuje nižji/mehkejši tlak (35 kPa) za rehabilitacijo tibialne mišice pri svoji teži (89.9 kg)
+            return 35;
+        }
+        // Za Veroniko ali druge profile se izračuna dinamično (teža / 2 + 10)
+        const baseWeight = parseFloat(weight) || 70.0;
+        return Math.round(baseWeight * 0.5) + 10;
+    }
+
+    // 2. Osveževanje kPa podatkov na prvi strani
+    function updateLiveKpaCard() {
+        const userLabel = document.getElementById('liveKpaUser');
+        const weightLabel = document.getElementById('liveKpaWeight');
+        const recValLabel = document.getElementById('liveKpaRecVal');
+        const badgeLabel = document.getElementById('liveKpaBadge');
+
+        if (userLabel && weightLabel && recValLabel && badgeLabel) {
+            const activeWeight = parseFloat(realWeightKg)
+                || parseFloat(userProfiles[currentUser]?.weightKg)
+                || 70.0;
+            const kpa = getRecommendedKpa(activeWeight, currentUser);
+
+            userLabel.textContent = currentUser;
+            weightLabel.textContent = activeWeight.toFixed(1);
+            recValLabel.textContent = kpa + ' kPa';
+            badgeLabel.textContent = kpa + ' kPa';
+        }
+
+        // Sinhroniziraj tudi majhen insight na hero kartici + čarovnik
+        const homeKpa = document.getElementById('homeKpaTip');
+        if (homeKpa) {
+            const w = parseFloat(realWeightKg) || parseFloat(userProfiles[currentUser]?.weightKg) || 70;
+            homeKpa.textContent = `${getRecommendedKpa(w, currentUser)} kPa`;
+        }
+        updateWizardKpaUi();
+    }
+
+    function updateWizardKpaUi() {
+        const recommendedKpa = getRecommendedKpa(realWeightKg, currentUser);
+        const userEl = document.getElementById('wizKpaUser');
+        const valEl = document.getElementById('wizKpaVal');
+        if (userEl) userEl.textContent = currentUser;
+        if (valEl) valEl.textContent = recommendedKpa + ' kPa';
+    }
+
+    /**
+     * Posodobi aktivno težo profila (ročni vnos ali Gemini s tehtnice)
+     * in takoj osveži kPa v čarovniku / na prvi strani.
+     */
+    function updateWeightAndGravity(weightInput) {
+        const weight = parseFloat(weightInput);
+        if (isNaN(weight) || weight < 30 || weight > 250) return;
+
+        realWeightKg = Math.round(weight * 10) / 10;
+        if (userProfiles[currentUser]) {
+            userProfiles[currentUser].weightKg = realWeightKg;
+        }
+
+        if (document.getElementById('geminiActiveUserText')) {
+            document.getElementById('geminiActiveUserText').textContent = `${currentUser} - ${realWeightKg} kg`;
+        }
+
+        const wizOpen = document.getElementById('startWorkoutWizardModal')?.style.display === 'flex';
+        if (wizOpen) updateWizardKpaUi();
+
+        // BMI / fat-burn predogled v profilu
+        try { calculateProfileMetrics(); } catch (_) {}
+        updateLiveKpaCard();
     }
 
     function updateLiveMusicBarVisibility() {
@@ -2923,7 +3419,7 @@
         }
 
         await setUser(cleanName);
-        switchSection('secProfiles', { currentTarget: document.querySelectorAll('.selector-btn')[1] });
+        switchSectionById('secProfiles');
         alert(`Novi profil za '${cleanName}' je ustvarjen in sinhroniziran z obema telefonoma!`);
     }
 
@@ -2960,6 +3456,7 @@
 
         userProfiles[newName] = prof;
         currentUser = newName;
+        updateWeightAndGravity(weight);
 
         localStorage.setItem('ble_active_user', newName);
         localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
@@ -3040,6 +3537,9 @@
         if (useVideo && videoSelect) {
             videoSelect.disabled = !useVideo.checked;
         }
+        // Dinamični kPa iz trenutne teže aktivnega profila
+        realWeightKg = Number(userProfiles[currentUser]?.weightKg) || realWeightKg;
+        updateWizardKpaUi();
         document.getElementById('startWorkoutWizardModal').style.display = 'flex';
     }
 
@@ -3086,7 +3586,7 @@
 
     function showLiveVideoCardOnly() {
         parkVideoContainer();
-        switchSection('secLive', { currentTarget: document.querySelectorAll('.selector-btn')[0] });
+        switchSectionById('secMedia');
     }
 
     function getProfileMaxHr(user = currentUser) {
@@ -3454,6 +3954,7 @@
         reloadGeminiApiKeyFromStorage();
         if (!geminiApiKey) return [GEMINI_MODEL_PRIMARY];
         try {
+            noteGeminiApiCall('list');
             const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(geminiApiKey)}`;
             const listRes = await fetch(listUrl);
             const listData = await listRes.json().catch(() => ({}));
@@ -3481,6 +3982,9 @@
     let geminiChatHistory = [];
     let geminiBusy = false;
     let geminiQuotaBlockedUntil = 0;
+    let geminiLastGenerateAt = 0;
+    let geminiPreferredAuth = localStorage.getItem('ble_gemini_auth_mode') || '';
+    let geminiRequestStats = { list: 0, generate: 0, startedAt: Date.now() };
     let geminiHealthByUser = {};
     let geminiHistoryActiveTab = 'recs';
 
@@ -3899,8 +4403,23 @@
         return geminiApiKey;
     }
 
+    function noteGeminiApiCall(kind) {
+        geminiRequestStats[kind] = (geminiRequestStats[kind] || 0) + 1;
+        const total = (geminiRequestStats.list || 0) + (geminiRequestStats.generate || 0);
+        console.log(`[Gemini API] ${kind} (#${geminiRequestStats[kind]}) · skupaj ${total} od zagona`);
+        const el = document.getElementById('geminiRequestStatsLabel');
+        if (el) {
+            el.textContent = `API klici: ${geminiRequestStats.generate || 0}× generate · ${geminiRequestStats.list || 0}× models`;
+        }
+    }
+
     function getGeminiAuthModes() {
-        // AI Studio ključi (AIza…) najbolje delujejo z ?key= v URL (kot pri /models testu)
+        // En uspešen način shrani — ne pošiljaj dvojnih generateContent requestov
+        if (geminiPreferredAuth === 'query' || geminiPreferredAuth === 'header') {
+            const other = geminiPreferredAuth === 'query' ? 'header' : 'query';
+            return [geminiPreferredAuth, other];
+        }
+        // AI Studio ključi (AIza…) najbolje delujejo z ?key= v URL
         if (geminiApiKey.startsWith('AIza')) return ['query', 'header'];
         return ['header', 'query'];
     }
@@ -3910,6 +4429,7 @@
     }
 
     async function geminiApiFetch(model, body, authMode = 'header') {
+        noteGeminiApiCall('generate');
         const base = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         const url = authMode === 'query'
             ? `${base}?key=${encodeURIComponent(geminiApiKey)}`
@@ -4032,7 +4552,7 @@
             out.innerHTML = `<strong style="color:var(--accent-red);">⚠️ Manjka Gemini API ključ.</strong><br>
             Odpri <em>Napredno: zamenjaj ključ</em> zgoraj in vstavi ključ.`;
         }
-        switchSection('secGemini', { currentTarget: document.querySelectorAll('.selector-btn')[2] });
+        switchSectionById('secGemini');
         return false;
     }
 
@@ -4192,6 +4712,10 @@ OBVEZNO:
             throw new Error(`Gemini začasno zaseden. Počakaj še ~${waitSec} s (Google rate limit).`);
         }
 
+        // Free-tier RPM: ne pošiljaj requestov ena za drugo v < 3.5 s
+        const gapMs = 3500 - (Date.now() - (geminiLastGenerateAt || 0));
+        if (gapMs > 0) await sleepMs(gapMs);
+
         const parts = [];
         if (imageDataUrl) {
             const m = String(imageDataUrl).match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
@@ -4209,14 +4733,22 @@ OBVEZNO:
             }
         };
 
-        const models = await resolveGeminiModels();
+        // NE kliči /models ob vsakem vprašanju — to je dodaten request in požre RPM.
+        // Uporabi cache ali samo primary model (1× generate).
+        let models = geminiModelsCache?.length
+            ? geminiModelsCache.slice(0, 2)
+            : [GEMINI_MODEL_PRIMARY];
         let lastError = null;
 
         for (const model of models) {
             let res, data, lastMsg = '';
             for (const authMode of getGeminiAuthModes()) {
                 ({ res, data } = await geminiApiFetch(model, body, authMode));
-                if (res.ok) break;
+                if (res.ok) {
+                    geminiPreferredAuth = authMode;
+                    try { localStorage.setItem('ble_gemini_auth_mode', authMode); } catch (_) {}
+                    break;
+                }
                 lastMsg = data?.error?.message || `HTTP ${res.status}`;
                 if (isGeminiQuotaError(lastMsg, res.status)) {
                     const retrySec = parseGeminiRetrySeconds(lastMsg) || 30;
@@ -4235,6 +4767,7 @@ OBVEZNO:
             }
 
             geminiQuotaBlockedUntil = 0;
+            geminiLastGenerateAt = Date.now();
             const text = extractGeminiText(data);
             if (!text) {
                 const block = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
@@ -4317,8 +4850,7 @@ Uporabi null, če vrednosti ni mogoče zanesljivo prebrati.
                         metrics = parsed;
                         if (parsed.weight_kg && Number(parsed.weight_kg) > 30 && Number(parsed.weight_kg) < 250) {
                             const detectedWeight = Math.round(Number(parsed.weight_kg) * 10) / 10;
-                            userProfiles[currentUser].weightKg = detectedWeight;
-                            realWeightKg = detectedWeight;
+                            updateWeightAndGravity(detectedWeight);
                             localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
                             if (supabaseClient) {
                                 try {
@@ -4330,9 +4862,8 @@ Uporabi null, če vrednosti ni mogoče zanesljivo prebrati.
                             }
                             saveProfileMetaToSupabase(userProfiles[currentUser]).catch(() => {});
                             renderUserSwitcher();
-                            if (document.getElementById('geminiActiveUserText')) {
-                                document.getElementById('geminiActiveUserText').textContent = `${currentUser} - ${detectedWeight} kg`;
-                            }
+                            const wInput = document.getElementById('profInputWeight');
+                            if (wInput) wInput.value = detectedWeight;
                         }
                     } catch (parseErr) {
                         console.warn('Gemini image JSON parse:', parseErr);
@@ -4457,9 +4988,9 @@ Pravila: vključi ogrevanje in hlajenje; incline nikoli nad ${maxInclineLimit}; 
             ${programSteps.map(s => `• ${s.name}: ${(s.duration/60).toFixed(1)} min · ${s.speed} km/h · ${s.incline}%`).join('<br>')}<br><br>
             Klikni <strong>ZAŽENI PROGRAM</strong> — odpre se ZAČNI TEK z nastavitvami.`;
             if (!stayOnGemini) {
-                switchSection('secPrograms', { currentTarget: document.querySelectorAll('.selector-btn')[3] });
+                switchSectionById('secPrograms');
             } else {
-                switchSection('secPrograms', { currentTarget: document.querySelectorAll('.selector-btn')[3] });
+                switchSectionById('secPrograms');
             }
         } catch (err) {
             console.error(err);
@@ -4478,7 +5009,7 @@ Pravila: vključi ogrevanje in hlajenje; incline nikoli nad ${maxInclineLimit}; 
             renderStepsList();
             if (!skipSavePrompt) await saveProgramToSupabase({ suggestedName: fallbackName, fromAi: true });
             else await persistProgramQuiet(fallbackName);
-            switchSection('secPrograms', { currentTarget: document.querySelectorAll('.selector-btn')[3] });
+            switchSectionById('secPrograms');
         } finally {
             geminiBusy = false;
         }
@@ -4487,6 +5018,70 @@ Pravila: vključi ogrevanje in hlajenje; incline nikoli nad ${maxInclineLimit}; 
     function askGeminiQuestion(q) {
         document.getElementById('geminiQueryInput').value = q;
         sendCustomGeminiQuery();
+    }
+
+    /** Idealen fat-burn utrip: lokalni izračun (0 API) + opcijsko Gemini dopolnilo (1 API). */
+    async function answerOptimalHrWithGemini() {
+        const maxHr = getProfileMaxHr();
+        const fatLo = Math.round(maxHr * 0.60);
+        const fatHi = Math.round(maxHr * 0.70);
+        const aeroLo = Math.round(maxHr * 0.70);
+        const aeroHi = Math.round(maxHr * 0.80);
+        const weight = Number(realWeightKg || userProfiles[currentUser]?.weightKg || 0).toFixed(1);
+        const q = `Kakšen je moj idealen utrip za kurjenje maščobe glede na podatke ure?`;
+        const input = document.getElementById('geminiQueryInput');
+        if (input) input.value = q;
+
+        const localHtml = `
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">Lokalni izračun · 0 Gemini API klicev</div>
+            <strong style="color:var(--accent-pink);">❤️ Idealen utrip za ${currentUser}</strong><br><br>
+            Glede na Max HR <strong>${maxHr} BPM</strong> (teža ${weight} kg):<br>
+            • <strong style="color:#10b981;">Fat burn / kurjenje maščobe:</strong> ${fatLo}–${fatHi} BPM (60–70 % Max HR)<br>
+            • <strong style="color:#f59e0b;">Aerobna vzdržljivost:</strong> ${aeroLo}–${aeroHi} BPM (70–80 % Max HR)<br><br>
+            <span style="color:var(--text-muted);font-size:0.85rem;">To je fiziološki izračun iz tvojega profila — ne potrebuje Gemini API.</span>
+        `;
+
+        const out = document.getElementById('geminiOutputText');
+        if (out) out.innerHTML = localHtml;
+
+        // Če je kvota že blokirana, ne troši dodatnih requestov
+        if (Date.now() < geminiQuotaBlockedUntil) {
+            const waitSec = Math.ceil((geminiQuotaBlockedUntil - Date.now()) / 1000);
+            if (out) {
+                out.innerHTML += `<br><br><span style="color:var(--accent-orange);">Gemini AI dopolnilo začasno ni na voljo (počakaj ~${waitSec} s).</span>`;
+            }
+            return;
+        }
+        if (!geminiApiKey || geminiBusy) return;
+
+        // Eno samo AI dopolnilo (ne dvojni auth / ne /models)
+        geminiBusy = true;
+        try {
+            if (out) {
+                out.innerHTML = localHtml + `<br><br><span style="color:var(--accent-cyan);">⏳ Gemini dopolnjuje priporočilo (1 API klic)…</span>`;
+            }
+            const prompt = `${buildGeminiUserContext()}
+
+VPRAŠANJE: ${q}
+
+Lokalni izračun že kaže fat-burn ${fatLo}–${fatHi} BPM (Max HR ${maxHr}).
+Kratko (max 8 vrstic) dopolni z nasvetom za ${currentUser}: tempo na stezi, naklon, in kako uporabiti podatke ure. Ne ponavljaj številk na dolgo.`;
+
+            const { text, model } = await callGeminiGenerate({ userText: prompt, temperature: 0.5 });
+            await recordGeminiChat('user', q);
+            await recordGeminiChat('model', text);
+            await recordGeminiRecommendation({ type: 'pogovor', text, model });
+            if (out) {
+                out.innerHTML = localHtml + `<br><br><div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.35rem;">Gemini dopolnilo · ${model} · 1 API klic</div>${formatGeminiHtml(text)}`;
+            }
+        } catch (err) {
+            console.warn('answerOptimalHrWithGemini Gemini:', err);
+            if (out) {
+                out.innerHTML = localHtml + `<br><br><span style="color:var(--text-muted);">Gemini dopolnila ni bilo (API omejitev/omrežje). Lokalni izračun zgoraj ostaja veljaven.</span>`;
+            }
+        } finally {
+            geminiBusy = false;
+        }
     }
 
     async function sendCustomGeminiQuery() {
@@ -5250,6 +5845,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             deviceReportsDistance = false;
             workoutLog = [];
             zeroSpeedStreak = 0;
+            zoneTimes = { ogrevanje: 0, fatburn: 0, aerobno: 0, anaerobno: 0, ekstremno: 0 };
         }
         lastWorkoutTickMs = Date.now();
         if (workoutTickInterval) clearInterval(workoutTickInterval);
@@ -5301,6 +5897,43 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             const bmrFactor = userProfiles[currentUser]?.bmrFactor || 1.0;
             const met = spd * 1.1;
             totalCalories += met * realWeightKg * bmrFactor * (dtSec / 3600);
+        }
+
+        // Kadenca (ocena iz hitrosti)
+        const cadenceSpm = spd > 0.5 ? Math.round(110 + (spd * 7)) : 0;
+        const cadEl = document.getElementById('valCadence');
+        if (cadEl) cadEl.textContent = String(cadenceSpm);
+        const hudCad = document.getElementById('hudCadence');
+        if (hudCad) hudCad.innerHTML = `${cadenceSpm} <span style="font-size: 0.75rem;">kor/m</span>`;
+
+        // SVG obroč HR cone + akumulacija časa v conah
+        if (currentHr > 0 && currentUser && userProfiles[currentUser]) {
+            const maxHr = getProfileMaxHr();
+            const pct = Math.max(0, Math.min(100, Math.round((currentHr / maxHr) * 100)));
+            const circle = document.getElementById('hudHrCircle');
+            const pctEl = document.getElementById('hudHrPct');
+            if (circle) {
+                circle.setAttribute('stroke-dashoffset', String(100 - pct));
+                let zoneColor = '#94a3b8';
+                if (pct < 60) {
+                    zoneColor = '#38bdf8';
+                    if (isWorkoutActive || startTime) zoneTimes.ogrevanje += dtSec;
+                } else if (pct < 70) {
+                    zoneColor = '#10b981';
+                    if (isWorkoutActive || startTime) zoneTimes.fatburn += dtSec;
+                } else if (pct < 80) {
+                    zoneColor = '#f59e0b';
+                    if (isWorkoutActive || startTime) zoneTimes.aerobno += dtSec;
+                } else if (pct < 90) {
+                    zoneColor = '#f97316';
+                    if (isWorkoutActive || startTime) zoneTimes.anaerobno += dtSec;
+                } else {
+                    zoneColor = '#ef4444';
+                    if (isWorkoutActive || startTime) zoneTimes.ekstremno += dtSec;
+                }
+                circle.setAttribute('stroke', zoneColor);
+            }
+            if (pctEl) pctEl.textContent = `${pct}%`;
         }
 
         refreshMetricDisplays();
@@ -5464,19 +6097,30 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 await bleWrite(controlPointChar, new Uint8Array([0x08, 0x01]));
                 await sleepMs(150);
                 await setTreadmillSpeed(0);
+                try { await setTreadmillIncline(0); } catch (_) {}
             } else if (treadmillProtocol === 'fitshow' && fitshowWriteChar) {
                 const alreadyStopped = fitshowDeviceState === 0x01 || fitshowDeviceState === 0x04 || fitshowDeviceState === 0x0A;
                 if (force && !alreadyStopped) {
+                    // Najprej cilj 0/0, nato STOP — zanesljivejši konec intervalnega programa
+                    try { await sendFitshowSpeedIncline(0, 0); } catch (_) {}
+                    await sleepMs(250);
                     await fitshowSend([0x53, 0x03]);
+                    await sleepMs(350);
+                    try { await fitshowSend([0x53, 0x03]); } catch (_) {}
                 }
             }
         } catch (e) {
             console.warn('Ustavitev steze:', e);
         }
+        lastTargetSpeed = 0;
+        lastTargetIncline = 0;
+        currentSpeed = 0;
+        currentIncline = 0;
         treadmillBeltStarted = false;
         fitshowWasRunning = false;
         fitshowSessionLive = false;
         fitshowStartInProgress = false;
+        try { updateUI(); } catch (_) {}
     }
 
     async function applyTreadmillTargets(speedKmh, inclinePercent, { start = false } = {}) {
@@ -6064,7 +6708,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         await executeStep(programSteps[currentStepIdx], true);
         document.getElementById('btnStopWorkout').disabled = false;
         if (!document.getElementById('fullscreenHudOverlay')?.classList.contains('active')) {
-            switchSection('secLive', { currentTarget: document.querySelectorAll('.selector-btn')[0] });
+            switchSectionById('secLive');
         }
         return true;
     }
@@ -6096,6 +6740,9 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
 
     async function executeStep(step, isFirstStep = false) {
         stepTimeRemaining = step.duration;
+
+        // Ob menjavi intervala: 3 kratki + 1 dolg pisk (brez gledanja v zaslon)
+        if (!isFirstStep) playIntervalAlert();
 
         // Nemudoma pošlji hitrost + naklon na stezo
         const ok = await applyTreadmillTargets(step.speed, step.incline, {
@@ -6141,11 +6788,67 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 if (currentStepIdx < programSteps.length) {
                     executeStep(programSteps[currentStepIdx], false);
                 } else {
-                    stopWorkout('interval_completed');
-                    alert(`Intervalni trening za ${currentUser} je uspešno zaključen! Odlično delo! 🎉`);
+                    // Konec programa → obvezno ustavi stezo in ponastavi cilje
+                    try { playIntervalAlert(); } catch (_) {}
+                    await stopWorkout('interval_completed');
+                    alert(`Intervalni trening za ${currentUser} je uspešno zaključen! Steza je ustavljena. Odlično delo! 🎉`);
                 }
             }
         }, 1000);
+    }
+
+    /** 3× kratek visok pisk + 1× daljši nizki — Web Audio API (brez zunanjih datotek). */
+    function playIntervalAlert() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const audioCtx = new AudioContext();
+
+            const now = audioCtx.currentTime;
+
+            // 3 kratki piski (napoved)
+            for (let i = 0; i < 3; i++) {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, now + i * 0.25); // 880 Hz (visok ton)
+
+                gain.gain.setValueAtTime(0, now + i * 0.25);
+                gain.gain.linearRampToValueAtTime(0.12, now + i * 0.25 + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.25 + 0.12);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now + i * 0.25);
+                osc.stop(now + i * 0.25 + 0.15);
+            }
+
+            // 1 daljši zaključni pisk (prehod)
+            const finalOsc = audioCtx.createOscillator();
+            const finalGain = audioCtx.createGain();
+            const finalStart = now + 3 * 0.25;
+
+            finalOsc.type = 'sine';
+            finalOsc.frequency.setValueAtTime(554.37, finalStart); // C#5 (melodičen ton prehoda)
+
+            finalGain.gain.setValueAtTime(0, finalStart);
+            finalGain.gain.linearRampToValueAtTime(0.18, finalStart + 0.02);
+            finalGain.gain.exponentialRampToValueAtTime(0.001, finalStart + 0.45);
+
+            finalOsc.connect(finalGain);
+            finalGain.connect(audioCtx.destination);
+
+            finalOsc.start(finalStart);
+            finalOsc.stop(finalStart + 0.5);
+
+            setTimeout(() => {
+                try { audioCtx.close(); } catch (_) {}
+            }, 1600);
+        } catch (e) {
+            console.warn("Web Audio API opozorilo ne deluje:", e);
+        }
     }
 
     function formatProgramClock(totalSec) {
@@ -6470,7 +7173,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         updateUI();
 
         document.getElementById('btnStopWorkout').disabled = false;
-        switchSection('secLive', { currentTarget: document.querySelectorAll('.selector-btn')[0] });
+        switchSectionById('secLive');
 
         alert(`🚀 GPX PROGA JE ZAŽENJENA NA STEZI!\nSteza bo samodejno prilagajala naklon terenu (varnostno omejeno na max ${maxInclineLimit}%).`);
     }
@@ -6666,9 +7369,10 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
     }
 
     // UNIFICIRANA USTAVITEV VSEGA (VIDEO, AVDIO, MERJENJE & STEZA)
-    function stopWorkout(reason = 'user_click') {
-        if (!isWorkoutActive && !startTime) return;
+    async function stopWorkout(reason = 'user_click') {
+        if (!isWorkoutActive && !startTime && !isProgramActive) return;
         isWorkoutActive = false;
+        isProgramActive = false;
         isGpxFollowingActive = false;
         hideHudProgramProgress();
         closeFullscreenHud();
@@ -6690,16 +7394,23 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         releaseWorkoutWakeLock();
         updateLiveMusicBarVisibility();
 
-        // 1. Ustavitev steze — pri fizičnem STOP/pavzi NE pošlji STOP znova (ugasne display)
-        stopTreadmillBelt({ force: reason !== 'physical_stop' });
+        // 1. Ustavitev steze + ponastavitev ciljev (ob koncu programa vedno force)
+        const forceBeltStop = reason !== 'physical_stop';
+        await stopTreadmillBelt({ force: forceBeltStop });
         currentSpeed = 0.0;
+        currentIncline = 0.0;
+        lastTargetSpeed = 0;
+        lastTargetIncline = 0;
         zeroSpeedStreak = 0;
+        try { updateUI(); } catch (_) {}
 
         // 2. Ustavitev intervalnega programa
         if (activeProgramInterval) {
             clearInterval(activeProgramInterval);
             activeProgramInterval = null;
         }
+        currentStepIdx = 0;
+        stepTimeRemaining = 0;
 
         // 3. Ustavitev VIDEO predvajalnika
         stopVideo();
@@ -6709,8 +7420,13 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
 
         document.getElementById('btnStopWorkout').disabled = true;
 
+        if (workoutLog.length) {
+            lastExportWorkoutLog = workoutLog.map(pt => ({ ...pt }));
+        }
+
         showAiDiagnosticModal();
         saveWorkoutToHistory();
+        refreshHomeDashboard();
 
         // Ponastavi sejo, da naslednji tek začne razdaljo od 0
         startTime = null;
@@ -6737,6 +7453,37 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         } else {
             userAdvice = 'Bravo Veronika! Odlično opravljen trening z optimalno porabo kalorij in stabilno tekaško držo.';
         }
+
+        const fmtZone = (sec) => {
+            const s = Math.max(0, Math.round(sec));
+            const m = Math.floor(s / 60);
+            const r = s % 60;
+            return `${m}:${String(r).padStart(2, '0')}`;
+        };
+        const zoneDefs = [
+            { key: 'ogrevanje', label: 'Ogrevanje', color: '#38bdf8' },
+            { key: 'fatburn', label: 'Izgorevanje maščob', color: '#10b981' },
+            { key: 'aerobno', label: 'Aerobno', color: '#f59e0b' },
+            { key: 'anaerobno', label: 'Anaerobno', color: '#f97316' },
+            { key: 'ekstremno', label: 'Ekstremno', color: '#ef4444' }
+        ];
+        const totalZoneSec = zoneDefs.reduce((sum, z) => sum + (zoneTimes[z.key] || 0), 0);
+        const zoneBarSegments = zoneDefs.map(z => {
+            const sec = zoneTimes[z.key] || 0;
+            const pct = totalZoneSec > 0 ? (sec / totalZoneSec) * 100 : 0;
+            if (pct < 0.4) return '';
+            return `<div title="${z.label}: ${fmtZone(sec)}" style="width:${pct.toFixed(2)}%;background:${z.color};height:100%;min-width:${pct > 0 ? '2px' : '0'};"></div>`;
+        }).join('');
+        const zoneLegend = zoneDefs.map(z => {
+            const sec = zoneTimes[z.key] || 0;
+            const pct = totalZoneSec > 0 ? Math.round((sec / totalZoneSec) * 100) : 0;
+            return `<div style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:#cbd5e1;">
+                <span style="width:10px;height:10px;border-radius:2px;background:${z.color};flex-shrink:0;"></span>
+                <span style="flex:1;">${z.label}</span>
+                <strong style="color:#fff;">${fmtZone(sec)}</strong>
+                <span style="color:var(--text-muted);min-width:2.4em;text-align:right;">${pct}%</span>
+            </div>`;
+        }).join('');
         
         const bodyHtml = `
             <div style="display: flex; flex-direction: column; gap: 1rem;">
@@ -6751,6 +7498,17 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                     • Čas stika s tlemi (GCT): <strong style="color: #fff;">${baseGct} ms</strong><br>
                     • Povprečna kadenca: <strong style="color: #fff;">${baseCadence} korakov/min</strong><br>
                     • Optimalno območje srčnega utripa: <strong style="color: #fff;">125 - 150 BPM (Fat Burn Zone)</strong>
+                </div>
+
+                <div style="background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(148, 163, 184, 0.35); padding: 0.85rem; border-radius: 0.75rem;">
+                    <h4 style="color: #e2e8f0; margin-bottom: 0.55rem;">❤️ ČAS V CONAH SRČNEGA UTRIPA</h4>
+                    <div style="display:flex;width:100%;height:18px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,0.08);margin-bottom:0.75rem;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.06);">
+                        ${zoneBarSegments || '<div style="width:100%;height:100%;background:rgba(148,163,184,0.25);"></div>'}
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:0.35rem;">
+                        ${zoneLegend}
+                    </div>
+                    ${totalZoneSec <= 0 ? '<div style="margin-top:0.5rem;font-size:0.75rem;color:var(--text-muted);">Med vadbo ni bilo zabeleženega utripa za cone.</div>' : ''}
                 </div>
 
                 <div style="background: rgba(6, 182, 212, 0.1); border: 1px solid var(--accent-cyan); padding: 0.85rem; border-radius: 0.75rem;">
@@ -7158,6 +7916,8 @@ Uporabi null, če vrednosti ni.`;
         const durationSec = Math.floor((Date.now() - startTime) / 1000);
         if (durationSec < 5) return;
 
+        lastExportWorkoutLog = workoutLog.map(pt => ({ ...pt }));
+
         const hrs = workoutLog.filter(d => d.hr > 0).map(d => d.hr);
         const avgHr = hrs.length > 0 ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 0;
 
@@ -7253,7 +8013,7 @@ Uporabi null, če vrednosti ni.`;
             const dist = Number(item.distance_km || item.distanceKm || 0);
             const cals = item.calories || 0;
             const hr = item.avg_hr || item.avgHr || '--';
-            const weight = item.effective_weight_kg || item.user_weight_kg || realWeightKg || 78;
+            const weight = item.effective_weight_kg || item.user_weight_kg || realWeightKg || userProfiles[currentUser]?.weightKg || 70;
             const dateStr = item.created_at ? new Date(item.created_at).toLocaleString('sl-SI') : (item.date || '-');
             const min = Math.floor(dur / 60);
             const sec = dur % 60;
@@ -7340,34 +8100,53 @@ Uporabi null, če vrednosti ni.`;
     }
 
     function exportWorkoutGPX() {
-        if (workoutLog.length === 0) return alert("Ni zabeleženih točk za izvoz GPX datoteke.");
+        const points = (workoutLog && workoutLog.length) ? workoutLog
+            : (lastExportWorkoutLog && lastExportWorkoutLog.length) ? lastExportWorkoutLog
+            : [];
+        if (!points.length) {
+            return alert("Ni zabeleženih točk za izvoz GPX datoteke. Najprej opravite trening (ali izvozite takoj po koncu).");
+        }
 
         const dateIso = new Date().toISOString();
+        const sessionStartMs = startTime || (Date.now() - (Number(points[points.length - 1]?.time || points.length) * 1000));
+
         let gpxXml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
         gpxXml += `<gpx version="1.1" creator="Tekalna Steza Pro"\n`;
         gpxXml += `  xmlns="http://www.topografix.com/GPX/1/1"\n`;
-        gpxXml += `  xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">\n`;
+        gpxXml += `  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n`;
+        gpxXml += `  xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1"\n`;
+        gpxXml += `  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd http://www.garmin.com/xmlschemas/TrackPointExtension/v1 http://www.garmin.com/xmlschemas/TrackPointExtensionv1.xsd">\n`;
         gpxXml += `  <metadata>\n`;
         gpxXml += `    <name>Tek Trening - ${currentUser}</name>\n`;
         gpxXml += `    <time>${dateIso}</time>\n`;
         gpxXml += `  </metadata>\n`;
         gpxXml += `  <trk>\n`;
         gpxXml += `    <name>Tekalna Steza</name>\n`;
+        gpxXml += `    <type>running</type>\n`;
         gpxXml += `    <trkseg>\n`;
 
-        const baseTime = Date.now() - (workoutLog.length * 500);
+        points.forEach((pt, idx) => {
+            const elapsedSec = Number(pt.time);
+            const ptMs = Number.isFinite(elapsedSec)
+                ? (sessionStartMs + elapsedSec * 1000)
+                : (sessionStartMs + idx * 1000);
+            const ptTime = new Date(ptMs).toISOString();
+            const spd = Number(pt.speed) || 0;
+            const cad = spd > 0.5 ? Math.round(110 + (spd * 7)) : 0;
+            const hr = Math.max(0, Math.round(Number(pt.hr) || 0));
+            const ele = 300 + (Number(pt.incline) || 0) * 0.5;
 
-        workoutLog.forEach((pt, idx) => {
-            const ptTime = new Date(baseTime + (idx * 500)).toISOString();
-            const cad = pt.speed > 0.5 ? Math.round(110 + (pt.speed * 7)) : 0;
-            const hr = pt.hr || 135;
+            // Fiksna baza (Ljubljana) + majhen napredek po razdalji za veljavno sled
+            const distKm = Number(pt.distance) || 0;
+            const lat = 46.0569 + (distKm * 0.00012);
+            const lon = 14.5058 + (distKm * 0.00016);
 
-            gpxXml += `      <trkpt lat="46.0569" lon="14.5058">\n`;
-            gpxXml += `        <ele>300</ele>\n`;
+            gpxXml += `      <trkpt lat="${lat.toFixed(7)}" lon="${lon.toFixed(7)}">\n`;
+            gpxXml += `        <ele>${ele.toFixed(1)}</ele>\n`;
             gpxXml += `        <time>${ptTime}</time>\n`;
             gpxXml += `        <extensions>\n`;
             gpxXml += `          <gpxtpx:TrackPointExtension>\n`;
-            gpxXml += `            <gpxtpx:hr>${hr}</gpxtpx:hr>\n`;
+            if (hr > 0) gpxXml += `            <gpxtpx:hr>${hr}</gpxtpx:hr>\n`;
             gpxXml += `            <gpxtpx:cad>${cad}</gpxtpx:cad>\n`;
             gpxXml += `          </gpxtpx:TrackPointExtension>\n`;
             gpxXml += `        </extensions>\n`;
@@ -7386,8 +8165,9 @@ Uporabi null, če vrednosti ni.`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(link.href), 2000);
 
-        alert("GPX datoteka z vgrajenim utripom in kadenco je preneta!");
+        alert("GPX datoteka z vgrajenim utripom (<gpxtpx:hr>) in kadenco (<gpxtpx:cad>) je preneta!");
     }
 
     function exportHistoryCSV() {
@@ -7397,7 +8177,7 @@ Uporabi null, če vrednosti ni.`;
         let csv = "data:text/csv;charset=utf-8,Uporabnik,Datum,Vir,Trajanje_s,Razdalja_km,Teza_kg,Kalorije_kcal,Povp_HR,Opomba\n";
         userHistory.forEach(r => {
             const meta = parseWorkoutMeta(r.gpx_name);
-            csv += `"${r.user || r.user_name}","${r.date || r.created_at || ''}","${meta.source}",${r.duration_sec || r.durationSec || 0},${r.distance_km || r.distanceKm || 0},${r.effective_weight_kg || r.user_weight_kg || 62},${r.calories || 0},${r.avg_hr || ''},"${(meta.notes || '').replace(/"/g, "'")}"\n`;
+            csv += `"${r.user || r.user_name}","${r.date || r.created_at || ''}","${meta.source}",${r.duration_sec || r.durationSec || 0},${r.distance_km || r.distanceKm || 0},${r.effective_weight_kg || r.user_weight_kg || realWeightKg || userProfiles[currentUser]?.weightKg || 70},${r.calories || 0},${r.avg_hr || ''},"${(meta.notes || '').replace(/"/g, "'")}"\n`;
         });
 
         const encodedUri = encodeURI(csv);
@@ -7407,6 +8187,97 @@ Uporabi null, če vrednosti ni.`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+
+    function renderStatsProgressChart(historyData) {
+        const ctx = document.getElementById('statsProgressChart')?.getContext('2d');
+        if (!ctx) return;
+
+        if (statsProgressChart) {
+            statsProgressChart.destroy();
+            statsProgressChart = null;
+        }
+
+        // Najnovejši najprej → zadnjih 10 → obrni kronološko (levo → desno)
+        const data = [...(historyData || [])]
+            .sort((a, b) => {
+                const da = new Date(a.created_at || a.date || 0).getTime() || 0;
+                const db = new Date(b.created_at || b.date || 0).getTime() || 0;
+                return db - da;
+            })
+            .slice(0, 10)
+            .reverse();
+
+        const labels = data.map(item => {
+            if (item.created_at) {
+                return new Date(item.created_at).toLocaleDateString('sl-SI', { day: 'numeric', month: 'short' });
+            }
+            return item.date ? String(item.date).split(',')[0] : '';
+        });
+
+        const distances = data.map(item => Number(item.distance_km || item.distanceKm || 0));
+        const heartRates = data.map(item => Number(item.avg_hr || item.avgHr || 0));
+
+        statsProgressChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Razdalja (km)',
+                        data: distances,
+                        backgroundColor: 'rgba(16, 185, 129, 0.25)',
+                        borderColor: '#10b981',
+                        borderWidth: 2,
+                        borderRadius: 4,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Povp. srčni utrip (BPM)',
+                        data: heartRates,
+                        type: 'line',
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#ef4444',
+                        pointRadius: 4,
+                        tension: 0.35,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        ticks: { color: '#94a3b8', font: { family: 'Outfit' } },
+                        grid: { color: 'rgba(255, 255, 255, 0.04)' }
+                    },
+                    y: {
+                        type: 'linear',
+                        position: 'left',
+                        title: { display: true, text: 'Razdalja (km)', color: '#10b981', font: { family: 'Outfit', weight: 'bold' } },
+                        ticks: { color: '#10b981' },
+                        grid: { color: 'rgba(255, 255, 255, 0.04)' }
+                    },
+                    y1: {
+                        type: 'linear',
+                        position: 'right',
+                        title: { display: true, text: 'Srčni utrip (BPM)', color: '#ef4444', font: { family: 'Outfit', weight: 'bold' } },
+                        ticks: { color: '#ef4444' },
+                        grid: { drawOnChartArea: false },
+                        min: 60,
+                        max: 200
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#f8fafc', font: { family: 'Outfit', weight: '600' } }
+                    }
+                }
+            }
+        });
     }
 
     async function loadStats() {
@@ -7429,6 +8300,8 @@ Uporabi null, če vrednosti ni.`;
         document.getElementById('statTotalDist').textContent = totalDist.toFixed(1);
         document.getElementById('statTotalTime').textContent = Math.round(totalSec / 60);
         document.getElementById('statTotalCals').textContent = totalCals;
+
+        renderStatsProgressChart(userHistory);
     }
 </script>
 </body>
