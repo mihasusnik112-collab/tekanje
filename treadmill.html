@@ -1561,7 +1561,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v23';
+    const APP_BUILD = 'v24';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -3002,8 +3002,8 @@
 
     // --- GEMINI AI VIRTUALNI ASISTENT, TRENER IN UVOZ SLIK ---
     // Modeli potrjeni z uporabnikovim ključem (AI Studio /v1beta/models)
+    // Samo gemini-2.5-flash — 2.5-pro ni na voljo novim uporabnikom
     const GEMINI_MODEL_PRIMARY = 'gemini-2.5-flash';
-    const GEMINI_MODEL_FALLBACK = 'gemini-2.5-pro';
     // Ključ ni v plaintextu — XOR + razpršeni bajti (prepis v localStorage lahko preglasi)
     function _resolveEmbeddedGeminiKey() {
         const x = 90;
@@ -3025,7 +3025,7 @@
     }
 
     function isGeminiModelUnavailableError(msg) {
-        return /no longer available|not available to new users|deprecated|has been shut down|update your code to use a newer model|gemini-1\.5-flash-lite|gemini-2\.0-flash([^-]|$)|models\/gemini-2\.0-flash|flash-latest/i.test(String(msg || ''));
+        return /no longer available|not available to new users|deprecated|has been shut down|update your code to use a newer model|gemini-1\.5|gemini-2\.0-flash|gemini-2\.5-pro|flash-latest/i.test(String(msg || ''));
     }
 
     function reloadGeminiApiKeyFromStorage() {
