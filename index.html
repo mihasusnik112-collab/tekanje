@@ -1759,6 +1759,20 @@
     });
 
     window.addEventListener('DOMContentLoaded', async () => {
+        const prevBuild = localStorage.getItem('ble_app_build_seen');
+        if (prevBuild && prevBuild !== APP_BUILD) {
+            localStorage.setItem('ble_app_build_seen', APP_BUILD);
+            if ('serviceWorker' in navigator) {
+                try {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(regs.map(r => r.unregister()));
+                } catch (_) {}
+            }
+            location.reload();
+            return;
+        }
+        localStorage.setItem('ble_app_build_seen', APP_BUILD);
+
         checkPwaInstalledState();
         setupAppLifecycleGuards();
         setupOrientationHandling();
@@ -2986,9 +3000,9 @@
     }
 
     // --- GEMINI AI VIRTUALNI ASISTENT, TRENER IN UVOZ SLIK ---
-    const APP_BUILD = 'v18';
-    // gemini-flash-latest → gemini-1.5-flash (nižja free kvota); uporabljamo samo 2.5 modele
-    const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+    const APP_BUILD = 'v19';
+    // Samo aktivni modeli (1.5.x in flash-latest sta ukinjena)
+    const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
     const GEMINI_MIN_INTERVAL_MS = 2500;
     const GEMINI_MAX_CALLS_PER_MIN = 14;
     // Ključ ni v plaintextu — XOR + razpršeni bajti (prepis v localStorage lahko preglasi)
@@ -3010,6 +3024,10 @@
 
     function isGeminiQuotaError(msg, status) {
         return status === 429 || /quota|rate.limit|rate_limit|exceeded|resource_exhausted/i.test(String(msg || ''));
+    }
+
+    function isGeminiModelUnavailableError(msg) {
+        return /no longer available|not available to new users|deprecated|has been shut down|update your code to use a newer model|gemini-1\.5/i.test(String(msg || ''));
     }
 
     function geminiClientRateLimitCheck() {
@@ -3320,7 +3338,7 @@ OBVEZNO:
                                 throw new Error(`Gemini kvota (free tier): ${msg.split('.')[0]}. Počakaj ~${retrySec} s.`);
                             }
                             lastError = new Error(`${model}: ${msg}`);
-                            if (res.status === 404 || /not found|not supported|deprecated|not available/i.test(msg)) {
+                            if (res.status === 404 || isGeminiModelUnavailableError(msg) || /not found|not supported|not available/i.test(msg)) {
                                 break;
                             }
                             continue;
@@ -3348,7 +3366,7 @@ OBVEZNO:
         const keyHint = geminiApiKey?.startsWith('AQ.')
             ? ' Tvoj ključ je tipa AQ. — v AI Studio ustvari novega, omeji na Gemini API only, prilepi pod Napredno in klikni Testiraj.'
             : '';
-        throw lastError || new Error('Gemini API ni vrnil odgovora.' + keyHint);
+        throw lastError || new Error('Noben Gemini model ni na voljo. Osveži aplikacijo (build ' + APP_BUILD + ') z hard refresh.');
     }
 
     function setGeminiOutputLoading(msg) {
@@ -3366,6 +3384,9 @@ OBVEZNO:
                 1. V <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent-cyan);">AI Studio</a> omeji ključ na <em>Gemini API only</em> (ne sme biti Unrestricted).<br>
                 2. Če še ne dela: ustvari nov Auth ključ (začne se z AQ.) in ga vstavi pod <em>Napredno: zamenjaj ključ</em>.<br>
                 3. Stari lokalni ključ lahko počistiš z gumbom <em>Privzeti</em>.`;
+            } else if (isGeminiModelUnavailableError(msg)) {
+                hint = `<br><br><strong>Zastarel model (npr. gemini-1.5).</strong> Osveži aplikacijo na build <strong>${APP_BUILD}</strong>: zapri PWA, odpri znova ali Ctrl+F5.<br>
+                Če še vedno piše star build (v15/v16), v brskalniku izbriši cache za to stran.`;
             } else if (isGeminiQuotaError(msg)) {
                 hint = `<br><br><strong>Zakaj?</strong> Brezplačni Gemini API ima omejitev (~20 klicov/min). Aplikacija zdaj ne pošilja več podvojenih zahtev.<br><br>
                 <strong>Kaj narediti:</strong><br>
