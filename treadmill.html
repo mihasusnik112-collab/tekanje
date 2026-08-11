@@ -1769,7 +1769,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v28';
+    const APP_BUILD = 'v29';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -1900,6 +1900,10 @@
     let lastBleUpdateMs = 0;
     let ignorePhysicalStopUntil = 0;
     let zeroSpeedStreak = 0;
+    let fitshowDeviceState = 0; // 1=END, 2=countdown, 3=RUNNING, 4=STOP, 10=PAUSED
+    let fitshowWasRunning = false;
+    let pendingFitshowTarget = null; // { speed, incline }
+    let fitshowTargetRetryTimer = null;
     let isProgramActive = false;
     let continuousListenInterval = null;
     let reconnectWatchdogInterval = null;
@@ -5036,51 +5040,84 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         const cmd = payload[0];
 
         // SYS_STATUS (0x51): stanje + hitrost/naklon/čas/razdalja
-        if (cmd === 0x51 && payload.length >= 4) {
-            const state = payload[1];
-            // 1=stop, 2=countdown, 3=running, 4=stopping, 0x0A=pause
-            if (state === 0x01 || state === 0x02 || state === 0x03 || state === 0x04 || state === 0x0A) {
-                // Standard: speed(B 0.1km/h), incline(B), time(W), distance(W 0.001km)
-                // High-speed: speed(W), incline(B), time(W), distance(W)
-                let speed = 0;
-                let incline = 0;
-                let distKm = null;
-                if (payload.length >= 12) {
-                    // Verjetno 2-byte hitrost
-                    speed = (payload[2] | (payload[3] << 8)) / 10.0;
-                    incline = payload[4] || 0;
-                    if (payload.length >= 9) {
-                        const distRaw = payload[7] | (payload[8] << 8);
-                        distKm = distRaw * 0.001;
-                    }
-                } else {
-                    speed = (payload[2] || 0) / 10.0;
-                    incline = payload[3] || 0;
-                    if (payload.length >= 8) {
-                        const distRaw = payload[6] | (payload[7] << 8);
-                        distKm = distRaw * 0.001;
-                    }
-                }
+        // Layout (QDomyos/FitShow): state(B), speed(B 0.1km/h), incline(B), time(W), dist(W), ...
+        if (cmd === 0x51 && payload.length >= 3) {
+            const prevState = fitshowDeviceState;
+            fitshowDeviceState = state;
+            // 1=END, 2=START/countdown, 3=RUNNING, 4=STOP, 5=ERROR, 6=SAFETY, 10=PAUSED
 
-                if (speed >= 0 && speed < 30) {
-                    currentSpeed = speed;
-                    lastBleUpdateMs = Date.now();
-                }
-                if (incline >= 0 && incline <= 20) {
-                    currentIncline = incline;
-                    lastBleUpdateMs = Date.now();
-                }
-                if (distKm != null && distKm >= 0 && distKm < 100) {
-                    deviceReportsDistance = true;
-                    currentDistance = distKm;
-                }
-                onTreadmillLiveTelemetry();
-                updateUI();
+            if (state === 0x02 || state === 0x03) {
+                fitshowWasRunning = true;
             }
+            // Ko steza dejansko teče, skrajšaj "ignore stop" — da fizični STOP deluje hitro
+            if (state === 0x03 && prevState !== 0x03) {
+                ignorePhysicalStopUntil = Math.min(ignorePhysicalStopUntil, Date.now() + 2000);
+            }
+
+            // Fizični stop / varnostni ključ / pauza na stezi → ustavi app
+            if (
+                fitshowWasRunning &&
+                (state === 0x01 || state === 0x04 || state === 0x05 || state === 0x06 || state === 0x0A) &&
+                (isWorkoutActive || startTime || isProgramActive) &&
+                Date.now() > ignorePhysicalStopUntil
+            ) {
+                console.log('FitShow fizični stop, state=', state);
+                fitshowWasRunning = false;
+                currentSpeed = 0;
+                lastBleUpdateMs = Date.now();
+                stopWorkout('physical_stop');
+                updateUI();
+                return;
+            }
+
+            // 1-bajtna hitrost (0.1 km/h) — NE uporabljaj 2-bajtnega parse (zmede incline/time)
+            let speed = (payload[2] || 0) / 10.0;
+            let incline = payload.length > 3 ? (payload[3] || 0) : currentIncline;
+            let distKm = null;
+            if (payload.length >= 8) {
+                const distRaw = payload[6] | (payload[7] << 8);
+                // FitShow pogosto 0.01 km ali 0.001 km — vzemi razumno vrednost
+                const as001 = distRaw * 0.001;
+                const as01 = distRaw * 0.01;
+                distKm = as001 < 50 ? as001 : as01;
+            }
+
+            if (speed >= 0 && speed < 30) {
+                currentSpeed = speed;
+                lastBleUpdateMs = Date.now();
+            }
+            if (incline >= 0 && incline <= 25) {
+                currentIncline = incline;
+                lastBleUpdateMs = Date.now();
+            }
+            if (distKm != null && distKm >= 0 && distKm < 100) {
+                deviceReportsDistance = true;
+                currentDistance = distKm;
+            }
+
+            // Po countdownu (RUNNING) ponovno pošlji ciljno hitrost, če steza še ni blizu
+            if (state === 0x03 && pendingFitshowTarget) {
+                const want = pendingFitshowTarget.speed;
+                if (want > 0.5 && Math.abs(currentSpeed - want) > 0.4) {
+                    const speedRaw = Math.round(want * 10) & 0xff;
+                    const inclineRaw = Math.round(pendingFitshowTarget.incline) & 0xff;
+                    fitshowSend([0x53, 0x02, speedRaw, inclineRaw]).catch(() => {});
+                } else if (want > 0.5 && Math.abs(currentSpeed - want) <= 0.4) {
+                    pendingFitshowTarget = null;
+                }
+            }
+
+            onTreadmillLiveTelemetry();
+            updateUI();
         }
     }
 
     function onTreadmillLiveTelemetry() {
+        // FitShow: med countdownom (state 2) ne štej kot "tekajoča" hitrost za physical stop
+        if (treadmillProtocol === 'fitshow' && (fitshowDeviceState === 0x01 || fitshowDeviceState === 0x04 || fitshowDeviceState === 0x0A)) {
+            currentSpeed = Math.min(currentSpeed, 0);
+        }
+
         if (currentSpeed > 0.5) {
             hasHadSpeedBefore = true;
             zeroSpeedStreak = 0;
@@ -5096,17 +5133,18 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 const stopBtn = document.getElementById('btnStopWorkout');
                 if (stopBtn) stopBtn.disabled = false;
             }
-        } else if (currentSpeed < 0.2) {
+        } else if (currentSpeed < 0.25) {
             zeroSpeedStreak++;
         }
 
         if (
             isWorkoutActive &&
             hasHadSpeedBefore &&
-            zeroSpeedStreak >= 3 &&
+            zeroSpeedStreak >= 2 &&
             Date.now() > ignorePhysicalStopUntil
         ) {
-            console.log('Steza se je fizično ustavila. Zaustavljam aplikacijo...');
+            console.log('Steza se je fizično ustavila (hitrost≈0). Zaustavljam aplikacijo...');
+            fitshowWasRunning = false;
             stopWorkout('physical_stop');
         }
     }
@@ -5132,10 +5170,21 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
     }
 
     function getEffectiveSpeedKmh() {
+        // Če je steza fizično ustavljena / v pauzi — ne prikazuj ciljne hitrosti
+        if (treadmillProtocol === 'fitshow' &&
+            (fitshowDeviceState === 0x01 || fitshowDeviceState === 0x04 || fitshowDeviceState === 0x06 || fitshowDeviceState === 0x0A)) {
+            return currentSpeed > 0 ? currentSpeed : 0;
+        }
+
         const bleFresh = lastBleUpdateMs && (Date.now() - lastBleUpdateMs) < 2500;
         if (bleFresh && currentSpeed >= 0) return currentSpeed;
         if (currentSpeed > 0.2) return currentSpeed;
+        // Med countdownom / zagonom raje pokaži cilj, da UI ne skače na 0
         if ((isWorkoutActive || startTime || isProgramActive) && lastTargetSpeed > 0.2) {
+            if (treadmillProtocol === 'fitshow' && (fitshowDeviceState === 0x02 || fitshowDeviceState === 0x03)) {
+                // RUNNING: zaupaj BLE, če je svež; sicer cilj
+                if (bleFresh) return currentSpeed;
+            }
             return lastTargetSpeed;
         }
         return 0;
@@ -5205,6 +5254,49 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         if (document.getElementById('hudDistance')) document.getElementById('hudDistance').innerHTML = `${currentDistance.toFixed(2)} <span style="font-size: 0.75rem;">km</span>`;
     }
 
+    async function waitForFitshowRunning(timeoutMs = 6000) {
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs) {
+            if (fitshowDeviceState === 0x03) return true; // RUNNING
+            if (fitshowDeviceState === 0x01 || fitshowDeviceState === 0x05 || fitshowDeviceState === 0x06) return false;
+            try { await fitshowSend([0x51]); } catch (_) {}
+            await sleepMs(400);
+        }
+        return fitshowDeviceState === 0x03 || fitshowDeviceState === 0x02;
+    }
+
+    async function sendFitshowSpeedIncline(speedKmh, inclinePercent) {
+        const speedRaw = Math.max(0, Math.min(255, Math.round(speedKmh * 10))) & 0xff;
+        const inclineRaw = Math.max(0, Math.min(25, Math.round(inclinePercent))) & 0xff;
+        await fitshowSend([0x53, 0x02, speedRaw, inclineRaw]);
+        return { speedRaw, inclineRaw };
+    }
+
+    function scheduleFitshowTargetRetries(speedKmh, inclinePercent) {
+        pendingFitshowTarget = { speed: speedKmh, incline: inclinePercent };
+        if (fitshowTargetRetryTimer) clearInterval(fitshowTargetRetryTimer);
+        let tries = 0;
+        fitshowTargetRetryTimer = setInterval(async () => {
+            tries++;
+            if (tries > 12 || !pendingFitshowTarget || !isTreadmillControllable()) {
+                clearInterval(fitshowTargetRetryTimer);
+                fitshowTargetRetryTimer = null;
+                return;
+            }
+            // Pošlji šele ko teče (ali countdown skoraj končan)
+            if (fitshowDeviceState !== 0x03 && fitshowDeviceState !== 0x02) return;
+            if (fitshowDeviceState === 0x03 && Math.abs(currentSpeed - pendingFitshowTarget.speed) <= 0.35) {
+                clearInterval(fitshowTargetRetryTimer);
+                fitshowTargetRetryTimer = null;
+                pendingFitshowTarget = null;
+                return;
+            }
+            try {
+                await sendFitshowSpeedIncline(pendingFitshowTarget.speed, pendingFitshowTarget.incline);
+            } catch (_) {}
+        }, 900);
+    }
+
     async function startTreadmillBelt() {
         if (!isTreadmillControllable()) return false;
 
@@ -5216,15 +5308,23 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 await bleWrite(controlPointChar, new Uint8Array([0x07]));
                 await sleepMs(400);
             } else if (treadmillProtocol === 'fitshow') {
-                // FitShow: uporabnik + zagon (0x53), nato steza odšteva 3-2-1
+                // FitShow: user → ready/start → počakaj countdown → šele nato TARGET
                 const weight = Math.max(30, Math.min(200, Math.round(realWeightKg || 70)));
                 const height = Math.max(120, Math.min(230, Math.round(userProfiles[currentUser]?.heightCm || 175)));
                 const age = Math.max(10, Math.min(100, Math.round(userProfiles[currentUser]?.age || 30)));
                 const gender = userProfiles[currentUser]?.gender === 'female' ? 1 : 0;
+                ignorePhysicalStopUntil = Date.now() + 9000;
+                zeroSpeedStreak = 0;
+                fitshowWasRunning = false;
+                fitshowDeviceState = 0;
+
                 await fitshowSend([0x53, 0x00, 0x01, gender, weight & 0xff, age & 0xff, height & 0xff, 0xAA]);
-                await sleepMs(250);
-                await fitshowSend([0x53, 0x01, 0x00]);
-                await sleepMs(1200);
+                await sleepMs(300);
+                // ready/start (daljši paket kot v FitShow/QZ)
+                await fitshowSend([0x53, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+                await sleepMs(400);
+                // Med odštevanjem 3-2-1 status še ni RUNNING — počakaj
+                await waitForFitshowRunning(6500);
             }
             treadmillBeltStarted = true;
             return true;
@@ -5236,6 +5336,11 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
 
     async function stopTreadmillBelt() {
         try {
+            if (fitshowTargetRetryTimer) {
+                clearInterval(fitshowTargetRetryTimer);
+                fitshowTargetRetryTimer = null;
+            }
+            pendingFitshowTarget = null;
             if (treadmillProtocol === 'ftms' && controlPointChar) {
                 await bleWrite(controlPointChar, new Uint8Array([0x08, 0x01]));
                 await sleepMs(150);
@@ -5247,6 +5352,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             console.warn('Ustavitev steze:', e);
         }
         treadmillBeltStarted = false;
+        fitshowWasRunning = false;
     }
 
     async function applyTreadmillTargets(speedKmh, inclinePercent, { start = false } = {}) {
@@ -5259,8 +5365,8 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         const safeIncline = Math.min(Math.max(0, inclinePercent), maxInclineLimit);
         lastTargetSpeed = safeSpeed > 0 ? safeSpeed : lastTargetSpeed;
         lastTargetIncline = safeIncline;
-        // Po ukazu s tablice zaščiti pred lažno fizično ustavitvijo med rampo
-        ignorePhysicalStopUntil = Date.now() + 4000;
+        // Po ukazu s tablice zaščiti pred lažno fizično ustavitvijo med rampo / countdownom
+        ignorePhysicalStopUntil = Date.now() + (start || !treadmillBeltStarted ? 9000 : 3500);
         zeroSpeedStreak = 0;
 
         try {
@@ -5269,18 +5375,24 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 if (!started) return false;
             }
 
-            // Pošlji nemudoma (in še enkrat za zanesljivost)
-            for (let attempt = 0; attempt < 2; attempt++) {
-                if (treadmillProtocol === 'fitshow') {
-                    const speedRaw = Math.round(safeSpeed * 10);
-                    const inclineRaw = Math.round(safeIncline);
-                    await fitshowSend([0x53, 0x02, speedRaw & 0xff, inclineRaw & 0xff]);
-                } else {
+            if (treadmillProtocol === 'fitshow') {
+                // Takoj + retry dokler BLE ne potrdi hitrosti (countdown pogosto požre prvi ukaz)
+                pendingFitshowTarget = { speed: safeSpeed, incline: safeIncline };
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    await sendFitshowSpeedIncline(safeSpeed, safeIncline);
+                    await sleepMs(250);
+                    if (fitshowDeviceState === 0x03 && Math.abs(currentSpeed - safeSpeed) <= 0.4) break;
+                    // Če smo še v countdownu, počakaj RUNNING
+                    if (fitshowDeviceState === 0x02) await sleepMs(500);
+                }
+                scheduleFitshowTargetRetries(safeSpeed, safeIncline);
+            } else {
+                for (let attempt = 0; attempt < 2; attempt++) {
                     await setTreadmillSpeed(safeSpeed);
                     await sleepMs(80);
                     await setTreadmillIncline(safeIncline);
+                    await sleepMs(100);
                 }
-                await sleepMs(100);
             }
             return true;
         } catch (e) {
@@ -6427,6 +6539,12 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         hideHudProgramProgress();
         closeFullscreenHud();
         workoutDisplayMode = { video: false, fullscreenHud: false, view: 'hud', hasVideo: false };
+        pendingFitshowTarget = null;
+        if (fitshowTargetRetryTimer) {
+            clearInterval(fitshowTargetRetryTimer);
+            fitshowTargetRetryTimer = null;
+        }
+        fitshowWasRunning = false;
         const float = document.getElementById('workoutViewSwitcher');
         if (float) {
             float.classList.remove('visible');
