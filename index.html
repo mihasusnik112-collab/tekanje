@@ -1561,7 +1561,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v20';
+    const APP_BUILD = 'v21';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -3001,8 +3001,8 @@
     }
 
     // --- GEMINI AI VIRTUALNI ASISTENT, TRENER IN UVOZ SLIK ---
-    const GEMINI_MODEL_PRIMARY = 'gemini-2.5-flash';
-    const GEMINI_MODEL_FALLBACK = 'gemini-2.5-flash-lite';
+    const GEMINI_MODEL_PRIMARY = 'gemini-1.5-flash';
+    const GEMINI_MODEL_FALLBACK = 'gemini-1.5-flash-8b';
     // Ključ ni v plaintextu — XOR + razpršeni bajti (prepis v localStorage lahko preglasi)
     function _resolveEmbeddedGeminiKey() {
         const x = 90;
@@ -3024,7 +3024,7 @@
     }
 
     function isGeminiModelUnavailableError(msg) {
-        return /no longer available|not available to new users|deprecated|has been shut down|update your code to use a newer model|gemini-1\.5|gemini-2\.0-flash([^-]|$)|models\/gemini-2\.0-flash/i.test(String(msg || ''));
+        return /no longer available|not available to new users|deprecated|has been shut down|update your code to use a newer model|gemini-1\.0|gemini-2\.0-flash([^-]|$)|models\/gemini-2\.0-flash/i.test(String(msg || ''));
     }
 
     async function geminiApiFetch(model, body, authMode = 'header') {
@@ -3350,12 +3350,12 @@ OBVEZNO:
                 2. Če še ne dela: ustvari nov Auth ključ (začne se z AQ.) in ga vstavi pod <em>Napredno: zamenjaj ključ</em>.<br>
                 3. Stari lokalni ključ lahko počistiš z gumbom <em>Privzeti</em>.`;
             } else if (isGeminiModelUnavailableError(msg)) {
-                hint = `<br><br><strong>Zastarel model (npr. gemini-1.5).</strong> Osveži aplikacijo na build <strong>${APP_BUILD}</strong>: zapri PWA, odpri znova ali Ctrl+F5.<br>
-                Če še vedno piše star build (v15/v16), v brskalniku izbriši cache za to stran.`;
+                hint = `<br><br><strong>Model ni dostopen za ta ključ.</strong> Osveži aplikacijo (zapri PWA, odpri znova ali Ctrl+F5) in poskusi znova.<br>
+                Če napaka ostane: ustvari lastni ključ v <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent-cyan);">AI Studio</a> in ga vstavi pod <em>Napredno: zamenjaj ključ</em>.`;
             } else if (isGeminiQuotaError(msg)) {
-                hint = `<br><br><strong>To NI nujno 20 klicov/min.</strong> Google šteje tudi neuspešne poskuse (stara različica je poslala 4–6 klicev na en gumb). Build <strong>${APP_BUILD}</strong> pošlje <strong>1 klic</strong> na sliko.<br><br>
+                hint = `<br><br><strong>Prekoračena kvota ali model ni dostopen za ta ključ.</strong><br><br>
                 • Počakaj 30–60 s, nato samo <em>en</em> gumb.<br>
-                • Uporabi svoj ključ iz <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent-cyan);">AI Studio</a>.<br>
+                • Če napaka traja: ustvari lastni ključ v <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent-cyan);">AI Studio</a> in ga vstavi pod <em>Napredno: zamenjaj ključ</em>.<br>
                 • Kvota: <a href="https://ai.dev/rate-limit" target="_blank" rel="noopener" style="color:var(--accent-cyan);">ai.dev/rate-limit</a>`;
             }
             out.innerHTML = `<strong style="color:var(--accent-red);">❌ Gemini napaka:</strong><br>${formatGeminiHtml(msg)}${hint}`;
