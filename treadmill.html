@@ -1718,7 +1718,7 @@
     // PWA REGISTRACIJA SERVICE WORKER-JA IN NAMESTITVENI DOGODEK
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js?v=33')
+            navigator.serviceWorker.register('./sw.js?v=34')
                 .then(reg => {
                     console.log('PWA Service Worker uspešno registriran!', reg.scope);
                     // Vsak zagon preveri novo verzijo SW
@@ -1775,7 +1775,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v33';
+    const APP_BUILD = 'v34';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -5360,39 +5360,42 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
     }
 
     async function sendFitshowSpeedIncline(speedKmh, inclinePercent) {
-        // QDomyos/FitShow CONTROL_TARGET: hitrost v CELIH km/h (ne ×10)!
-        // Status 0x51 pa vrača hitrost v 0.1 km/h — zato beremo /10, pišemo pa zaokroženo km/h.
-        const speedRaw = Math.max(1, Math.min(20, Math.round(Number(speedKmh) || 0))) & 0xff;
+        // FitShow CONTROL_TARGET: hitrost v 0.1 km/h (45 = 4.5 km/h).
+        // (Cela km/h bi dala 5 → steza teče pri 0.5 km/h — potrjeno na tvoji stezi.)
+        const spd = Math.max(0, Math.min(20, Number(speedKmh) || 0));
+        const speedRaw = Math.max(10, Math.min(200, Math.round(spd * 10))) & 0xff; // min 1.0 km/h
         const inclineRaw = Math.max(0, Math.min(25, Math.round(Number(inclinePercent) || 0))) & 0xff;
+        console.log('FitShow TARGET', { kmh: spd, speedRaw, inclineRaw });
         await fitshowSend([0x53, 0x02, speedRaw, inclineRaw]);
         return { speedRaw, inclineRaw };
     }
 
     function scheduleFitshowTargetRetries(speedKmh, inclinePercent) {
-        pendingFitshowTarget = { speed: speedKmh, incline: inclinePercent, until: Date.now() + 12000 };
+        pendingFitshowTarget = { speed: speedKmh, incline: inclinePercent, until: Date.now() + 15000 };
         if (fitshowTargetRetryTimer) clearInterval(fitshowTargetRetryTimer);
         let tries = 0;
         fitshowTargetRetryTimer = setInterval(async () => {
             tries++;
             const expired = !pendingFitshowTarget || Date.now() > (pendingFitshowTarget.until || 0);
-            if (tries > 10 || expired || !isTreadmillControllable() || fitshowStartInProgress) {
-                if (tries > 10 || expired) {
+            if (tries > 12 || expired || !isTreadmillControllable() || fitshowStartInProgress) {
+                if (tries > 12 || expired) {
                     clearInterval(fitshowTargetRetryTimer);
                     fitshowTargetRetryTimer = null;
                     pendingFitshowTarget = null;
                 }
                 return;
             }
-            if (fitshowDeviceState !== 0x03) return;
-            const want = Math.round(pendingFitshowTarget.speed);
-            if (Math.abs(currentSpeed - pendingFitshowTarget.speed) <= 0.6 || Math.abs(currentSpeed - want) <= 0.6) {
+            if (fitshowDeviceState !== 0x03 && fitshowDeviceState !== 0x02) return;
+            const want = pendingFitshowTarget.speed;
+            // Potrjeno, ko je BLE hitrost blizu cilja (status je v 0.1 km/h → currentSpeed že v km/h)
+            if (currentSpeed >= 0.8 && Math.abs(currentSpeed - want) <= 0.45) {
                 clearInterval(fitshowTargetRetryTimer);
                 fitshowTargetRetryTimer = null;
                 pendingFitshowTarget = null;
                 return;
             }
-            // Ročna sprememba na konzoli — nehaj vsiljevati
-            if (currentSpeed > 0.8 && Math.abs(currentSpeed - pendingFitshowTarget.speed) > 1.5 && tries > 3) {
+            // Ročna sprememba na konzoli
+            if (currentSpeed > 0.8 && Math.abs(currentSpeed - want) > 1.5 && tries > 4) {
                 clearInterval(fitshowTargetRetryTimer);
                 fitshowTargetRetryTimer = null;
                 pendingFitshowTarget = null;
@@ -5401,7 +5404,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             try {
                 await sendFitshowSpeedIncline(pendingFitshowTarget.speed, pendingFitshowTarget.incline);
             } catch (_) {}
-        }, 1200);
+        }, 1000);
     }
 
     async function startTreadmillBelt() {
@@ -5496,11 +5499,11 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             }
 
             if (treadmillProtocol === 'fitshow') {
-                // Takoj po countdownu nastavi hitrost (cela km/h)
-                for (let attempt = 0; attempt < 3; attempt++) {
+                // Po countdownu nastavi hitrost (0.1 km/h enote)
+                for (let attempt = 0; attempt < 4; attempt++) {
                     await sendFitshowSpeedIncline(safeSpeed, safeIncline);
-                    await sleepMs(600);
-                    if (fitshowDeviceState === 0x03 && currentSpeed >= 0.8) break;
+                    await sleepMs(700);
+                    if (fitshowDeviceState === 0x03 && currentSpeed >= Math.max(1.0, safeSpeed - 0.6)) break;
                 }
                 scheduleFitshowTargetRetries(safeSpeed, safeIncline);
             } else {
