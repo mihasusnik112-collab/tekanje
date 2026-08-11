@@ -1018,8 +1018,8 @@
                                 🛡️ VARNOSTNA MEJA NAKLONA STEZE (%):
                             </label>
                             <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                <input type="number" id="profInputMaxIncline" step="0.5" min="1" max="15" value="10.0" style="flex: 1;" onchange="setMaxInclineLimit(this.value)">
-                                <span style="font-size: 0.8rem; color: var(--text-muted);">Max % (npr. 10.0%)</span>
+                                <input type="number" id="profInputMaxIncline" step="0.5" min="1" max="18" value="18.0" style="flex: 1;" onchange="setMaxInclineLimit(this.value)">
+                                <span style="font-size: 0.8rem; color: var(--text-muted);">Max % (npr. 18.0%)</span>
                             </div>
                             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">
                                 Preprečuje preobremenitev steze. Vsi GPX in intervalni nakloni se samodejno omejijo na to vrednost.
@@ -1210,7 +1210,7 @@
                     </div>
                     <div class="program-field">
                         <label>📐 Naklon (%)</label>
-                        <input type="number" id="progIncline" min="0" max="15" step="0.5" value="1.0">
+                        <input type="number" id="progIncline" min="0" max="18" step="0.5" value="1.0">
                         <div class="hint">npr. 8.0 % vzpon</div>
                     </div>
                 </div>
@@ -1264,7 +1264,7 @@
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
                     <span>Ime Proge: <strong id="gpxName" style="color: var(--accent-cyan);">-</strong></span>
                     <span>Skupna Dolžina: <strong id="gpxDistance">0.0 km</strong></span>
-                    <span>Varnostna Meja Naklona: <strong id="gpxMaxIncLimitText" style="color: var(--accent-green);">10.0%</strong></span>
+                    <span>Varnostna Meja Naklona: <strong id="gpxMaxIncLimitText" style="color: var(--accent-green);">18.0%</strong></span>
                 </div>
 
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
@@ -1584,28 +1584,88 @@
 
     // PROFILI SA PRILAGOJENIM FIZIOLOŠKIM MERITVAM & DATUMOM ROJSTVA
     let defaultUserProfiles = {
-        'Miha': { name: 'Miha', weightKg: 78.0, heightCm: 182, birthdate: '1992-05-14', age: 34, gender: 'male', maxHr: 188, bmrFactor: 1.0 },
-        'Veronika': { name: 'Veronika', weightKg: 62.0, heightCm: 168, birthdate: '1995-09-21', age: 31, gender: 'female', maxHr: 194, bmrFactor: 0.92 }
+        'Miha': { name: 'Miha', weightKg: 78.0, heightCm: 182, birthdate: '1992-05-14', age: 34, gender: 'male', maxHr: 188, bmrFactor: 1.0, maxInclineLimit: 18.0 },
+        'Veronika': { name: 'Veronika', weightKg: 62.0, heightCm: 168, birthdate: '1995-09-21', age: 31, gender: 'female', maxHr: 194, bmrFactor: 0.92, maxInclineLimit: 18.0 }
     };
 
     let userProfiles = JSON.parse(localStorage.getItem('ble_user_profiles_v3')) || defaultUserProfiles;
     let currentUser = localStorage.getItem('ble_active_user') || 'Miha';
 
-    // VARNOSTNA MEJA NAKLONA TEKALNE STEZE
-    let maxInclineLimit = parseFloat(localStorage.getItem('ble_max_incline_limit')) || 10.0;
+    function normalizeBirthdate(val) {
+        if (!val) return '';
+        const s = String(val).trim();
+        const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+        const d = new Date(s);
+        if (isNaN(d.getTime())) return s;
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
 
-    function setMaxInclineLimit(val) {
-        let num = parseFloat(val);
-        if (isNaN(num) || num < 1) num = 10.0;
-        if (num > 15.0) num = 15.0;
-        maxInclineLimit = num;
-        localStorage.setItem('ble_max_incline_limit', maxInclineLimit);
-        
+    function migrateUserProfilesStorage() {
+        let changed = false;
+        const legacyGlobalInc = parseFloat(localStorage.getItem('ble_max_incline_limit'));
+
+        for (const name of Object.keys(userProfiles)) {
+            const p = userProfiles[name];
+            if (!p) continue;
+            if (p.birthdate) {
+                const norm = normalizeBirthdate(p.birthdate);
+                if (norm !== p.birthdate) {
+                    p.birthdate = norm;
+                    changed = true;
+                }
+            }
+            if (p.maxInclineLimit == null || isNaN(Number(p.maxInclineLimit))) {
+                p.maxInclineLimit = (!isNaN(legacyGlobalInc) && legacyGlobalInc > 0) ? Math.min(18, legacyGlobalInc) : 18.0;
+                changed = true;
+            } else if (p.maxInclineLimit > 18) {
+                p.maxInclineLimit = 18.0;
+                changed = true;
+            }
+            if (!p.updated_at) {
+                p.updated_at = new Date(0).toISOString();
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
+        }
+    }
+
+    migrateUserProfilesStorage();
+
+    // Varnostna meja naklona — na profil (sinhronizirano prek Supabase)
+    let maxInclineLimit = userProfiles[currentUser]?.maxInclineLimit ?? 18.0;
+
+    function applyMaxInclineLimitToUi() {
         const textEl = document.getElementById('gpxMaxIncLimitText');
         if (textEl) textEl.textContent = `${maxInclineLimit.toFixed(1)}%`;
-
         const inputEl = document.getElementById('profInputMaxIncline');
         if (inputEl) inputEl.value = maxInclineLimit;
+    }
+
+    function setMaxInclineLimit(val, opts = {}) {
+        const { persistProfile = true } = opts;
+        let num = parseFloat(val);
+        if (isNaN(num) || num < 1) num = 18.0;
+        if (num > 18.0) num = 18.0;
+        maxInclineLimit = num;
+
+        if (persistProfile && userProfiles[currentUser]) {
+            userProfiles[currentUser].maxInclineLimit = num;
+            userProfiles[currentUser].updated_at = new Date().toISOString();
+            localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
+            saveProfileMetaToSupabase(userProfiles[currentUser]).catch(() => {});
+        }
+
+        applyMaxInclineLimitToUi();
+    }
+
+    function loadMaxInclineFromProfile(name = currentUser) {
+        const prof = userProfiles[name];
+        maxInclineLimit = prof?.maxInclineLimit ?? 18.0;
+        applyMaxInclineLimitToUi();
     }
 
     const FTMS_SERVICE_UUID = '00001826-0000-1000-8000-00805f9b34fb';
@@ -1713,7 +1773,7 @@
         updateLiveMusicBarVisibility();
 
         const inputInc = document.getElementById('profInputMaxIncline');
-        if (inputInc) inputInc.value = maxInclineLimit;
+        loadMaxInclineFromProfile(currentUser);
         const textInc = document.getElementById('gpxMaxIncLimitText');
         if (textInc) textInc.textContent = `${maxInclineLimit.toFixed(1)}%`;
 
@@ -1878,7 +1938,9 @@
         if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
         document.getElementById(secId).classList.add('active');
 
-        if (secId === 'secProfiles') populateProfileForm();
+        if (secId === 'secProfiles') {
+            syncProfilesFromSupabase().then(() => populateProfileForm());
+        }
         if (secId === 'secHistory') {
             initManualWorkoutForm();
             renderHistoryTable();
@@ -1901,84 +1963,143 @@
         }).join('');
     }
 
-    // POPOLNA SINHRONIZACIJA PROFILOV IZ SUPABASE BAZE
+    // POPOLNA SINHRONIZACIJA PROFILOV IZ SUPABASE BAZE (dvosmerno, z updated_at)
+    function profileMetaFromCloudRow(p, meta) {
+        const remote = {
+            name: p?.name || meta?.name,
+            weightKg: p?.weight_kg ?? meta?.weightKg,
+            heightCm: p?.height_cm ?? meta?.heightCm,
+            birthdate: normalizeBirthdate(p?.birthdate || meta?.birthdate || ''),
+            gender: p?.gender || meta?.gender,
+            maxInclineLimit: meta?.maxInclineLimit ?? p?.max_incline_limit ?? 18.0,
+            bmrFactor: meta?.bmrFactor,
+            updated_at: meta?.updated_at || p?.updated_at || null
+        };
+        if (remote.birthdate) {
+            const age = calcAgeFromBirthdate(remote.birthdate);
+            if (age != null) {
+                remote.age = age;
+                remote.maxHr = 220 - age;
+            }
+        } else if (meta?.age != null) {
+            remote.age = meta.age;
+            remote.maxHr = meta.maxHr ?? (220 - meta.age);
+        }
+        return remote;
+    }
+
+    function mergeProfileRecord(local, remote) {
+        const merged = { ...(local || {}) };
+        const localTs = Date.parse(local?.updated_at || 0) || 0;
+        const remoteTs = Date.parse(remote?.updated_at || 0) || 0;
+        const preferRemote = remoteTs >= localTs;
+
+        const copyIf = (field, val) => {
+            if (val == null || val === '') return;
+            if (preferRemote || merged[field] == null || merged[field] === '') merged[field] = val;
+        };
+
+        copyIf('weightKg', remote.weightKg);
+        copyIf('heightCm', remote.heightCm);
+        copyIf('birthdate', normalizeBirthdate(remote.birthdate));
+        copyIf('gender', remote.gender);
+        copyIf('maxInclineLimit', remote.maxInclineLimit);
+        copyIf('bmrFactor', remote.bmrFactor);
+        copyIf('age', remote.age);
+        copyIf('maxHr', remote.maxHr);
+
+        if (merged.birthdate) {
+            merged.birthdate = normalizeBirthdate(merged.birthdate);
+            const age = calcAgeFromBirthdate(merged.birthdate);
+            if (age != null) {
+                merged.age = age;
+                merged.maxHr = 220 - age;
+            }
+        }
+
+        merged.updated_at = preferRemote
+            ? (remote.updated_at || merged.updated_at || new Date().toISOString())
+            : (merged.updated_at || remote.updated_at || new Date().toISOString());
+        merged.name = merged.name || remote.name;
+        if (merged.maxInclineLimit == null || isNaN(Number(merged.maxInclineLimit))) merged.maxInclineLimit = 18.0;
+        if (merged.maxInclineLimit > 18) merged.maxInclineLimit = 18.0;
+        return merged;
+    }
+
+    async function ensureProfileMetaPushed(name) {
+        const prof = userProfiles[name];
+        if (!prof || !supabaseClient) return;
+        const meta = await fetchProfileMetaFromSupabase(name);
+        const localTs = Date.parse(prof.updated_at || 0) || 0;
+        const remoteTs = Date.parse(meta?.updated_at || 0) || 0;
+        if (!meta || localTs > remoteTs) {
+            await saveProfileMetaToSupabase(prof);
+        }
+    }
+
     async function syncProfilesFromSupabase() {
         if (!supabaseClient) return;
 
         try {
             const { data, error } = await supabaseClient.from('profiles').select('*');
-            if (data && data.length > 0) {
-                for (const p of data) {
-                    const name = p.name;
-                    if (!name) continue;
+            const profileRows = (!error && data) ? data : [];
 
-                    const meta = await fetchProfileMetaFromSupabase(name);
+            const names = new Set([
+                ...Object.keys(userProfiles),
+                ...profileRows.map(p => p.name).filter(Boolean)
+            ]);
 
-                    if (!userProfiles[name]) {
-                        userProfiles[name] = {
-                            name: name,
-                            weightKg: p.weight_kg || meta?.weightKg || 70,
-                            heightCm: meta?.heightCm || (name === 'Veronika' ? 168 : 182),
-                            birthdate: meta?.birthdate || (name === 'Veronika' ? '1995-09-21' : '1992-05-14'),
-                            age: meta?.age || calcAgeFromBirthdate(meta?.birthdate) || (name === 'Veronika' ? 31 : 34),
-                            gender: meta?.gender || (name === 'Veronika' ? 'female' : 'male'),
-                            maxHr: meta?.maxHr || (name === 'Veronika' ? 194 : 188),
-                            bmrFactor: meta?.bmrFactor || (name === 'Veronika' ? 0.92 : 1.0)
-                        };
-                    } else {
-                        // Teža iz profiles + ostalo iz PROFILE_META (sinhronizacija med napravami)
-                        if (p.weight_kg != null) userProfiles[name].weightKg = p.weight_kg;
-                        if (meta) {
-                            if (meta.birthdate) userProfiles[name].birthdate = meta.birthdate;
-                            if (meta.heightCm != null) userProfiles[name].heightCm = meta.heightCm;
-                            if (meta.gender) userProfiles[name].gender = meta.gender;
-                            if (meta.age != null) userProfiles[name].age = meta.age;
-                            else if (meta.birthdate) userProfiles[name].age = calcAgeFromBirthdate(meta.birthdate);
-                            if (meta.maxHr != null) userProfiles[name].maxHr = meta.maxHr;
-                            if (meta.bmrFactor != null) userProfiles[name].bmrFactor = meta.bmrFactor;
-                            if (meta.weightKg != null && p.weight_kg == null) userProfiles[name].weightKg = meta.weightKg;
-                        }
-                        // Vedno uskladi starost z datumom rojstva
-                        if (userProfiles[name].birthdate) {
-                            const a = calcAgeFromBirthdate(userProfiles[name].birthdate);
-                            if (a) userProfiles[name].age = a;
-                            userProfiles[name].maxHr = 220 - userProfiles[name].age;
-                        }
+            for (const name of names) {
+                const row = profileRows.find(p => p.name === name) || null;
+                const meta = await fetchProfileMetaFromSupabase(name);
+                const remote = profileMetaFromCloudRow(row, meta);
+
+                if (!userProfiles[name]) {
+                    userProfiles[name] = mergeProfileRecord({
+                        name,
+                        weightKg: 70,
+                        heightCm: 175,
+                        birthdate: '',
+                        age: 30,
+                        gender: 'male',
+                        maxHr: 190,
+                        bmrFactor: 1.0,
+                        maxInclineLimit: 18.0,
+                        updated_at: new Date(0).toISOString()
+                    }, remote);
+                } else if (remote.updated_at || remote.birthdate || remote.heightCm || remote.gender || remote.maxInclineLimit != null) {
+                    userProfiles[name] = mergeProfileRecord(userProfiles[name], remote);
+                } else if (meta?.birthdate) {
+                    userProfiles[name].birthdate = normalizeBirthdate(meta.birthdate);
+                    const age = calcAgeFromBirthdate(userProfiles[name].birthdate);
+                    if (age != null) {
+                        userProfiles[name].age = age;
+                        userProfiles[name].maxHr = 220 - age;
                     }
                 }
-
-                localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
-                renderUserSwitcher();
             }
 
-            // Naloži tudi meta za lokalne profile, ki morda še niso v profiles tabeli
-            for (const name of Object.keys(userProfiles)) {
-                const meta = await fetchProfileMetaFromSupabase(name);
-                if (!meta) continue;
-                if (meta.birthdate) userProfiles[name].birthdate = meta.birthdate;
-                if (meta.heightCm != null) userProfiles[name].heightCm = meta.heightCm;
-                if (meta.gender) userProfiles[name].gender = meta.gender;
-                if (meta.birthdate) {
-                    const a = calcAgeFromBirthdate(meta.birthdate);
-                    if (a) userProfiles[name].age = a;
-                    userProfiles[name].maxHr = 220 - userProfiles[name].age;
-                }
-                if (meta.bmrFactor != null) userProfiles[name].bmrFactor = meta.bmrFactor;
-            }
             localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
+            renderUserSwitcher();
+
+            for (const name of Object.keys(userProfiles)) {
+                await ensureProfileMetaPushed(name);
+            }
         } catch (e) {
             console.warn("Napaka pri sinhronizaciji profilov iz Supabase:", e);
         }
     }
 
     function calcAgeFromBirthdate(bdateStr) {
-        if (!bdateStr) return null;
-        const bdate = new Date(bdateStr);
+        const norm = normalizeBirthdate(bdateStr);
+        const m = norm.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (!m) return null;
+        const bdate = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
         if (isNaN(bdate.getTime())) return null;
         const today = new Date();
         let age = today.getFullYear() - bdate.getFullYear();
-        const m = today.getMonth() - bdate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < bdate.getDate())) age--;
+        const mo = today.getMonth() - bdate.getMonth();
+        if (mo < 0 || (mo === 0 && today.getDate() < bdate.getDate())) age--;
         return age > 0 && age < 120 ? age : null;
     }
 
@@ -1991,11 +2112,12 @@
         try {
             const { data, error } = await supabaseClient
                 .from('routes')
-                .select('video_url,name')
+                .select('video_url,name,id')
                 .eq('name', getProfileMetaRouteName(user))
-                .maybeSingle();
-            if (error || !data) return null;
-            const raw = data.video_url;
+                .order('id', { ascending: false })
+                .limit(1);
+            if (error || !data?.length) return null;
+            const raw = data[0].video_url;
             if (!raw) return null;
             if (typeof raw === 'object') return raw;
             const text = String(raw).trim();
@@ -2013,25 +2135,27 @@
             name: prof.name,
             weightKg: prof.weightKg,
             heightCm: prof.heightCm,
-            birthdate: prof.birthdate,
+            birthdate: normalizeBirthdate(prof.birthdate),
             age: prof.age,
             gender: prof.gender,
             maxHr: prof.maxHr,
             bmrFactor: prof.bmrFactor,
-            updated_at: new Date().toISOString()
+            maxInclineLimit: prof.maxInclineLimit ?? 18.0,
+            updated_at: prof.updated_at || new Date().toISOString()
         };
+        prof.updated_at = payload.updated_at;
         const routeName = getProfileMetaRouteName(prof.name);
         const json = JSON.stringify(payload);
         try {
-            const { data: existing } = await supabaseClient
+            const { data: rows } = await supabaseClient
                 .from('routes')
                 .select('id')
                 .eq('name', routeName)
-                .maybeSingle();
+                .order('id', { ascending: false })
+                .limit(1);
 
-            // video_url = JSON meta (shema profiles nima stolpcev za datum rojstva)
-            if (existing?.id) {
-                const { error } = await supabaseClient.from('routes').update({ video_url: json }).eq('id', existing.id);
+            if (rows?.length) {
+                const { error } = await supabaseClient.from('routes').update({ video_url: json }).eq('id', rows[0].id);
                 if (error) throw error;
             } else {
                 const { error } = await supabaseClient.from('routes').insert({
@@ -2040,6 +2164,7 @@
                 });
                 if (error) throw error;
             }
+            localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
             return true;
         } catch (e) {
             console.warn('Profile meta save:', e);
@@ -2064,6 +2189,7 @@
         }
 
         realWeightKg = prof.weightKg;
+        loadMaxInclineFromProfile(name);
         populateProfileForm();
         updateLiveMusicBarVisibility();
         initManualWorkoutForm();
@@ -2465,9 +2591,9 @@
         document.getElementById('profInputGender').value = prof.gender || 'male';
         document.getElementById('profInputWeight').value = prof.weightKg || 70;
         document.getElementById('profInputHeight').value = prof.heightCm || 175;
-        document.getElementById('profInputBirthdate').value = prof.birthdate || '1995-01-01';
+        document.getElementById('profInputBirthdate').value = normalizeBirthdate(prof.birthdate) || '1995-01-01';
         document.getElementById('profInputAge').value = prof.age || 30;
-        document.getElementById('profInputMaxIncline').value = maxInclineLimit;
+        document.getElementById('profInputMaxIncline').value = prof.maxInclineLimit ?? maxInclineLimit ?? 18;
 
         calculateProfileMetrics();
     }
@@ -2516,7 +2642,9 @@
             age: 28,
             gender: 'female',
             maxHr: 192,
-            bmrFactor: 0.92
+            bmrFactor: 0.92,
+            maxInclineLimit: 18.0,
+            updated_at: new Date().toISOString()
         };
 
         localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
@@ -2542,7 +2670,7 @@
         const newName = document.getElementById('profInputName').value.trim();
         const weight = parseFloat(document.getElementById('profInputWeight').value);
         const height = parseInt(document.getElementById('profInputHeight').value);
-        const birthdate = document.getElementById('profInputBirthdate').value;
+        const birthdate = normalizeBirthdate(document.getElementById('profInputBirthdate').value);
         let age = parseInt(document.getElementById('profInputAge').value);
         const gender = document.getElementById('profInputGender').value;
         const maxIncVal = parseFloat(document.getElementById('profInputMaxIncline').value);
@@ -2550,7 +2678,6 @@
         if (!newName) return alert("Ime ne more biti prazno!");
         if (isNaN(weight)) return alert("Vnesite veljavno težo!");
         if (!birthdate) return alert("Vnesite datum rojstva!");
-        if (!isNaN(maxIncVal)) setMaxInclineLimit(maxIncVal);
 
         const ageFromBirth = calcAgeFromBirthdate(birthdate);
         if (ageFromBirth != null) age = ageFromBirth;
@@ -2567,12 +2694,15 @@
         prof.gender = gender;
         prof.bmrFactor = gender === 'female' ? 0.92 : 1.0;
         prof.maxHr = 220 - prof.age;
+        prof.maxInclineLimit = isNaN(maxIncVal) ? 18.0 : Math.min(18, Math.max(1, maxIncVal));
+        prof.updated_at = new Date().toISOString();
 
         userProfiles[newName] = prof;
         currentUser = newName;
 
         localStorage.setItem('ble_active_user', newName);
         localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
+        setMaxInclineLimit(prof.maxInclineLimit, { persistProfile: false });
 
         let syncOk = true;
         if (supabaseClient) {
@@ -2856,7 +2986,7 @@
     }
 
     // --- GEMINI AI VIRTUALNI ASISTENT, TRENER IN UVOZ SLIK ---
-    const APP_BUILD = 'v16';
+    const APP_BUILD = 'v17';
     const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest'];
     // Ključ ni v plaintextu — XOR + razpršeni bajti (prepis v localStorage lahko preglasi)
     function _resolveEmbeddedGeminiKey() {
