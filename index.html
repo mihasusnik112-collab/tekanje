@@ -1718,7 +1718,7 @@
     // PWA REGISTRACIJA SERVICE WORKER-JA IN NAMESTITVENI DOGODEK
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js?v=32')
+            navigator.serviceWorker.register('./sw.js?v=33')
                 .then(reg => {
                     console.log('PWA Service Worker uspešno registriran!', reg.scope);
                     // Vsak zagon preveri novo verzijo SW
@@ -1775,7 +1775,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v32';
+    const APP_BUILD = 'v33';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -1911,6 +1911,8 @@
     let fitshowSessionLive = false; // true šele ko je steza RES tekla (RUNNING + hitrost)
     let pendingFitshowTarget = null; // { speed, incline }
     let fitshowTargetRetryTimer = null;
+    let fitshowLastWriteMs = 0;
+    let fitshowStartInProgress = false;
     let isProgramActive = false;
     let continuousListenInterval = null;
     let reconnectWatchdogInterval = null;
@@ -4950,10 +4952,10 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         if (fitshowStatusPollInterval) clearInterval(fitshowStatusPollInterval);
         if (treadmillProtocol === 'fitshow' && fitshowWriteChar) {
             fitshowStatusPollInterval = setInterval(() => {
-                // Samo SYS_STATUS — SYS_DATA (0x52) lahko zmede nekatere module
+                if (fitshowStartInProgress) return; // ne moti zagona
                 fitshowSend([0x51]).catch(() => {});
                 updateTreadmillListenStatus();
-            }, 700);
+            }, 1000);
             fitshowSend([0x51]).catch(() => {});
         }
 
@@ -5038,18 +5040,26 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    async function bleWrite(characteristic, data) {
+    async function bleWrite(characteristic, data, { preferWithoutResponse = false } = {}) {
         if (!characteristic) throw new Error('Manjka BLE karakteristika');
         const payload = data instanceof Uint8Array ? data : new Uint8Array(data);
-        try {
-            if (characteristic.properties.write) {
+        const canWor = characteristic.properties.writeWithoutResponse && characteristic.writeValueWithoutResponse;
+        const canWrite = characteristic.properties.write;
+
+        // FitShow moduli pogosto zahtevajo writeWithoutResponse
+        if (preferWithoutResponse && canWor) {
+            await characteristic.writeValueWithoutResponse(payload);
+            return;
+        }
+        if (canWrite) {
+            try {
                 await characteristic.writeValue(payload);
                 return;
+            } catch (e) {
+                console.warn('writeValue spodletel, poskušam withoutResponse:', e.message);
             }
-        } catch (e) {
-            console.warn('writeValue spodletel, poskušam withoutResponse:', e.message);
         }
-        if (characteristic.properties.writeWithoutResponse && characteristic.writeValueWithoutResponse) {
+        if (canWor) {
             await characteristic.writeValueWithoutResponse(payload);
             return;
         }
@@ -5064,7 +5074,11 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
 
     async function fitshowSend(payload) {
         if (!fitshowWriteChar) return false;
-        await bleWrite(fitshowWriteChar, buildFitshowFrame(payload));
+        // FitShow: največ ~1 ukaz / 250–300 ms
+        const gap = 280 - (Date.now() - fitshowLastWriteMs);
+        if (gap > 0) await sleepMs(gap);
+        await bleWrite(fitshowWriteChar, buildFitshowFrame(payload), { preferWithoutResponse: true });
+        fitshowLastWriteMs = Date.now();
         return true;
     }
 
@@ -5346,34 +5360,39 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
     }
 
     async function sendFitshowSpeedIncline(speedKmh, inclinePercent) {
-        const speedRaw = Math.max(0, Math.min(255, Math.round(speedKmh * 10))) & 0xff;
-        const inclineRaw = Math.max(0, Math.min(25, Math.round(inclinePercent))) & 0xff;
+        // QDomyos/FitShow CONTROL_TARGET: hitrost v CELIH km/h (ne ×10)!
+        // Status 0x51 pa vrača hitrost v 0.1 km/h — zato beremo /10, pišemo pa zaokroženo km/h.
+        const speedRaw = Math.max(1, Math.min(20, Math.round(Number(speedKmh) || 0))) & 0xff;
+        const inclineRaw = Math.max(0, Math.min(25, Math.round(Number(inclinePercent) || 0))) & 0xff;
         await fitshowSend([0x53, 0x02, speedRaw, inclineRaw]);
         return { speedRaw, inclineRaw };
     }
 
     function scheduleFitshowTargetRetries(speedKmh, inclinePercent) {
-        pendingFitshowTarget = { speed: speedKmh, incline: inclinePercent, until: Date.now() + 10000 };
+        pendingFitshowTarget = { speed: speedKmh, incline: inclinePercent, until: Date.now() + 12000 };
         if (fitshowTargetRetryTimer) clearInterval(fitshowTargetRetryTimer);
         let tries = 0;
         fitshowTargetRetryTimer = setInterval(async () => {
             tries++;
             const expired = !pendingFitshowTarget || Date.now() > (pendingFitshowTarget.until || 0);
-            if (tries > 12 || expired || !isTreadmillControllable()) {
+            if (tries > 10 || expired || !isTreadmillControllable() || fitshowStartInProgress) {
+                if (tries > 10 || expired) {
+                    clearInterval(fitshowTargetRetryTimer);
+                    fitshowTargetRetryTimer = null;
+                    pendingFitshowTarget = null;
+                }
+                return;
+            }
+            if (fitshowDeviceState !== 0x03) return;
+            const want = Math.round(pendingFitshowTarget.speed);
+            if (Math.abs(currentSpeed - pendingFitshowTarget.speed) <= 0.6 || Math.abs(currentSpeed - want) <= 0.6) {
                 clearInterval(fitshowTargetRetryTimer);
                 fitshowTargetRetryTimer = null;
                 pendingFitshowTarget = null;
                 return;
             }
-            if (fitshowDeviceState !== 0x03 && fitshowDeviceState !== 0x02) return;
-            if (fitshowDeviceState === 0x03 && Math.abs(currentSpeed - pendingFitshowTarget.speed) <= 0.35) {
-                clearInterval(fitshowTargetRetryTimer);
-                fitshowTargetRetryTimer = null;
-                pendingFitshowTarget = null;
-                return;
-            }
-            // Če BLE kaže, da uporabnik ročno vozi drugo hitrost (ne 0 in ne naš cilj) — nehaj vsiljevati
-            if (fitshowDeviceState === 0x03 && currentSpeed > 0.5 && Math.abs(currentSpeed - pendingFitshowTarget.speed) > 1.2 && tries > 4) {
+            // Ročna sprememba na konzoli — nehaj vsiljevati
+            if (currentSpeed > 0.8 && Math.abs(currentSpeed - pendingFitshowTarget.speed) > 1.5 && tries > 3) {
                 clearInterval(fitshowTargetRetryTimer);
                 fitshowTargetRetryTimer = null;
                 pendingFitshowTarget = null;
@@ -5382,7 +5401,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             try {
                 await sendFitshowSpeedIncline(pendingFitshowTarget.speed, pendingFitshowTarget.incline);
             } catch (_) {}
-        }, 900);
+        }, 1200);
     }
 
     async function startTreadmillBelt() {
@@ -5400,30 +5419,34 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 const age = Math.max(10, Math.min(100, Math.round(userProfiles[currentUser]?.age || 30)));
                 const gender = userProfiles[currentUser]?.gender === 'female' ? 1 : 0;
 
-                // Dolga zaščita: med 3-2-1 NIKOLI ne pošlji STOP / physical_stop
-                ignorePhysicalStopUntil = Date.now() + 14000;
+                fitshowStartInProgress = true;
+                ignorePhysicalStopUntil = Date.now() + 16000;
                 zeroSpeedStreak = 0;
                 fitshowWasRunning = false;
                 fitshowSessionLive = false;
                 fitshowDeviceState = 0;
 
-                await fitshowSend([0x53, 0x00, 0x01, gender, weight & 0xff, age & 0xff, height & 0xff, 0xAA]);
-                await sleepMs(250);
-                // Kratek START paket (daljši je pri nekaterih stezah ugasnil display)
-                await fitshowSend([0x53, 0x01, 0x00]);
+                // 1) USER
+                await fitshowSend([0x53, 0x00, 0x01, gender & 0xff, weight & 0xff, age & 0xff, height & 0xff, 0xAA]);
+                await sleepMs(350);
 
-                // Počakaj odštevanje ~3–4 s (piski), ne prekini ob state=1 flikeju
-                for (let i = 0; i < 12; i++) {
-                    try { await fitshowSend([0x51]); } catch (_) {}
-                    await sleepMs(350);
-                    if (fitshowDeviceState === 0x03) break; // RUNNING
-                }
+                // 2) READY/START — dolgi paket (QZ / FitShow)
+                await fitshowSend([0x53, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+
+                // 3) Počakaj 3-2-1 BREZ poplave ukazov (samo spanje)
+                await sleepMs(3800);
+
+                // 4) En status check
+                try { await fitshowSend([0x51]); } catch (_) {}
+                await sleepMs(300);
             }
             treadmillBeltStarted = true;
             return true;
         } catch (e) {
             console.error('Zagon steze spodletel:', e);
             return false;
+        } finally {
+            fitshowStartInProgress = false;
         }
     }
 
@@ -5439,9 +5462,8 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 await sleepMs(150);
                 await setTreadmillSpeed(0);
             } else if (treadmillProtocol === 'fitshow' && fitshowWriteChar) {
-                // Če je steza že ustavljena/pavzirana, NE pošlji STOP znova (ugasne display)
                 const alreadyStopped = fitshowDeviceState === 0x01 || fitshowDeviceState === 0x04 || fitshowDeviceState === 0x0A;
-                if (force || !alreadyStopped) {
+                if (force && !alreadyStopped) {
                     await fitshowSend([0x53, 0x03]);
                 }
             }
@@ -5451,6 +5473,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         treadmillBeltStarted = false;
         fitshowWasRunning = false;
         fitshowSessionLive = false;
+        fitshowStartInProgress = false;
     }
 
     async function applyTreadmillTargets(speedKmh, inclinePercent, { start = false } = {}) {
@@ -5463,7 +5486,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         const safeIncline = Math.min(Math.max(0, inclinePercent), maxInclineLimit);
         lastTargetSpeed = safeSpeed > 0 ? safeSpeed : lastTargetSpeed;
         lastTargetIncline = safeIncline;
-        ignorePhysicalStopUntil = Date.now() + (start || !treadmillBeltStarted ? 14000 : 4000);
+        ignorePhysicalStopUntil = Date.now() + (start || !treadmillBeltStarted ? 16000 : 4000);
         zeroSpeedStreak = 0;
 
         try {
@@ -5473,12 +5496,11 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             }
 
             if (treadmillProtocol === 'fitshow') {
-                // Po countdownu pošlji ciljno hitrost (več poskusov)
-                for (let attempt = 0; attempt < 4; attempt++) {
+                // Takoj po countdownu nastavi hitrost (cela km/h)
+                for (let attempt = 0; attempt < 3; attempt++) {
                     await sendFitshowSpeedIncline(safeSpeed, safeIncline);
-                    await sleepMs(400);
-                    try { await fitshowSend([0x51]); } catch (_) {}
-                    if (fitshowDeviceState === 0x03 && Math.abs(currentSpeed - safeSpeed) <= 0.45) break;
+                    await sleepMs(600);
+                    if (fitshowDeviceState === 0x03 && currentSpeed >= 0.8) break;
                 }
                 scheduleFitshowTargetRetries(safeSpeed, safeIncline);
             } else {
