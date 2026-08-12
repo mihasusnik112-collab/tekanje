@@ -580,6 +580,7 @@
             z-index: 99;
             flex-wrap: wrap;
             gap: 0.4rem;
+            padding-right: 7.5rem;
         }
 
         .hud-chip {
@@ -699,6 +700,13 @@
             flex-wrap: wrap;
             position: relative;
             z-index: 2;
+            flex-shrink: 0;
+        }
+
+        .fullscreen-hud > .hud-music-bar {
+            position: relative;
+            z-index: 2;
+            flex-shrink: 0;
         }
 
         .fullscreen-hud-title {
@@ -945,6 +953,32 @@
             width: 100%;
             font-size: 0.82rem;
             padding: 0.4rem 0.55rem;
+        }
+
+        .video-hud-actions {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 120;
+            display: flex;
+            gap: 0.35rem;
+            pointer-events: auto;
+        }
+
+        .video-hud-actions .btn {
+            padding: 0.45rem 0.7rem;
+            font-size: 0.85rem;
+            font-weight: 800;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.55);
+            background: rgba(8, 12, 20, 0.88);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            color: #fff;
+        }
+
+        .video-hud-actions .btn.btn-danger {
+            background: rgba(185, 28, 28, 0.92);
+            border-color: rgba(248, 113, 113, 0.45);
         }
 
         .chart-box {
@@ -1332,6 +1366,11 @@
                     </div>
                     <div class="hud-track-title" id="hudTrackTitle"></div>
 
+                    <div class="video-hud-actions" id="videoHudActions">
+                        <button type="button" class="btn" onclick="setWorkoutView('hud')" title="Navaden HUD pogled">📊 HUD</button>
+                        <button type="button" class="btn btn-danger" onclick="stopWorkout('manual')" title="Konec programa / ustavi tek">⏹</button>
+                    </div>
+
                     <video id="routeVideo" loop muted playsinline style="display: block;"></video>
                     <div id="youtubePlayerContainer" style="display: none; width: 100%; height: 100%;">
                         <div id="youtubePlayer"></div>
@@ -1361,11 +1400,26 @@
             <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
                 <div class="workout-view-switcher-inline" id="fsHudViewSwitch">
                     <button class="btn btn-purple active-view" style="padding:0.5rem 0.85rem;" onclick="setWorkoutView('hud')" id="fsBtnViewHud" title="Celozaslonski HUD">📊 HUD</button>
-                    <button class="btn btn-secondary" style="padding:0.5rem 0.85rem;" onclick="setWorkoutView('video')" id="fsBtnViewVideo" title="Video z rahlim HUD">📺 Video</button>
+                    <button class="btn btn-secondary" style="padding:0.5rem 0.85rem;" onclick="setWorkoutView('video')" id="fsBtnViewVideo" title="Video HUD Cel Zaslon">📺 Video</button>
                 </div>
                 <button class="btn btn-danger" style="padding:0.55rem 1.1rem;font-weight:800;" onclick="stopWorkout('manual')">⏹ USTAVI TEK</button>
             </div>
         </div>
+
+        <div class="hud-music-bar" id="fsHudMusicBar">
+            <div class="hud-music-title" id="fsHudTrackTitle"></div>
+            <div class="hud-music-controls">
+                <button type="button" class="btn btn-secondary" onclick="playHudPlaylistPrev()" title="Prejšnja">⏮</button>
+                <button type="button" class="btn btn-purple" id="fsHudBtnPlay" onclick="playHudPlaylist()" title="Predvajaj">▶</button>
+                <button type="button" class="btn btn-danger" onclick="stopAudio()" title="Ustavi">⏹</button>
+                <button type="button" class="btn btn-secondary" onclick="playHudPlaylistNext()" title="Naslednja">⏭</button>
+                <span style="font-size:0.72rem;color:rgba(255,255,255,0.55);margin-left:0.15rem;">playlista</span>
+            </div>
+            <select id="fsHudPlaylistSelect" onchange="playFromLiveSelect(this)">
+                <option value="">— Izberi skladbo iz playliste —</option>
+            </select>
+        </div>
+
         <div class="fullscreen-hud-body">
             <div class="fullscreen-hud-panel" id="fsHudVideoPanel" style="display:none;min-height:220px;">
                 <div id="fsHudVideoHost" style="height:100%;min-height:220px;"></div>
@@ -1415,20 +1469,6 @@
                         <span id="fsHudProgramTimeLabel">0:00 / 0:00</span>
                     </div>
                     <svg class="hud-program-svg" id="fsHudProgramSvg" viewBox="0 0 1000 100" preserveAspectRatio="none"></svg>
-                </div>
-
-                <div class="hud-music-bar" id="fsHudMusicBar">
-                    <div class="hud-music-title" id="fsHudTrackTitle"></div>
-                    <div class="hud-music-controls">
-                        <button type="button" class="btn btn-secondary" onclick="playHudPlaylistPrev()" title="Prejšnja">⏮</button>
-                        <button type="button" class="btn btn-purple" id="fsHudBtnPlay" onclick="playHudPlaylist()" title="Predvajaj">▶</button>
-                        <button type="button" class="btn btn-danger" onclick="stopAudio()" title="Ustavi">⏹</button>
-                        <button type="button" class="btn btn-secondary" onclick="playHudPlaylistNext()" title="Naslednja">⏭</button>
-                        <span style="font-size:0.72rem;color:rgba(255,255,255,0.55);margin-left:0.15rem;">playlista</span>
-                    </div>
-                    <select id="fsHudPlaylistSelect" onchange="playFromLiveSelect(this)">
-                        <option value="">— Izberi skladbo iz playliste —</option>
-                    </select>
                 </div>
 
                 <!-- NAPREDNI HR HUD -->
@@ -2100,7 +2140,7 @@
     // PWA REGISTRACIJA SERVICE WORKER-JA IN NAMESTITVENI DOGODEK
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js?v=45')
+            navigator.serviceWorker.register('./sw.js?v=46')
                 .then(reg => {
                     console.log('PWA Service Worker uspešno registriran!', reg.scope);
                     // Vsak zagon preveri novo verzijo SW
@@ -2157,7 +2197,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v45';
+    const APP_BUILD = 'v46';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -2575,21 +2615,49 @@
         const box = document.getElementById('videoContainerBox');
         if (!box) return;
 
-        if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
-            if (box.requestFullscreen) {
-                box.requestFullscreen();
-            } else if (box.webkitRequestFullscreen) {
-                box.webkitRequestFullscreen();
-            } else if (box.msRequestFullscreen) {
-                box.msRequestFullscreen();
-            }
+        const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+        if (!fsEl) {
+            enterVideoHudFullscreen();
+        } else if (fsEl === box) {
+            exitVideoHudFullscreen();
         } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            }
+            exitVideoHudFullscreen();
+            setTimeout(() => enterVideoHudFullscreen(), 80);
         }
+    }
+
+    function enterVideoHudFullscreen() {
+        const box = document.getElementById('videoContainerBox');
+        if (!box) return;
+        const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+        if (fsEl === box) return;
+
+        const req = () => {
+            try {
+                if (box.requestFullscreen) box.requestFullscreen().catch(() => {});
+                else if (box.webkitRequestFullscreen) box.webkitRequestFullscreen();
+                else if (box.msRequestFullscreen) box.msRequestFullscreen();
+            } catch (_) {}
+        };
+
+        if (fsEl) {
+            const p = document.exitFullscreen
+                ? document.exitFullscreen()
+                : (document.webkitExitFullscreen ? Promise.resolve(document.webkitExitFullscreen()) : Promise.resolve());
+            Promise.resolve(p).then(() => setTimeout(req, 60)).catch(() => setTimeout(req, 60));
+        } else {
+            req();
+        }
+    }
+
+    function exitVideoHudFullscreen() {
+        const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+        if (!fsEl) return;
+        try {
+            if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            else if (document.msExitFullscreen) document.msExitFullscreen();
+        } catch (_) {}
     }
 
     function switchSectionById(secId) {
@@ -3926,11 +3994,12 @@
         workoutDisplayMode.view = view;
 
         if (view === 'hud') {
-            // Polni HUD: metrike + HR krivulja (brez vgrajenega videa — čistejši prikaz)
+            // Iz celozaslonskega Video HUD nazaj v navaden HUD
+            exitVideoHudFullscreen();
             openFullscreenHud({ withVideo: false });
             workoutDisplayMode.fullscreenHud = true;
         } else {
-            // Video način z rahlim HUD overlayjem
+            // Takoj Video HUD Cel Zaslon (video + lahek HUD overlay)
             closeFullscreenHud();
             workoutDisplayMode.fullscreenHud = false;
             showLiveVideoCardOnly();
@@ -3940,10 +4009,11 @@
                     try { loadYouTubeVideo(); } catch (_) {}
                 }
             } else {
-                // Brez izbrane proge — vseeno pokaži lahek HUD na video kartici
                 const title = document.getElementById('hudTrackTitle');
                 if (title && !title.textContent) title.textContent = 'Video način · lahek HUD';
             }
+            // Mora biti v istem user-gesture (klik) — sicer brskalnik zavrne fullscreen
+            enterVideoHudFullscreen();
         }
         updateWorkoutViewSwitcherUi();
         requestAnimationFrame(() => {
@@ -7620,6 +7690,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         isProgramActive = false;
         isGpxFollowingActive = false;
         hideHudProgramProgress();
+        exitVideoHudFullscreen();
         closeFullscreenHud();
         workoutDisplayMode = { video: false, fullscreenHud: false, view: 'hud', hasVideo: false };
         pendingFitshowTarget = null;
