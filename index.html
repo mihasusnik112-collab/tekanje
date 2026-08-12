@@ -902,6 +902,51 @@
             flex-wrap: wrap;
         }
 
+        .hud-music-bar {
+            display: flex;
+            flex-direction: column;
+            gap: 0.45rem;
+            padding: 0.65rem 0.75rem;
+            border-radius: 0.85rem;
+            background: rgba(0, 0, 0, 0.28);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .hud-music-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #f8fafc;
+            min-height: 1.25em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .hud-music-title:empty::before {
+            content: '♪ Ni predvajanja';
+            color: rgba(248, 250, 252, 0.45);
+            font-weight: 600;
+        }
+
+        .hud-music-controls {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .hud-music-controls .btn {
+            padding: 0.4rem 0.7rem;
+            font-size: 0.85rem;
+            min-width: 2.4rem;
+        }
+
+        .hud-music-bar select {
+            width: 100%;
+            font-size: 0.82rem;
+            padding: 0.4rem 0.55rem;
+        }
+
         .chart-box {
             position: relative;
             height: 250px;
@@ -1371,7 +1416,20 @@
                     </div>
                     <svg class="hud-program-svg" id="fsHudProgramSvg" viewBox="0 0 1000 100" preserveAspectRatio="none"></svg>
                 </div>
-                <div class="hud-track-title" id="fsHudTrackTitle" style="position:relative;opacity:0.55;pointer-events:none;font-size:0.95rem;min-height:1.2em;"></div>
+
+                <div class="hud-music-bar" id="fsHudMusicBar">
+                    <div class="hud-music-title" id="fsHudTrackTitle"></div>
+                    <div class="hud-music-controls">
+                        <button type="button" class="btn btn-secondary" onclick="playHudPlaylistPrev()" title="Prejšnja">⏮</button>
+                        <button type="button" class="btn btn-purple" id="fsHudBtnPlay" onclick="playHudPlaylist()" title="Predvajaj">▶</button>
+                        <button type="button" class="btn btn-danger" onclick="stopAudio()" title="Ustavi">⏹</button>
+                        <button type="button" class="btn btn-secondary" onclick="playHudPlaylistNext()" title="Naslednja">⏭</button>
+                        <span style="font-size:0.72rem;color:rgba(255,255,255,0.55);margin-left:0.15rem;">playlista</span>
+                    </div>
+                    <select id="fsHudPlaylistSelect" onchange="playFromLiveSelect(this)">
+                        <option value="">— Izberi skladbo iz playliste —</option>
+                    </select>
+                </div>
 
                 <!-- NAPREDNI HR HUD -->
                 <div class="hr-hud-panel" id="hrHudPanel">
@@ -2042,7 +2100,7 @@
     // PWA REGISTRACIJA SERVICE WORKER-JA IN NAMESTITVENI DOGODEK
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js?v=44')
+            navigator.serviceWorker.register('./sw.js?v=45')
                 .then(reg => {
                     console.log('PWA Service Worker uspešno registriran!', reg.scope);
                     // Vsak zagon preveri novo verzijo SW
@@ -2099,7 +2157,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v44';
+    const APP_BUILD = 'v45';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -2303,6 +2361,7 @@
     let isYouTubeAudioActive = false;
     let currentPlayingAudioUrl = '';
     let currentPlayingAudioTitle = '';
+    let hudPlaylistCache = [];
 
     let timerInterval = null;
     let liveChart = null;
@@ -3053,15 +3112,11 @@
     }
 
     async function refreshLiveMusicSelect() {
-        const select = document.getElementById('liveMusicSelect');
-        if (!select) return;
         const tracks = await fetchPersonalPlaylist();
-        select.innerHTML = '<option value="">— Izberi skladbo iz playliste —</option>';
-        tracks.forEach(item => {
-            const safeUrl = String(item.audio_url).replace(/"/g, '&quot;');
-            const prefix = item.shared ? '🌍 ' : '🔒 ';
-            select.innerHTML += `<option value="${safeUrl}" data-title="${String(item.name).replace(/"/g, '&quot;')}">${prefix}${item.name}</option>`;
-        });
+        hudPlaylistCache = tracks || [];
+        fillPlaylistSelect(document.getElementById('liveMusicSelect'), hudPlaylistCache);
+        fillPlaylistSelect(document.getElementById('fsHudPlaylistSelect'), hudPlaylistCache);
+        syncHudPlaylistSelectValue();
     }
 
     function getPersonalPlaylistStorageKey(user = currentUser) {
@@ -3105,6 +3160,110 @@
         if (el) el.textContent = text;
         const fsEl = document.getElementById('fsHudTrackTitle');
         if (fsEl) fsEl.textContent = text;
+        syncHudPlaylistSelectValue();
+        updateHudMusicPlayButton();
+    }
+
+    function syncHudPlaylistSelectValue() {
+        const sel = document.getElementById('fsHudPlaylistSelect');
+        if (!sel) return;
+        if (currentPlayingAudioUrl) {
+            const opt = Array.from(sel.options).find(o => o.value === currentPlayingAudioUrl);
+            if (opt) sel.value = currentPlayingAudioUrl;
+        }
+        const liveSel = document.getElementById('liveMusicSelect');
+        if (liveSel && currentPlayingAudioUrl) {
+            const liveOpt = Array.from(liveSel.options).find(o => o.value === currentPlayingAudioUrl);
+            if (liveOpt) liveSel.value = currentPlayingAudioUrl;
+        }
+    }
+
+    function updateHudMusicPlayButton() {
+        const btn = document.getElementById('fsHudBtnPlay');
+        if (!btn) return;
+        if (isYouTubeAudioActive) {
+            btn.innerHTML = '▶';
+            btn.title = 'Predvaja se';
+            btn.className = 'btn btn-purple';
+        } else {
+            btn.innerHTML = '▶';
+            btn.title = 'Predvajaj';
+            btn.className = 'btn btn-purple';
+        }
+    }
+
+    function fillPlaylistSelect(selectEl, tracks) {
+        if (!selectEl) return;
+        const prev = selectEl.value;
+        selectEl.innerHTML = '<option value="">— Izberi skladbo iz playliste —</option>';
+        (tracks || []).forEach(item => {
+            const safeUrl = String(item.audio_url).replace(/"/g, '&quot;');
+            const prefix = item.shared ? '🌍 ' : '🔒 ';
+            selectEl.innerHTML += `<option value="${safeUrl}" data-title="${String(item.name).replace(/"/g, '&quot;')}">${prefix}${item.name}</option>`;
+        });
+        if (prev && Array.from(selectEl.options).some(o => o.value === prev)) selectEl.value = prev;
+        else if (currentPlayingAudioUrl && Array.from(selectEl.options).some(o => o.value === currentPlayingAudioUrl)) {
+            selectEl.value = currentPlayingAudioUrl;
+        }
+    }
+
+    async function playHudPlaylist() {
+        if (isYouTubeAudioActive && ytAudioPlayer && typeof ytAudioPlayer.playVideo === 'function') {
+            try {
+                const st = ytAudioPlayer.getPlayerState?.();
+                // 2 = PAUSED, 5 = CUED — nadaljuj
+                if (st === 2 || st === 5) {
+                    ytAudioPlayer.playVideo();
+                    return;
+                }
+                // že predvaja
+                if (st === 1) return;
+            } catch (_) {}
+        }
+        const sel = document.getElementById('fsHudPlaylistSelect') || document.getElementById('liveMusicSelect');
+        if (sel?.value) {
+            playFromLiveSelect(sel);
+            return;
+        }
+        if (!hudPlaylistCache.length) {
+            try { hudPlaylistCache = await fetchPersonalPlaylist(); } catch (_) { hudPlaylistCache = []; }
+        }
+        if (!hudPlaylistCache.length) {
+            alert('Playlista je prazna. Dodaj skladbo v zavihku Video in Audio.');
+            return;
+        }
+        const track = hudPlaylistCache[0];
+        playSavedAudio(track.audio_url, track.name);
+    }
+
+    function getHudPlaylistIndex() {
+        if (!hudPlaylistCache.length) return -1;
+        if (!currentPlayingAudioUrl) return -1;
+        return hudPlaylistCache.findIndex(t => t.audio_url === currentPlayingAudioUrl);
+    }
+
+    async function ensureHudPlaylistCache() {
+        if (hudPlaylistCache.length) return hudPlaylistCache;
+        try { hudPlaylistCache = await fetchPersonalPlaylist(); } catch (_) { hudPlaylistCache = []; }
+        return hudPlaylistCache;
+    }
+
+    async function playHudPlaylistPrev() {
+        const tracks = await ensureHudPlaylistCache();
+        if (!tracks.length) return alert('Playlista je prazna.');
+        let idx = getHudPlaylistIndex();
+        idx = idx <= 0 ? tracks.length - 1 : idx - 1;
+        const track = tracks[idx];
+        playSavedAudio(track.audio_url, track.name);
+    }
+
+    async function playHudPlaylistNext() {
+        const tracks = await ensureHudPlaylistCache();
+        if (!tracks.length) return alert('Playlista je prazna.');
+        let idx = getHudPlaylistIndex();
+        idx = (idx < 0 || idx >= tracks.length - 1) ? 0 : idx + 1;
+        const track = tracks[idx];
+        playSavedAudio(track.audio_url, track.name);
     }
 
     async function fetchPersonalPlaylist() {
@@ -5289,6 +5448,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 btnAud.className = 'btn btn-purple';
             }
         }
+        updateHudMusicPlayButton();
     }
 
     // --- ROBUSNO PRIDOBIVANJE IN SHRANJEVANJE VSEH YOUTUBE AVDIO IN VIDEO PROG Z SUPABASE BAZE ---
