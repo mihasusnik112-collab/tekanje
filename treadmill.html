@@ -131,6 +131,47 @@
             border-color: var(--card-border);
         }
 
+        /* Boljši kontrast besedila na svetli ženski temi */
+        body.female-theme .home-motivation {
+            color: #44403c;
+        }
+
+        body.female-theme .home-ready {
+            color: #0369a1;
+        }
+
+        body.female-theme .home-insight .label {
+            color: #57534e;
+            font-weight: 700;
+        }
+
+        body.female-theme .home-insight .hint {
+            color: #78716c;
+        }
+
+        body.female-theme .home-chip {
+            color: #292524;
+            background: rgba(255, 255, 255, 0.85);
+            border-color: rgba(120, 113, 108, 0.2);
+        }
+
+        body.female-theme .home-chip:hover {
+            background: rgba(253, 242, 248, 0.95);
+            border-color: rgba(219, 39, 119, 0.25);
+        }
+
+        body.female-theme .badge {
+            color: var(--text-main);
+        }
+
+        body.female-theme .user-pill {
+            color: #57534e;
+        }
+
+        body.female-theme .user-pill.active.female-active {
+            color: #fff;
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -2001,7 +2042,7 @@
     // PWA REGISTRACIJA SERVICE WORKER-JA IN NAMESTITVENI DOGODEK
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js?v=43')
+            navigator.serviceWorker.register('./sw.js?v=44')
                 .then(reg => {
                     console.log('PWA Service Worker uspešno registriran!', reg.scope);
                     // Vsak zagon preveri novo verzijo SW
@@ -2058,7 +2099,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v43';
+    const APP_BUILD = 'v44';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -3925,50 +3966,85 @@
 
     // --- GEMINI AI VIRTUALNI ASISTENT, TRENER IN UVOZ SLIK ---
     // Modeli potrjeni z uporabnikovim ključem (AI Studio /v1beta/models)
-    // Samo gemini-2.5-flash — 2.5-pro ni na voljo novim uporabnikom
-    const GEMINI_MODEL_PRIMARY = 'gemini-2.5-flash';
+    // Gemini modeli — 2.5-flash ni več na voljo novim uporabnikom (avg 2026)
+    const GEMINI_MODEL_PRIMARY = 'gemini-2.0-flash';
+    const GEMINI_MODEL_FALLBACKS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+    const GEMINI_MODELS_BLOCKED = new Set([
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
+        'gemini-2.5-pro',
+        'gemini-2.5-pro-preview'
+    ]);
     let geminiModelsCache = null;
 
     function shortGeminiModelId(name) {
         return String(name || '').replace(/^models\//, '');
     }
 
+    function isGeminiModelBlocked(id) {
+        const m = shortGeminiModelId(id);
+        if (GEMINI_MODELS_BLOCKED.has(m)) return true;
+        if (/^gemini-2\.5-(flash|pro)/i.test(m)) return true;
+        return false;
+    }
+
     function isUsableGeminiModel(entry) {
         if (!entry?.name || !entry.supportedGenerationMethods?.includes('generateContent')) return false;
         const id = shortGeminiModelId(entry.name);
-        if (/tts|live|embedding|aqa|image-generation|robotics/i.test(id)) return false;
+        if (isGeminiModelBlocked(id)) return false;
+        if (/tts|live|embedding|aqa|image-generation|robotics|exp|preview-0[0-3]/i.test(id)) return false;
         if (/pro/i.test(id)) return false;
         return /^gemini/i.test(id);
     }
 
     function rankGeminiModel(id) {
-        const prefs = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+        const prefs = [
+            'gemini-2.0-flash',
+            'gemini-2.0-flash-lite',
+            'gemini-1.5-flash',
+            'gemini-1.5-flash-8b',
+            'gemini-1.5-flash-latest',
+            'gemini-2.5-flash',
+            'gemini-2.5-flash-lite'
+        ];
         const idx = prefs.indexOf(id);
         if (idx >= 0) return idx;
-        if (/flash/i.test(id)) return 10;
+        if (/2\.0.*flash/i.test(id)) return 8;
+        if (/1\.5.*flash/i.test(id)) return 12;
+        if (/flash/i.test(id)) return 20;
         return 99;
     }
 
+    function pruneGeminiModelCache(blockedId) {
+        if (!geminiModelsCache?.length) return;
+        const id = shortGeminiModelId(blockedId);
+        geminiModelsCache = geminiModelsCache.filter(m => m !== id && !isGeminiModelBlocked(m));
+        if (!geminiModelsCache.length) geminiModelsCache = [...GEMINI_MODEL_FALLBACKS];
+    }
+
     async function resolveGeminiModels(forceRefresh = false) {
-        if (!forceRefresh && geminiModelsCache?.length) return geminiModelsCache;
+        if (!forceRefresh && geminiModelsCache?.length) {
+            return geminiModelsCache.filter(m => !isGeminiModelBlocked(m));
+        }
         reloadGeminiApiKeyFromStorage();
-        if (!geminiApiKey) return [GEMINI_MODEL_PRIMARY];
+        if (!geminiApiKey) return [...GEMINI_MODEL_FALLBACKS];
         try {
             noteGeminiApiCall('list');
             const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(geminiApiKey)}`;
             const listRes = await fetch(listUrl);
             const listData = await listRes.json().catch(() => ({}));
-            if (!listRes.ok) return [GEMINI_MODEL_PRIMARY];
+            if (!listRes.ok) return [...GEMINI_MODEL_FALLBACKS];
             const seen = new Set();
             const ordered = (listData.models || [])
                 .filter(isUsableGeminiModel)
                 .map(m => shortGeminiModelId(m.name))
+                .filter(id => !isGeminiModelBlocked(id))
                 .sort((a, b) => rankGeminiModel(a) - rankGeminiModel(b))
                 .filter(id => (seen.has(id) ? false : (seen.add(id), true)));
-            geminiModelsCache = ordered.length ? ordered : [GEMINI_MODEL_PRIMARY];
+            geminiModelsCache = ordered.length ? ordered : [...GEMINI_MODEL_FALLBACKS];
             return geminiModelsCache;
         } catch (_) {
-            return [GEMINI_MODEL_PRIMARY];
+            return [...GEMINI_MODEL_FALLBACKS];
         }
     }
 
@@ -4393,7 +4469,7 @@
     }
 
     function isGeminiModelUnavailableError(msg) {
-        return /no longer available|not available to new users|deprecated|has been shut down|update your code to use a newer model|gemini-1\.5|gemini-2\.0-flash|gemini-2\.5-pro|flash-latest/i.test(String(msg || ''));
+        return /no longer available|not available to new users|deprecated|has been shut down|update your code to use a newer model|is not found|was not found|not supported for generatecontent/i.test(String(msg || ''));
     }
 
     function reloadGeminiApiKeyFromStorage() {
@@ -4476,7 +4552,10 @@
                 const msg = listData?.error?.message || `HTTP ${listRes.status}`;
                 throw new Error(`Ključ ni veljaven: ${msg}`);
             }
-            const modelNames = (listData.models || []).map(m => m.name).filter(n => n.includes('gemini-2.5'));
+            const modelNames = (listData.models || [])
+                .map(m => shortGeminiModelId(m.name))
+                .filter(id => !isGeminiModelBlocked(id) && /flash/i.test(id))
+                .slice(0, 5);
             const picked = await resolveGeminiModels(true);
             if (out) out.innerHTML += `<br><span style="color:var(--accent-green);font-size:0.82rem;">✓ Ključ velja. Dostopno: ${modelNames.slice(0, 3).join(', ') || 'gemini'}</span>`;
             if (out) out.innerHTML += `<br><span style="color:var(--accent-cyan);font-size:0.82rem;">→ Uporabljam: ${picked.join(' → ')}</span>`;
@@ -4733,11 +4812,11 @@ OBVEZNO:
             }
         };
 
-        // NE kliči /models ob vsakem vprašanju — to je dodaten request in požre RPM.
-        // Uporabi cache ali samo primary model (1× generate).
+        // Uporabi cache (brez blokiranih 2.5) ali privzete modele
         let models = geminiModelsCache?.length
-            ? geminiModelsCache.slice(0, 2)
-            : [GEMINI_MODEL_PRIMARY];
+            ? geminiModelsCache.filter(m => !isGeminiModelBlocked(m)).slice(0, 4)
+            : [...GEMINI_MODEL_FALLBACKS];
+        if (!models.length) models = [...GEMINI_MODEL_FALLBACKS];
         let lastError = null;
 
         for (const model of models) {
@@ -4755,14 +4834,20 @@ OBVEZNO:
                     geminiQuotaBlockedUntil = Date.now() + retrySec * 1000;
                     throw new Error(`Google API omejitev. Počakaj ~${retrySec} s in poskusi znova.`);
                 }
-                if (isGeminiModelUnavailableError(lastMsg) || res.status === 404) break;
+                if (isGeminiModelUnavailableError(lastMsg) || res.status === 404) {
+                    pruneGeminiModelCache(model);
+                    break;
+                }
                 if (!isGeminiAuthError(lastMsg, res.status)) break;
             }
 
             if (!res.ok) {
                 const msg = lastMsg || data?.error?.message || `HTTP ${res.status}`;
                 lastError = new Error(`${model}: ${msg}`);
-                if (isGeminiModelUnavailableError(msg) || res.status === 404) continue;
+                if (isGeminiModelUnavailableError(msg) || res.status === 404) {
+                    pruneGeminiModelCache(model);
+                    continue;
+                }
                 throw lastError;
             }
 
@@ -4796,8 +4881,8 @@ OBVEZNO:
                 2. Če še ne dela: ustvari nov Auth ključ (začne se z AQ.) in ga vstavi pod <em>Napredno: zamenjaj ključ</em>.<br>
                 3. Stari lokalni ključ lahko počistiš z gumbom <em>Privzeti</em>.`;
             } else if (isGeminiModelUnavailableError(msg)) {
-                hint = `<br><br><strong>Stara verzija ali napačen model.</strong> Če vidiš <em>gemini-2.5-pro</em>, telefon še vedno uporablja star cache — osveži na build ${APP_BUILD} (zapri PWA, odpri znova ali Ctrl+F5).<br>
-                Priporočen model je <em>gemini-2.5-flash</em> (2.5-pro ni na voljo novim uporabnikom).`;
+                hint = `<br><br><strong>Model ni na voljo za ta ključ.</strong> Osveži na build ${APP_BUILD} (zapri PWA, Ctrl+F5).<br>
+                Priporočen model: <em>gemini-2.0-flash</em> ali <em>gemini-1.5-flash</em>.`;
             } else if (isGeminiQuotaError(msg)) {
                 hint = `<br><br><strong>Prekoračena kvota ali model ni dostopen za ta ključ.</strong><br><br>
                 • Počakaj 30–60 s, nato samo <em>en</em> gumb.<br>
