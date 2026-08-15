@@ -1141,7 +1141,6 @@
                 <!-- DINAMIČNO NAPOLNJENI UPORABNIKI -->
             </div>
             <button class="fullscreen-btn" onclick="toggleFullScreen()" title="Celozaslonski način (Skrije uro in spodnje 3 gumbe telefona)">⛶ Cel Zaslon</button>
-            <button class="fullscreen-btn" onclick="requestCloseApp()" title="Zapri aplikacijo" style="border-color: rgba(239,68,68,0.45); color: #fca5a5;">✕ Zapri</button>
         </div>
     </header>
 
@@ -1208,25 +1207,38 @@
             </div>
         </div>
 
-        <!-- KARTICA ZA PRILAGODITEV KPA BLAŽENJA (KUBISPORT) -->
+        <!-- KARTICA ZA PRILAGODITEV KPA BLAŽENJA (KUBISPORT - SAMO PO 10 kPa) -->
         <div class="card" id="liveKpaCard" style="border-color: var(--accent-cyan); background: radial-gradient(circle at top left, rgba(6, 182, 212, 0.1), var(--card-bg) 70%); margin-top: 1rem;">
             <div class="card-header" style="margin-bottom: 0.75rem;">
                 <div class="card-title" style="color: var(--accent-cyan); display: flex; align-items: center; gap: 0.5rem;">
-                    📐 Prilagoditev tlaka blaženja (kPa)
+                    📐 Prilagoditev tlaka blaženja (v korakih po 10 kPa)
                 </div>
-                <span class="badge" style="border-color: var(--accent-green); color: var(--accent-green); font-weight: 700;" id="liveKpaBadge">35 kPa</span>
+                <span class="badge" style="border-color: var(--accent-green); color: var(--accent-green); font-weight: 700;" id="liveKpaBadge">30 kPa</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.88rem; line-height: 1.5; color: #cbd5e1;">
                 <p>
                     Za optimalno zaščito golenic in meč priporočamo nastavitev tlaka blaženja glede na tvojo težo. Za profil
                     <strong id="liveKpaUser" style="color: var(--accent-pink);">Miha</strong>
                     (teža <span id="liveKpaWeight" style="font-weight: 700;">89.9</span> kg) je priporočen tlak:
-                    <strong style="color: var(--accent-green); font-size: 1rem;" id="liveKpaRecVal">35 kPa</strong>.
+                    <strong style="color: var(--accent-green); font-size: 1rem;" id="liveKpaRecVal">30 kPa</strong>.
                 </p>
+
+                <!-- KONTROLA ZA PRILAGODITEV PO 10 kPa -->
+                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0, 0, 0, 0.35); padding: 0.75rem 1rem; border-radius: 0.85rem; border: 1px solid var(--card-border); flex-wrap: wrap; gap: 0.75rem;">
+                    <div>
+                        <div style="font-weight: 700; color: var(--accent-cyan); font-size: 0.9rem;">🎯 Nastavljen želeni tlak:</div>
+                        <div style="font-size: 0.78rem; color: var(--text-muted);">Sprememba možna izključno po 10 kPa</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                        <button class="btn btn-secondary" onclick="adjustKpaStep(-10)" style="font-size: 1rem; font-weight: 800; padding: 0.4rem 0.85rem;" title="Zmanjšaj za 10 kPa">➖ 10 kPa</button>
+                        <span id="liveKpaTargetDisplay" style="font-size: 1.3rem; font-weight: 800; color: var(--accent-green); min-width: 75px; text-align: center;">30 kPa</span>
+                        <button class="btn btn-secondary" onclick="adjustKpaStep(10)" style="font-size: 1rem; font-weight: 800; padding: 0.4rem 0.85rem;" title="Povečaj za 10 kPa">➕ 10 kPa</button>
+                    </div>
+                </div>
 
                 <div style="background: rgba(11, 15, 25, 0.6); padding: 0.85rem; border-radius: 0.85rem; border: 1px solid var(--card-border);">
                     <strong style="color: var(--accent-cyan); display: block; margin-bottom: 0.35rem;">👉 NAVODILA ZA ROČNO NASTAVITEV (NA KONZOLI):</strong>
-                    Pritisni gumb <strong style="color: var(--text-main);">Shock Absorption -</strong> na konzoli steze, da zmanjšaš zračni tlak v blažilnikih na priporočeno vrednost. Mehkejša tekaška deska bo drastično zmanjšala udarce ob stiku s tlemi in razbremenila tvojo pokostnico.
+                    Pritisni gumb <strong style="color: var(--text-main);">Shock Absorption - / +</strong> na konzoli steze. Tlak blaženja se spreminja <strong>izključno po 10 kPa</strong> (npr. 10, 20, 30, 40, 50, 60 kPa). Mehkejša tekaška deska bo drastično zmanjšala udarce ob stiku s tlemi in razbremenila tvojo pokostnico.
                     <span style="display: block; margin-top: 0.25rem; font-size: 0.78rem; color: var(--text-muted);">
                         (Vrednost v kPa se med tekom izmenično prikazuje na spodnjem okroglem zaslonu steze na vsakih 5 sekund.)
                     </span>
@@ -1239,7 +1251,7 @@
                         <li>Izvleci rdeči varnostni ključ in ga takoj vtakni nazaj v konzolo (ni določenega časa, ko mora biti zunaj – dovolj je že hiter reset).</li>
                         <li>Počakaj <strong>5–8 sekund</strong> v mirovanju izven steze (da se umeri ničelna točka senzorjev).</li>
                         <li><strong>Šele po tem času</strong> stopi na stranske plastične tirnice (steza bo prek senzorjev v stojalu zaznala in izmerila tvojo realno težo).</li>
-                        <li>Po zagonu bo steza sama določila in nastavila idealen kPa tlak blaženja, prilagojen tvoji teži.</li>
+                        <li>Po zagonu bo steza sama določila in nastavila idealen kPa tlak blaženja v korakih po 10 kPa, prilagojen tvoji teži.</li>
                     </ol>
                 </details>
             </div>
@@ -1639,6 +1651,42 @@
                 </div>
             </div>
         </div>
+
+        <!-- KARTICA: GEMINI AI API NASTAVITVE IN KLJUČ -->
+        <div class="card" id="geminiKeyBox" style="border-color: var(--accent-green); background: radial-gradient(circle at top left, rgba(16, 185, 129, 0.1), var(--card-bg) 70%); margin-top: 1rem;">
+            <div class="card-header" style="margin-bottom: 0.6rem;">
+                <div class="card-title" style="color: var(--accent-green); display: flex; align-items: center; gap: 0.5rem;">
+                    🔑 Gemini AI API Nastavitve &amp; Ključ
+                </div>
+                <span class="badge" style="border-color: var(--accent-green); color: var(--accent-green);" id="appBuildBadge">(build v47)</span>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.45;">
+                Tukaj lahko preverite povezavo ali vnesete svoj lastni Gemini API ključ (AI Studio). Ključ je trajno shranjen lokalno v brskalniku in se ne izbriše ob posodobitvah.
+            </p>
+            <div id="geminiApiKeyStatus" style="font-size: 0.85rem; margin-bottom: 0.35rem;">
+                Ključ je nastavljen v ozadju.
+            </div>
+            <div id="geminiRequestStatsLabel" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.65rem;">
+                API klici: 0× generate · 0× models
+            </div>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;margin-bottom:0.75rem;">
+                <button class="btn btn-primary" onclick="testGeminiConnection()">🔌 Testiraj Gemini povezavo</button>
+                <button class="btn btn-secondary" onclick="window.open('https://aistudio.google.com/apikey','_blank')">🔗 Pridobi ključ v Google AI Studio</button>
+            </div>
+            <div style="background: rgba(0, 0, 0, 0.3); padding: 0.85rem; border-radius: 0.75rem; border: 1px solid var(--card-border);">
+                <label style="font-size: 0.78rem; font-weight: 700; color: var(--accent-cyan); display: block; margin-bottom: 0.4rem;">
+                    Vnos / zamenjava osebnega API ključa:
+                </label>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                    <input type="password" id="geminiApiKeyInput" placeholder="Vnesi svoj API ključ (AIza… ali AQ.…)" style="flex: 1; min-width: 220px;" autocomplete="off">
+                    <button class="btn btn-primary" onclick="saveGeminiApiKey()">💾 Shrani ključ</button>
+                    <button class="btn btn-secondary" onclick="clearGeminiApiKeyOverride()">↺ Ponastavi na privzeti</button>
+                </div>
+                <div style="font-size:0.74rem;color:var(--text-muted);margin-top:0.45rem;line-height:1.4;">
+                    💡 Ključ se shrani trajno v lokalni pomnilnik naprave za vse profile.
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- SEKCIJA: GEMINI AI ASISTENT, TRENER & UVOZ SLIK TEHTNICE / URE -->
@@ -1656,34 +1704,6 @@
             <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.5;">
                 Gemini AI neprekinjeno spremlja vaš srčni utrip iz pametne ure, hitrost in naklon tekalne steze ter fiziološki profil (<strong id="geminiActiveUserText">Miha - 89.9 kg</strong>). Naložite lahko tudi slike zaslona aplikacije Huawei Health ali pametne tehtnice za popolno celostno obravnavo!
             </p>
-
-            <!-- GEMINI API — ključ je vgrajen (ni viden v UI) -->
-            <div id="geminiKeyBox" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.35); padding: 0.85rem; border-radius: 0.85rem; margin-bottom: 1rem;">
-                <div style="font-size: 0.85rem; font-weight: 700; color: var(--accent-green); margin-bottom: 0.25rem;">
-                    🔑 Gemini API <span id="appBuildBadge" style="font-weight:500;color:var(--text-muted);font-size:0.72rem;"></span>
-                </div>
-                <div id="geminiApiKeyStatus" style="font-size: 0.78rem; color: var(--text-muted);">
-                    Ključ je nastavljen v ozadju.
-                </div>
-                <div id="geminiRequestStatsLabel" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">
-                    API klici: 0× generate · 0× models
-                </div>
-                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.55rem;">
-                    <button class="btn btn-primary" onclick="testGeminiConnection()">🔌 Testiraj Gemini povezavo</button>
-                </div>
-                <details style="margin-top: 0.5rem;">
-                    <summary style="cursor:pointer;font-size:0.78rem;color:var(--text-muted);">Napredno: zamenjaj ključ</summary>
-                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.5rem;">
-                        <input type="password" id="geminiApiKeyInput" placeholder="Nov API ključ iz AI Studio (AQ.… ali AIza…)" style="flex: 1; min-width: 200px;" autocomplete="off">
-                        <button class="btn btn-primary" onclick="saveGeminiApiKey()">💾 Shrani</button>
-                        <button class="btn btn-secondary" onclick="clearGeminiApiKeyOverride()">↺ Privzeti</button>
-                        <button class="btn btn-secondary" onclick="window.open('https://aistudio.google.com/apikey','_blank')">🔗 AI Studio</button>
-                    </div>
-                    <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.35rem;line-height:1.4;">
-                        Če vidiš napako OAuth/401: ustvari <strong>nov</strong> ključ v AI Studio, omeji ga na <strong>Gemini API only</strong>, prilepi ga zgoraj in klikni Testiraj.
-                    </div>
-                </details>
-            </div>
 
             <!-- UVOZ SLIK PAMETNE TEHTNICE / URE ZA CELOSTNO OBRAVNAVO -->
             <div style="background: rgba(255,255,255,0.04); border: 1px dashed var(--accent-purple); padding: 1rem; border-radius: 0.85rem; margin-bottom: 1rem;">
@@ -1765,12 +1785,16 @@
                     Celotna priporočila, pogovori in analize slik (z datumom prenosa) se shranjujejo v tvoj profil na Supabase — Gemini jih uporabi za boljše nasvete o zdravju, treningu in prehrani.
                 </p>
                 <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.75rem;">
-                    <button type="button" class="btn btn-purple gemini-hist-tab active" data-hist="recs" onclick="switchGeminiHistoryTab('recs')" style="font-size:0.78rem;padding:0.4rem 0.7rem;">💡 Priporočila</button>
+                    <button type="button" class="btn btn-purple gemini-hist-tab active" data-hist="dates" onclick="switchGeminiHistoryTab('dates')" style="font-size:0.78rem;padding:0.4rem 0.7rem;">📅 Po datumih (Vse)</button>
                     <button type="button" class="btn btn-secondary gemini-hist-tab" data-hist="chat" onclick="switchGeminiHistoryTab('chat')" style="font-size:0.78rem;padding:0.4rem 0.7rem;">💬 Pogovori</button>
+                    <button type="button" class="btn btn-secondary gemini-hist-tab" data-hist="recs" onclick="switchGeminiHistoryTab('recs')" style="font-size:0.78rem;padding:0.4rem 0.7rem;">💡 Priporočila</button>
                     <button type="button" class="btn btn-secondary gemini-hist-tab" data-hist="images" onclick="switchGeminiHistoryTab('images')" style="font-size:0.78rem;padding:0.4rem 0.7rem;">📸 Slike &amp; poročila</button>
                 </div>
-                <div id="geminiHistoryRecs" class="gemini-hist-panel" style="max-height:420px;overflow:auto;"></div>
-                <div id="geminiHistoryChat" class="gemini-hist-panel" style="display:none;max-height:420px;overflow:auto;"></div>
+                <!-- FILTER ZAVIHROV PO DATUMIH (najnovejši -> najstarejši) -->
+                <div id="geminiHistoryDatePills" style="display:flex;gap:0.35rem;overflow-x:auto;padding-bottom:0.5rem;margin-bottom:0.75rem;scrollbar-width:thin;"></div>
+                <div id="geminiHistoryDates" class="gemini-hist-panel" style="max-height:480px;overflow:auto;"></div>
+                <div id="geminiHistoryChat" class="gemini-hist-panel" style="display:none;max-height:480px;overflow:auto;"></div>
+                <div id="geminiHistoryRecs" class="gemini-hist-panel" style="display:none;max-height:480px;overflow:auto;"></div>
                 <div id="geminiHistoryImages" class="gemini-hist-panel" style="display:none;max-height:520px;overflow:auto;"></div>
             </div>
         </div>
@@ -2197,7 +2221,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v46';
+    const APP_BUILD = 'v47';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -2413,11 +2437,15 @@
     let hrSeriesValues = [];
     let hrSeriesMaxLine = [];
 
-    // SAMODEJNI VSTOP V CELOZASLONSKI NAČIN OB ODPRTJU ALI PRVI INTERAKCIJI
-    function autoEnterFullscreen() {
-        const doc = document.documentElement;
-        if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
-            try {
+    // SAMODEJNI VSTOP V CELOZASLONSKI NAČIN SAMO V LEŽEČEM POLOŽAJU (LANDSCAPE) NA TABLICI/TELEFONU
+    function checkOrientationFullscreen() {
+        try {
+            const isLandscape = window.matchMedia && window.matchMedia('(orientation: landscape)').matches;
+            const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 1024);
+            const doc = document.documentElement;
+            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+            
+            if (isLandscape && isTouchDevice && !isFullscreen) {
                 if (doc.requestFullscreen) {
                     doc.requestFullscreen().catch(() => {});
                 } else if (doc.webkitRequestFullscreen) {
@@ -2425,13 +2453,15 @@
                 } else if (doc.msRequestFullscreen) {
                     doc.msRequestFullscreen().catch(() => {});
                 }
-            } catch(e) {}
-        }
+            }
+        } catch (_) {}
     }
 
-    ['DOMContentLoaded', 'click', 'touchstart', 'pointerdown'].forEach(evtName => {
-        window.addEventListener(evtName, autoEnterFullscreen, { passive: true });
-    });
+    if (window.screen && window.screen.orientation && typeof window.screen.orientation.addEventListener === 'function') {
+        window.screen.orientation.addEventListener('change', checkOrientationFullscreen);
+    }
+    window.addEventListener('orientationchange', checkOrientationFullscreen);
+    window.addEventListener('resize', checkOrientationFullscreen);
 
     window.addEventListener('DOMContentLoaded', async () => {
         const prevBuild = localStorage.getItem('ble_app_build_seen');
@@ -2481,6 +2511,7 @@
         // Poskusi samodejno povezati že dovoljeno stezo (Chrome getDevices)
         setTimeout(() => tryAutoConnectTreadmill({ silent: true }), 800);
         initGeminiApiKeyUi();
+        checkOrientationFullscreen();
     });
 
     function isLikelyTabletDevice() {
@@ -2505,6 +2536,7 @@
             if (isLikelyTabletDevice() && screen.orientation && screen.orientation.lock) {
                 screen.orientation.lock('landscape').catch(() => {});
             }
+            checkOrientationFullscreen();
         };
         update();
         window.addEventListener('resize', update);
@@ -2512,7 +2544,6 @@
     }
 
     let wakeLockSentinel = null;
-    let allowAppExit = false;
 
     async function requestWorkoutWakeLock() {
         try {
@@ -2546,47 +2577,14 @@
             }
         });
 
-        // Potrditev pred zapiranjem zavihka / PWA
+        // Potrditev pred zapiranjem zavihka / PWA le med aktivnim treningom
         window.addEventListener('beforeunload', (e) => {
-            if (allowAppExit) return;
             if (isWorkoutActive || startTime) {
                 e.preventDefault();
                 e.returnValue = 'Ali želite zapreti aplikacijo? Aktivni trening se bo ustavil.';
                 return e.returnValue;
             }
         });
-
-        // Android / PWA: gumb Nazaj → vprašaj pred zaprtjem
-        history.pushState({ appGuard: 1 }, '', location.href);
-        window.addEventListener('popstate', () => {
-            if (allowAppExit) return;
-            history.pushState({ appGuard: 1 }, '', location.href);
-            requestCloseApp();
-        });
-    }
-
-    function requestCloseApp() {
-        const msg = isWorkoutActive
-            ? 'Ali želite zapreti aplikacijo? Aktivni tek se bo ustavil.'
-            : 'Ali želite zapreti aplikacijo Tekalna Steza Pro?';
-        if (!confirm(msg)) return;
-
-        allowAppExit = true;
-        if (isWorkoutActive) stopWorkout('app_close');
-        releaseWorkoutWakeLock();
-
-        // Poskusi zapreti PWA / okno
-        setTimeout(() => {
-            window.close();
-            // Če brskalnik ne dovoli close, pokažemo navodilo
-            document.body.innerHTML = `
-                <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#080c14;color:#f8fafc;font-family:Outfit,sans-serif;padding:2rem;text-align:center;">
-                    <div>
-                        <div style="font-size:1.5rem;font-weight:800;margin-bottom:0.75rem;">Aplikacija je pripravljena za zaprtje</div>
-                        <div style="color:#94a3b8;">Zaprite zavihek ali odstranite aplikacijo iz nedavnih (Recent apps).</div>
-                    </div>
-                </div>`;
-        }, 150);
     }
 
     // CELOZASLONSKI NAČIN (SKRIJE ZGORNJO URO / SISTEMSKE IKONE IN SPODNJE 3 GUMBE TELEFONA)
@@ -3055,15 +3053,35 @@
         updateLiveKpaCard();
     }
 
-    // 1. Dinamični izračun priporočenega tlaka glede na težo in profil
+    // 1. Dinamični izračun priporočenega tlaka glede na težo in profil (SAMO PO 10 kPa)
     function getRecommendedKpa(weight, user) {
         if (user === 'Miha') {
-            // Miha potrebuje nižji/mehkejši tlak (35 kPa) za rehabilitacijo tibialne mišice pri svoji teži (89.9 kg)
-            return 35;
+            // Miha potrebuje nižji/mehkejši tlak (30 kPa) za rehabilitacijo tibialne mišice pri svoji teži (89.9 kg) - korak 10 kPa
+            return 30;
         }
-        // Za Veroniko ali druge profile se izračuna dinamično (teža / 2 + 10)
+        // Za Veroniko ali druge profile se izračuna dinamično (teža / 2 + 10) in zaokroži strogo po 10 kPa
         const baseWeight = parseFloat(weight) || 70.0;
-        return Math.round(baseWeight * 0.5) + 10;
+        const raw = (baseWeight * 0.5) + 10;
+        return Math.max(10, Math.min(100, Math.round(raw / 10) * 10));
+    }
+
+    function getTargetKpa(user = currentUser) {
+        const prof = userProfiles[user] || {};
+        if (typeof prof.targetKpa === 'number' && prof.targetKpa > 0) {
+            return Math.max(10, Math.min(100, Math.round(prof.targetKpa / 10) * 10));
+        }
+        return getRecommendedKpa(realWeightKg || prof.weightKg, user);
+    }
+
+    function adjustKpaStep(delta) {
+        let cur = getTargetKpa(currentUser);
+        cur = Math.max(10, Math.min(100, Math.round((cur + delta) / 10) * 10));
+        if (userProfiles[currentUser]) {
+            userProfiles[currentUser].targetKpa = cur;
+            localStorage.setItem('ble_user_profiles_v3', JSON.stringify(userProfiles));
+            saveProfileMetaToSupabase(userProfiles[currentUser]).catch(() => {});
+        }
+        updateLiveKpaCard();
     }
 
     // 2. Osveževanje kPa podatkov na prvi strani
@@ -3072,34 +3090,34 @@
         const weightLabel = document.getElementById('liveKpaWeight');
         const recValLabel = document.getElementById('liveKpaRecVal');
         const badgeLabel = document.getElementById('liveKpaBadge');
+        const targetDisplay = document.getElementById('liveKpaTargetDisplay');
 
-        if (userLabel && weightLabel && recValLabel && badgeLabel) {
-            const activeWeight = parseFloat(realWeightKg)
-                || parseFloat(userProfiles[currentUser]?.weightKg)
-                || 70.0;
-            const kpa = getRecommendedKpa(activeWeight, currentUser);
+        const activeWeight = parseFloat(realWeightKg)
+            || parseFloat(userProfiles[currentUser]?.weightKg)
+            || 70.0;
+        const recKpa = getRecommendedKpa(activeWeight, currentUser);
+        const targetKpa = getTargetKpa(currentUser);
 
-            userLabel.textContent = currentUser;
-            weightLabel.textContent = activeWeight.toFixed(1);
-            recValLabel.textContent = kpa + ' kPa';
-            badgeLabel.textContent = kpa + ' kPa';
-        }
+        if (userLabel) userLabel.textContent = currentUser;
+        if (weightLabel) weightLabel.textContent = activeWeight.toFixed(1);
+        if (recValLabel) recValLabel.textContent = recKpa + ' kPa';
+        if (badgeLabel) badgeLabel.textContent = targetKpa + ' kPa';
+        if (targetDisplay) targetDisplay.textContent = targetKpa + ' kPa';
 
         // Sinhroniziraj tudi majhen insight na hero kartici + čarovnik
         const homeKpa = document.getElementById('homeKpaTip');
         if (homeKpa) {
-            const w = parseFloat(realWeightKg) || parseFloat(userProfiles[currentUser]?.weightKg) || 70;
-            homeKpa.textContent = `${getRecommendedKpa(w, currentUser)} kPa`;
+            homeKpa.textContent = `${targetKpa} kPa`;
         }
         updateWizardKpaUi();
     }
 
     function updateWizardKpaUi() {
-        const recommendedKpa = getRecommendedKpa(realWeightKg, currentUser);
+        const activeKpa = getTargetKpa(currentUser);
         const userEl = document.getElementById('wizKpaUser');
         const valEl = document.getElementById('wizKpaVal');
         if (userEl) userEl.textContent = currentUser;
-        if (valEl) valEl.textContent = recommendedKpa + ' kPa';
+        if (valEl) valEl.textContent = activeKpa + ' kPa';
     }
 
     /**
@@ -4504,16 +4522,126 @@
     async function recordGeminiChat(role, text) {
         if (!text) return;
         const h = getGeminiHealth();
+        const detectedWorkout = detectAndExtractWorkoutProgram(text);
         h.chat.push({
             id: geminiHealthUid('chat'),
             role: role === 'model' ? 'model' : 'user',
             text,
+            workoutProgram: detectedWorkout,
             created_at: new Date().toISOString()
         });
         h.chat = h.chat.slice(-60);
         persistGeminiHealthLocal();
         await saveGeminiHealthToSupabase();
         renderGeminiHealthHistory();
+    }
+
+    let geminiHistoryDateFilter = 'all';
+
+    function detectAndExtractWorkoutProgram(text) {
+        if (!text || typeof text !== 'string') return null;
+        const hasWorkoutKeywords = /interval|trening|vadb|program|ogrevanj|hlajenj|naklon|hitrost|tekalna steza|korak|minut/i.test(text);
+        if (!hasWorkoutKeywords) return null;
+
+        // 1. Poskusi JSON
+        const jsonMatch = text.match(/\{[\s\S]*"steps"[\s\S]*\}|\[[\s\S]*\{[\s\S]*"(?:speed|incline|duration)"[\s\S]*\}[\s\S]*\]/i);
+        if (jsonMatch) {
+            try {
+                const parsed = JSON.parse(jsonMatch[0]);
+                const steps = Array.isArray(parsed) ? parsed : (parsed.steps || []);
+                if (steps.length >= 2) {
+                    const normSteps = steps.map((s, idx) => ({
+                        duration: Math.max(30, Math.round(Number(s.duration) > 0 ? (Number(s.duration) < 30 ? Number(s.duration) * 60 : Number(s.duration)) : 120)),
+                        speed: Math.max(1.0, Math.min(18.0, Number(s.speed) || 5.0)),
+                        incline: Math.max(0.0, Math.min(maxInclineLimit, Number(s.incline) || 0.0)),
+                        name: String(s.name || `Korak ${idx + 1}`).trim()
+                    }));
+                    return {
+                        name: parsed.program_name || `AI Trening ${new Date().toLocaleDateString('sl-SI')}`,
+                        steps: normSteps
+                    };
+                }
+            } catch (_) {}
+        }
+
+        // 2. Poskusi parsirati strukturirane vrstice s časom, hitrostjo in naklonom
+        const lines = text.split('\n');
+        const detectedSteps = [];
+
+        lines.forEach((line) => {
+            const trimmed = line.trim();
+            if (!trimmed) return;
+            const isStepLine = /(?:ogrevanje|hlajenje|interval|tek|hoja|sprint|vzpon|korak|faza|\d+[\.)])/i.test(trimmed);
+            if (!isStepLine) return;
+
+            let durSec = 0;
+            const durMatch = trimmed.match(/(\d+(?:[.,]\d+)?)\s*(?:min|minut[ae]?)/i);
+            if (durMatch) {
+                durSec = Math.round(parseFloat(durMatch[1].replace(',', '.')) * 60);
+            } else {
+                const secMatch = trimmed.match(/(\d+)\s*(?:sek|sekund|s\b)/i);
+                if (secMatch) durSec = parseInt(secMatch[1], 10);
+            }
+
+            let spd = 0;
+            const spdMatch = trimmed.match(/(\d+(?:[.,]\d+)?)\s*(?:km\/h|kmh)/i);
+            if (spdMatch) {
+                spd = parseFloat(spdMatch[1].replace(',', '.'));
+            }
+
+            let inc = 0;
+            const incMatch = trimmed.match(/(\d+(?:[.,]\d+)?)\s*%/i);
+            if (incMatch) {
+                inc = parseFloat(incMatch[1].replace(',', '.'));
+            }
+
+            if (durSec > 0 || spd > 0 || incMatch) {
+                const rawName = trimmed.replace(/^[-*•\d.)\s]+/, '').split(/[:–—(]/)[0].trim() || `Korak ${detectedSteps.length + 1}`;
+                detectedSteps.push({
+                    duration: Math.max(30, durSec || 180),
+                    speed: Math.max(1.0, Math.min(18.0, spd || 5.0)),
+                    incline: Math.max(0.0, Math.min(maxInclineLimit, inc || 0.0)),
+                    name: rawName.slice(0, 35)
+                });
+            }
+        });
+
+        if (detectedSteps.length >= 2) {
+            return {
+                name: `AI Trening ${new Date().toLocaleDateString('sl-SI')}`,
+                steps: detectedSteps
+            };
+        }
+        return null;
+    }
+
+    async function saveDetectedAiProgram(stepsParam, progNameParam) {
+        let steps = [];
+        try {
+            steps = typeof stepsParam === 'string' ? JSON.parse(decodeURIComponent(stepsParam)) : stepsParam;
+        } catch (e) {
+            console.warn('saveDetectedAiProgram parse error:', e);
+        }
+
+        if (!Array.isArray(steps) || !steps.length) {
+            alert('Napaka pri branju korakov programa.');
+            return;
+        }
+
+        programSteps = steps.map((s, idx) => ({
+            duration: Math.max(30, Math.round(Number(s.duration) || 60)),
+            speed: Math.max(1.0, Math.min(18.0, Number(s.speed) || 5.0)),
+            incline: Math.max(0.0, Math.min(maxInclineLimit, Number(s.incline) || 0.0)),
+            name: String(s.name || `Korak ${idx + 1}`).trim()
+        }));
+
+        const suggestedName = (progNameParam || `AI Trening ${new Date().toLocaleDateString('sl-SI')}`).trim();
+        const nameEl = document.getElementById('progNameInput');
+        if (nameEl) nameEl.value = suggestedName;
+        renderStepsList();
+
+        await saveProgramToSupabase({ suggestedName, fromAi: true });
+        switchSectionById('secPrograms');
     }
 
     async function recordGeminiImageAnalysis({ fileName, dataUrl, report, metrics = null, model = '' }) {
@@ -4551,18 +4679,23 @@
     }
 
     function switchGeminiHistoryTab(tab) {
-        geminiHistoryActiveTab = tab || 'recs';
+        geminiHistoryActiveTab = tab || 'dates';
         document.querySelectorAll('.gemini-hist-tab').forEach(btn => {
             const on = btn.getAttribute('data-hist') === geminiHistoryActiveTab;
             btn.classList.toggle('active', on);
             btn.classList.toggle('btn-purple', on);
             btn.classList.toggle('btn-secondary', !on);
         });
-        const map = { recs: 'geminiHistoryRecs', chat: 'geminiHistoryChat', images: 'geminiHistoryImages' };
+        const map = { dates: 'geminiHistoryDates', recs: 'geminiHistoryRecs', chat: 'geminiHistoryChat', images: 'geminiHistoryImages' };
         Object.entries(map).forEach(([k, id]) => {
             const el = document.getElementById(id);
             if (el) el.style.display = k === geminiHistoryActiveTab ? 'block' : 'none';
         });
+    }
+
+    function setGeminiHistoryDateFilter(dateStr) {
+        geminiHistoryDateFilter = dateStr || 'all';
+        renderGeminiHealthHistory();
     }
 
     function showLatestGeminiRecommendation() {
@@ -4578,48 +4711,209 @@
         out.innerHTML = `${meta}${formatGeminiHtml(h.lastRecommendation)}`;
     }
 
+    function getDateKey(iso) {
+        if (!iso) return 'neznano';
+        try {
+            const d = new Date(iso);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        } catch (_) {
+            return 'neznano';
+        }
+    }
+
+    function formatDayHeader(dateKey) {
+        if (!dateKey || dateKey === 'neznano') return 'Neznan datum';
+        try {
+            const [y, m, d] = dateKey.split('-').map(Number);
+            const dt = new Date(y, m - 1, d);
+            const todayKey = getDateKey(new Date().toISOString());
+            const yesterdayDt = new Date();
+            yesterdayDt.setDate(yesterdayDt.getDate() - 1);
+            const yesterdayKey = getDateKey(yesterdayDt.toISOString());
+
+            const dayName = dt.toLocaleDateString('sl-SI', { weekday: 'long' });
+            const dateFmt = dt.toLocaleDateString('sl-SI', { day: 'numeric', month: 'long', year: 'numeric' });
+            if (dateKey === todayKey) return `📅 Danes (${dayName}, ${dateFmt})`;
+            if (dateKey === yesterdayKey) return `📅 Včeraj (${dayName}, ${dateFmt})`;
+            return `📅 ${dayName.charAt(0).toUpperCase() + dayName.slice(1)}, ${dateFmt}`;
+        } catch (_) {
+            return dateKey;
+        }
+    }
+
+    function renderWorkoutButtonSnippet(detected) {
+        if (!detected || !detected.steps || !detected.steps.length) return '';
+        const jsonEncoded = encodeURIComponent(JSON.stringify(detected.steps));
+        return `
+            <div style="margin-top:0.65rem;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.35);padding:0.65rem 0.85rem;border-radius:0.75rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">
+                <div>
+                    <div style="font-size:0.82rem;font-weight:800;color:var(--accent-green);">🏃 Intervalni program (${detected.steps.length} korakov)</div>
+                    <div style="font-size:0.74rem;color:var(--text-muted);">${escapeHtmlLite(detected.name)}</div>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="saveDetectedAiProgram('${jsonEncoded}', '${escapeHtmlLite(detected.name)}')" style="background:linear-gradient(135deg, var(--accent-green), var(--accent-cyan));color:#022c22;font-weight:800;font-size:0.78rem;padding:0.35rem 0.75rem;">
+                    💾 Shrani ta program
+                </button>
+            </div>
+        `;
+    }
+
     function renderGeminiHealthHistory() {
         const h = getGeminiHealth();
         const label = document.getElementById('geminiHealthUserLabel');
         if (label) label.textContent = currentUser ? `(${currentUser})` : '';
 
+        const datesEl = document.getElementById('geminiHistoryDates');
         const recsEl = document.getElementById('geminiHistoryRecs');
         const chatEl = document.getElementById('geminiHistoryChat');
         const imgsEl = document.getElementById('geminiHistoryImages');
+        const pillsEl = document.getElementById('geminiHistoryDatePills');
 
-        if (recsEl) {
-            if (!h.recommendations.length) {
-                recsEl.innerHTML = `<div style="font-size:0.82rem;color:var(--text-muted);">Še ni shranjenih priporočil. Zaženi celostno analizo ali progress.</div>`;
+        // Zberi vse datume od najnovejšega do najstarejšega
+        const allDateKeys = new Set();
+        (h.recommendations || []).forEach(r => allDateKeys.add(getDateKey(r.created_at)));
+        (h.chat || []).forEach(c => allDateKeys.add(getDateKey(c.created_at)));
+        (h.images || []).forEach(img => allDateKeys.add(getDateKey(img.transferred_at)));
+
+        const sortedDateKeys = Array.from(allDateKeys).filter(k => k !== 'neznano').sort().reverse();
+
+        // Render Datum Pills
+        if (pillsEl) {
+            if (sortedDateKeys.length === 0) {
+                pillsEl.innerHTML = '';
             } else {
-                recsEl.innerHTML = h.recommendations.map(r => `
-                    <details style="margin-bottom:0.65rem;background:rgba(0,0,0,0.25);border:1px solid var(--card-border);border-radius:0.75rem;padding:0.65rem 0.75rem;">
-                        <summary style="cursor:pointer;font-size:0.85rem;font-weight:700;color:var(--accent-cyan);">
-                            ${formatGeminiDate(r.created_at)} · ${escapeHtmlLite(r.type || 'priporočilo')}${r.fileName ? ' · ' + escapeHtmlLite(r.fileName) : ''}
-                        </summary>
-                        <div style="margin-top:0.55rem;font-size:0.85rem;line-height:1.55;color:var(--text-main);">${formatGeminiHtml(r.text)}</div>
-                    </details>`).join('');
+                let pillsHtml = `<button type="button" onclick="setGeminiHistoryDateFilter('all')" class="btn ${geminiHistoryDateFilter === 'all' ? 'btn-purple' : 'btn-secondary'}" style="font-size:0.72rem;padding:0.25rem 0.6rem;white-space:nowrap;border-radius:1rem;">📅 Vsi datumi</button>`;
+                sortedDateKeys.forEach(dk => {
+                    const active = geminiHistoryDateFilter === dk;
+                    const shortLabel = dk.split('-').reverse().join('.');
+                    pillsHtml += `<button type="button" onclick="setGeminiHistoryDateFilter('${dk}')" class="btn ${active ? 'btn-purple' : 'btn-secondary'}" style="font-size:0.72rem;padding:0.25rem 0.6rem;white-space:nowrap;border-radius:1rem;">${shortLabel}</button>`;
+                });
+                pillsEl.innerHTML = pillsHtml;
             }
         }
 
-        if (chatEl) {
-            if (!h.chat.length) {
-                chatEl.innerHTML = `<div style="font-size:0.82rem;color:var(--text-muted);">Še ni pogovorov. Vprašaj Gemini spodaj.</div>`;
+        const filteredDateKeys = geminiHistoryDateFilter === 'all'
+            ? sortedDateKeys
+            : sortedDateKeys.filter(k => k === geminiHistoryDateFilter);
+
+        // 1. ZAVIHEK: PO DATUMIH (VSI DOGODKI SKUPAJ KRONOLOŠKO)
+        if (datesEl) {
+            if (!filteredDateKeys.length) {
+                datesEl.innerHTML = `<div style="font-size:0.82rem;color:var(--text-muted);padding:0.5rem 0;">Še ni zabeleženih pogovorov ali analiz za izbrani datum.</div>`;
             } else {
-                chatEl.innerHTML = [...h.chat].reverse().map(c => {
+                datesEl.innerHTML = filteredDateKeys.map(dk => {
+                    const dayRecs = (h.recommendations || []).filter(r => getDateKey(r.created_at) === dk);
+                    const dayChat = (h.chat || []).filter(c => getDateKey(c.created_at) === dk);
+                    const dayImgs = (h.images || []).filter(img => getDateKey(img.transferred_at) === dk);
+
+                    return `
+                        <div style="margin-bottom:1rem;background:rgba(0,0,0,0.3);border:1px solid var(--card-border);border-radius:0.85rem;padding:0.85rem;">
+                            <div style="font-weight:800;font-size:0.88rem;color:var(--accent-pink);margin-bottom:0.75rem;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:0.4rem;">
+                                ${formatDayHeader(dk)}
+                            </div>
+
+                            ${dayChat.length ? `
+                                <div style="margin-bottom:0.75rem;">
+                                    <div style="font-size:0.75rem;font-weight:700;color:var(--accent-cyan);margin-bottom:0.4rem;">💬 Pogovori (${dayChat.length}):</div>
+                                    ${dayChat.map(c => {
+                                        const isUser = c.role === 'user';
+                                        const detected = c.workoutProgram || (c.role !== 'user' ? detectAndExtractWorkoutProgram(c.text) : null);
+                                        return `
+                                            <div style="margin-bottom:0.45rem;padding:0.6rem 0.75rem;border-radius:0.75rem;background:${isUser ? 'rgba(56,189,248,0.08)' : 'rgba(236,72,153,0.08)'};border:1px solid ${isUser ? 'rgba(56,189,248,0.2)' : 'rgba(236,72,153,0.2)'};">
+                                                <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:0.2rem;">${isUser ? '👤 Ti' : '🤖 Gemini'} · ${new Date(c.created_at).toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' })}</div>
+                                                <div style="font-size:0.84rem;line-height:1.45;">${formatGeminiHtml(c.text)}</div>
+                                                ${renderWorkoutButtonSnippet(detected)}
+                                            </div>`;
+                                    }).join('')}
+                                </div>` : ''}
+
+                            ${dayRecs.length ? `
+                                <div style="margin-bottom:0.75rem;">
+                                    <div style="font-size:0.75rem;font-weight:700;color:var(--accent-green);margin-bottom:0.4rem;">💡 Priporočila in analize (${dayRecs.length}):</div>
+                                    ${dayRecs.map(r => {
+                                        const detected = detectAndExtractWorkoutProgram(r.text);
+                                        return `
+                                            <details style="margin-bottom:0.45rem;background:rgba(255,255,255,0.02);border:1px solid var(--card-border);border-radius:0.65rem;padding:0.5rem 0.65rem;">
+                                                <summary style="cursor:pointer;font-size:0.82rem;font-weight:700;color:var(--accent-green);">
+                                                    ${new Date(r.created_at).toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' })} · ${escapeHtmlLite(r.type || 'analiza')}${r.fileName ? ' (' + escapeHtmlLite(r.fileName) + ')' : ''}
+                                                </summary>
+                                                <div style="margin-top:0.45rem;font-size:0.83rem;line-height:1.5;">${formatGeminiHtml(r.text)}</div>
+                                                ${renderWorkoutButtonSnippet(detected)}
+                                            </details>`;
+                                    }).join('')}
+                                </div>` : ''}
+
+                            ${dayImgs.length ? `
+                                <div>
+                                    <div style="font-size:0.75rem;font-weight:700;color:var(--accent-purple);margin-bottom:0.4rem;">📸 Prenesene slike (${dayImgs.length}):</div>
+                                    ${dayImgs.map(img => `
+                                        <div style="margin-bottom:0.5rem;padding:0.6rem;border-radius:0.65rem;background:rgba(255,255,255,0.02);border:1px solid var(--card-border);display:flex;gap:0.6rem;align-items:center;">
+                                            ${img.thumbDataUrl ? `<img src="${img.thumbDataUrl}" alt="" style="width:50px;height:50px;object-fit:cover;border-radius:0.4rem;">` : `<div style="width:50px;height:50px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;border-radius:0.4rem;">📸</div>`}
+                                            <div style="flex:1;min-width:120px;">
+                                                <div style="font-size:0.8rem;font-weight:700;color:var(--accent-cyan);">${escapeHtmlLite(img.fileName || 'Slika')}</div>
+                                                <div style="font-size:0.7rem;color:var(--text-muted);">${new Date(img.transferred_at).toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' })}</div>
+                                            </div>
+                                        </div>`).join('')}
+                                </div>` : ''}
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // 2. ZAVIHEK: SAMO POGOVORI (CHAT)
+        if (chatEl) {
+            const filteredChat = geminiHistoryDateFilter === 'all'
+                ? [...(h.chat || [])].reverse()
+                : [...(h.chat || [])].filter(c => getDateKey(c.created_at) === geminiHistoryDateFilter).reverse();
+
+            if (!filteredChat.length) {
+                chatEl.innerHTML = `<div style="font-size:0.82rem;color:var(--text-muted);">Še ni pogovorov za ta filter. Vprašaj Gemini zgoraj.</div>`;
+            } else {
+                chatEl.innerHTML = filteredChat.map(c => {
                     const isUser = c.role === 'user';
+                    const detected = c.workoutProgram || (c.role !== 'user' ? detectAndExtractWorkoutProgram(c.text) : null);
                     return `<div style="margin-bottom:0.55rem;padding:0.65rem 0.75rem;border-radius:0.75rem;background:${isUser ? 'rgba(56,189,248,0.1)' : 'rgba(236,72,153,0.1)'};border:1px solid ${isUser ? 'rgba(56,189,248,0.25)' : 'rgba(236,72,153,0.25)'};">
-                        <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:0.25rem;">${isUser ? 'Ti' : 'Gemini'} · ${formatGeminiDate(c.created_at)}</div>
+                        <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:0.25rem;">${isUser ? '👤 Ti' : '🤖 Gemini'} · ${formatGeminiDate(c.created_at)}</div>
                         <div style="font-size:0.85rem;line-height:1.5;">${formatGeminiHtml(c.text)}</div>
+                        ${renderWorkoutButtonSnippet(detected)}
                     </div>`;
                 }).join('');
             }
         }
 
-        if (imgsEl) {
-            if (!h.images.length) {
-                imgsEl.innerHTML = `<div style="font-size:0.82rem;color:var(--text-muted);">Še ni prenesenih slik. Naloži sliko ure / tehtnice zgoraj.</div>`;
+        // 3. ZAVIHEK: SAMO PRIPOROČILA (RECS)
+        if (recsEl) {
+            const filteredRecs = geminiHistoryDateFilter === 'all'
+                ? (h.recommendations || [])
+                : (h.recommendations || []).filter(r => getDateKey(r.created_at) === geminiHistoryDateFilter);
+
+            if (!filteredRecs.length) {
+                recsEl.innerHTML = `<div style="font-size:0.82rem;color:var(--text-muted);">Še ni shranjenih priporočil za ta filter.</div>`;
             } else {
-                imgsEl.innerHTML = h.images.map(img => `
+                recsEl.innerHTML = filteredRecs.map(r => {
+                    const detected = detectAndExtractWorkoutProgram(r.text);
+                    return `
+                    <details style="margin-bottom:0.65rem;background:rgba(0,0,0,0.25);border:1px solid var(--card-border);border-radius:0.75rem;padding:0.65rem 0.75rem;">
+                        <summary style="cursor:pointer;font-size:0.85rem;font-weight:700;color:var(--accent-cyan);">
+                            ${formatGeminiDate(r.created_at)} · ${escapeHtmlLite(r.type || 'priporočilo')}${r.fileName ? ' · ' + escapeHtmlLite(r.fileName) : ''}
+                        </summary>
+                        <div style="margin-top:0.55rem;font-size:0.85rem;line-height:1.55;color:var(--text-main);">${formatGeminiHtml(r.text)}</div>
+                        ${renderWorkoutButtonSnippet(detected)}
+                    </details>`;
+                }).join('');
+            }
+        }
+
+        // 4. ZAVIHEK: SLIKE IN POROČILA
+        if (imgsEl) {
+            const filteredImgs = geminiHistoryDateFilter === 'all'
+                ? (h.images || [])
+                : (h.images || []).filter(img => getDateKey(img.transferred_at) === geminiHistoryDateFilter);
+
+            if (!filteredImgs.length) {
+                imgsEl.innerHTML = `<div style="font-size:0.82rem;color:var(--text-muted);">Še ni prenesenih slik za ta filter.</div>`;
+            } else {
+                imgsEl.innerHTML = filteredImgs.map(img => `
                     <div style="margin-bottom:0.85rem;padding:0.75rem;border-radius:0.85rem;background:rgba(0,0,0,0.28);border:1px solid var(--card-border);">
                         <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:flex-start;">
                             ${img.thumbDataUrl ? `<img src="${img.thumbDataUrl}" alt="" style="width:96px;height:96px;object-fit:cover;border-radius:0.5rem;border:1px solid var(--card-border);">` : `<div style="width:96px;height:96px;border-radius:0.5rem;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:1.6rem;">📸</div>`}
@@ -4702,9 +4996,12 @@
     }
 
     function reloadGeminiApiKeyFromStorage() {
-        const stored = (localStorage.getItem('ble_gemini_api_key') || '').trim();
-        if (stored) geminiApiKey = stored;
-        else if (!geminiApiKey) geminiApiKey = _resolveEmbeddedGeminiKey();
+        const stored = (localStorage.getItem('ble_gemini_api_key') || localStorage.getItem('gemini_api_key') || localStorage.getItem('ble_gemini_custom_key') || '').trim();
+        if (stored) {
+            geminiApiKey = stored;
+        } else if (!geminiApiKey) {
+            geminiApiKey = _resolveEmbeddedGeminiKey();
+        }
         return geminiApiKey;
     }
 
@@ -4812,43 +5109,44 @@
     function saveGeminiApiKey() {
         const input = document.getElementById('geminiApiKeyInput');
         const key = (input?.value || '').trim();
-        if (!key) {
-            alert('Vnesi veljaven Gemini API ključ.');
-            return;
-        }
-        if (!key.startsWith('AIza') && !key.startsWith('AQ.')) {
-            alert('Ključ mora začeti z AIza… (AI Studio) ali AQ.… (Auth).');
+        if (!key || key.length < 15) {
+            alert('Vnesi veljaven Gemini API ključ (običajno se začne z AIza… ali AQ.…).');
             return;
         }
         geminiApiKey = key;
         geminiQuotaBlockedUntil = 0;
         geminiModelsCache = null;
         localStorage.setItem('ble_gemini_api_key', key);
+        localStorage.setItem('gemini_api_key', key);
+        localStorage.setItem('ble_gemini_custom_key', key);
         if (input) input.value = '';
         updateGeminiApiKeyStatus();
-        alert(`Ključ ${key.slice(0, 8)}… je shranjen. Klikni Testiraj Gemini povezavo.`);
+        alert(`✅ Ključ ${key.slice(0, 8)}… je trajno in varno shranjen v brskalniku za vedno (tudi ob posodobitvah).`);
     }
 
     function clearGeminiApiKeyOverride() {
         localStorage.removeItem('ble_gemini_api_key');
+        localStorage.removeItem('gemini_api_key');
+        localStorage.removeItem('ble_gemini_custom_key');
         geminiModelsCache = null;
         geminiApiKey = _resolveEmbeddedGeminiKey();
         const input = document.getElementById('geminiApiKeyInput');
         if (input) input.value = '';
         updateGeminiApiKeyStatus();
-        alert('Ponovno uporabljam vgrajeni ključ.');
+        alert('Ponovno uporabljen privzeti vgrajeni ključ.');
     }
 
     function updateGeminiApiKeyStatus() {
         const el = document.getElementById('geminiApiKeyStatus');
         if (!el) return;
-        const custom = !!localStorage.getItem('ble_gemini_api_key');
-        if (geminiApiKey) {
-            el.innerHTML = custom
-                ? `<span style="color:var(--accent-green);">✅ Uporabljen je tvoj lokalni ključ (skrit).</span>`
-                : `<span style="color:var(--accent-green);">✅ Gemini ključ je nastavljen v ozadju.</span>`;
+        const stored = (localStorage.getItem('ble_gemini_api_key') || localStorage.getItem('gemini_api_key') || localStorage.getItem('ble_gemini_custom_key') || '').trim();
+        if (stored) {
+            const preview = stored.slice(0, 6) + '…' + stored.slice(-4);
+            el.innerHTML = `<span style="color:var(--accent-green);font-weight:700;">✅ Tvoj osebni ključ je trajno shranjen lokalno (${preview}).</span>`;
+        } else if (geminiApiKey) {
+            el.innerHTML = `<span style="color:var(--accent-cyan);">✅ Gemini ključ je nastavljen v ozadju.</span>`;
         } else {
-            el.innerHTML = `<span style="color:var(--accent-red);">⚠️ Ključ manjka — odpri Napredno in ga vstavi.</span>`;
+            el.innerHTML = `<span style="color:var(--accent-red);">⚠️ Ključ manjka — vstavi ga zgoraj in klikni Shrani.</span>`;
         }
     }
 
@@ -4858,9 +5156,9 @@
         const out = document.getElementById('geminiOutputText');
         if (out) {
             out.innerHTML = `<strong style="color:var(--accent-red);">⚠️ Manjka Gemini API ključ.</strong><br>
-            Odpri <em>Napredno: zamenjaj ključ</em> zgoraj in vstavi ključ.`;
+            Odpri zavihek <em>Profili & Nastavitve</em> ter vstavi in shrani svoj API ključ.`;
         }
-        switchSectionById('secGemini');
+        switchSectionById('secProfiles');
         return false;
     }
 
@@ -5424,8 +5722,11 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             await recordGeminiChat('model', text);
             await recordGeminiRecommendation({ type: 'pogovor', text, model });
 
+            const detected = detectAndExtractWorkoutProgram(text);
+            const workoutSnippet = renderWorkoutButtonSnippet(detected);
+
             out.innerHTML = `<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">${formatGeminiDate(new Date().toISOString())} · Pogovor · ${model}</div>
-            <strong style="color:var(--accent-pink);">💬 Odgovor za ${currentUser}:</strong><br><br>${formatGeminiHtml(text)}`;
+            <strong style="color:var(--accent-pink);">💬 Odgovor za ${currentUser}:</strong><br><br>${formatGeminiHtml(text)}${workoutSnippet}`;
             input.value = '';
             switchGeminiHistoryTab('chat');
         } catch (err) {
