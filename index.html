@@ -1653,7 +1653,7 @@
         </div>
 
         <!-- KARTICA: CELOSTNI VPRAŠALNIK O ZDRAVJU, PREHRANI, ODVISNOSTIH IN STANJU ZA GEMINI AI -->
-        <div class="card" style="border-color: var(--accent-purple); background: radial-gradient(circle at top left, rgba(139, 92, 246, 0.12), var(--card-bg) 75%); margin-top: 1rem;">
+        <div class="card" style="border-color: var(--accent-purple); background: radial-gradient(circle at top left, rgba(139, 92, 246, 0.14), var(--card-bg) 75%); margin-top: 1rem;">
             <div class="card-header" style="margin-bottom: 0.6rem;">
                 <div class="card-title" style="color: var(--accent-pink); display: flex; align-items: center; gap: 0.5rem;">
                     🩺 Celostni Zdravstveni &amp; Življenjski Vprašalnik (<span id="profHealthUserLabel">Miha</span>)
@@ -1662,67 +1662,258 @@
                     🧠 AI Coach Integracija
                 </span>
             </div>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.5;">
-                Vneseni podatki se shranijo v tvoj profil (in Supabase) ter se <strong>samodejno upoštevajo pri vseh treningih, načrtih, intervalih in zdravstvenih analizah</strong> Gemini AI asistenta.
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.1rem; line-height: 1.5;">
+                Odgovorite na spodnja vprašanja o vašem zdravju, zdravilih, hidraciji, spanju in življenjskem slogu. Ti podatki se shranijo v vaš profil ter se <strong>samodejno upoštevajo pri vseh treningih, načrtih, intervalih in zdravstvenih analizah Gemini AI trenerja</strong>.
             </p>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
-                <!-- 1. Zdravje, bolezni in poškodbe -->
-                <div style="background: rgba(11, 15, 25, 0.6); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--card-border);">
-                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--accent-red); margin-bottom: 0.45rem;">
-                        🩹 Poškodbe, sklepi &amp; zdravstvene težave:
-                    </div>
-                    <textarea id="profHealthInjuries" rows="3" placeholder="Npr. Poškodba sprednje tibialne mišice (golenica), občutljiva kolena, križ, povišan tlak, zdravila..." style="width: 100%; font-size: 0.82rem;"></textarea>
-                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem;">
-                        Gemini bo samodejno prilagodil naklon, hitrost in mehkobo blaženja steze.
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <!-- 1. SKUPINA: ZDRAVSTVENO STANJE, ZDRAVILA & BOLEČINE -->
+                <div style="background: rgba(11, 15, 25, 0.65); padding: 1.1rem; border-radius: 0.85rem; border: 1px solid rgba(239, 68, 68, 0.3);">
+                    <h4 style="color: var(--accent-red); margin-bottom: 0.85rem; font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem;">
+                        🏥 1. Zdravstveno stanje, zdravila &amp; bolečine
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.85rem;">
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Ali imate kakšne zdravstvene ali kronične težave?
+                            </label>
+                            <input type="text" id="profHealthMedical" placeholder="Npr. povišan tlak, srčne težave, astma, sladkorna, ščitnica, brez..." style="width: 100%; font-size: 0.82rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Ali redno jemljete kakšna zdravila ali terapijo?
+                            </label>
+                            <input type="text" id="profHealthMedications" placeholder="Npr. zdravila za tlak, srce, alergije, protibolečinska, ne jemljem..." style="width: 100%; font-size: 0.82rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Ali vas kdaj boli glava, imate migrene ali vrtoglavice?
+                            </label>
+                            <select id="profHealthHeadaches" style="width: 100%; font-size: 0.82rem;">
+                                <option value="Nikoli">Nikoli / zelo redko</option>
+                                <option value="Občasno ob dehidraciji ali utrujenosti">Občasno ob dehidraciji ali utrujenosti</option>
+                                <option value="Občasno ob stresu / tenzijski glavoboli">Občasno ob stresu / tenzijski glavoboli</option>
+                                <option value="Pogosto med ali po napornem treningu">Pogosto med ali po napornem treningu</option>
+                                <option value="Pogoste migrene / kronični glavoboli">Pogoste migrene / kronični glavoboli</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Krvni tlak in utrip v mirovanju (če poznate):
+                            </label>
+                            <input type="text" id="profHealthBloodPressure" placeholder="Npr. 120/80 mmHg, utrip v mirovanju ~58 BPM" style="width: 100%; font-size: 0.82rem;">
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Poškodbe, bolečine v sklepih, kolenih, hrbtenici ali golenicah (tibialis):
+                            </label>
+                            <textarea id="profHealthInjuries" rows="2" placeholder="Npr. Poškodba sprednje tibialne mišice (anterior tibialis) - zgolj strma hoja brez teka in brez udarcev, občutljiva kolena..." style="width: 100%; font-size: 0.82rem;"></textarea>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 2. Prehrana & hidracija -->
-                <div style="background: rgba(11, 15, 25, 0.6); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--card-border);">
-                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--accent-green); margin-bottom: 0.45rem;">
-                        🥗 Prehrana, hidracija &amp; dodatki:
-                    </div>
-                    <textarea id="profHealthDiet" rows="3" placeholder="Npr. Beljakovinski vnos, 2.5 L vode/dan, low-carb / keto, magnezij, vitamini, kreatin..." style="width: 100%; font-size: 0.82rem;"></textarea>
-                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem;">
-                        Upoštevanje energetskega vnosa in hidracije pred/po vadbi.
+                <!-- 2. SKUPINA: HIDRACIJA, PREHRANA & DODATKI -->
+                <div style="background: rgba(11, 15, 25, 0.65); padding: 1.1rem; border-radius: 0.85rem; border: 1px solid rgba(16, 185, 129, 0.3);">
+                    <h4 style="color: var(--accent-green); margin-bottom: 0.85rem; font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem;">
+                        🥗 2. Hidracija, prehrana &amp; prehranski dodatki
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.85rem;">
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Koliko vode in tekočine popijete na dan?
+                            </label>
+                            <select id="profHealthWater" style="width: 100%; font-size: 0.82rem;">
+                                <option value="Manj kot 1.5 L/dan (premalo)">Manj kot 1.5 L/dan (premalo)</option>
+                                <option value="1.5 – 2.0 L/dan">1.5 – 2.0 L/dan</option>
+                                <option value="2.0 – 2.5 L/dan (priporočeno)">2.0 – 2.5 L/dan (priporočeno)</option>
+                                <option value="2.5 – 3.5 L/dan (športno optimalno)">2.5 – 3.5 L/dan (športno optimalno)</option>
+                                <option value="Več kot 3.5 L/dan">Več kot 3.5 L/dan</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Kakšen je vaš primarni način prehrane?
+                            </label>
+                            <select id="profHealthDietType" style="width: 100%; font-size: 0.82rem;">
+                                <option value="Uravnotežena mešana prehrana (vsejed)">Uravnotežena mešana prehrana (vsejed)</option>
+                                <option value="Beljakovinska športna prehrana (visok vnos proteinov)">Beljakovinska športna prehrana (visok vnos proteinov)</option>
+                                <option value="Mediteranska prehrana">Mediteranska prehrana</option>
+                                <option value="Low-Carb / LCHF prehrana">Low-Carb / LCHF prehrana</option>
+                                <option value="Ketogena dieta (Keto)">Ketogena dieta (Keto)</option>
+                                <option value="Vegetarijanska / Veganska">Vegetarijanska / Veganska</option>
+                                <option value="Prekinjen post (Intermittent Fasting 16/8)">Prekinjen post (Intermittent Fasting 16/8)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Prehranski dodatki &amp; vitamini:
+                            </label>
+                            <input type="text" id="profHealthSupplements" placeholder="Npr. Magnezij, Omega 3, Vitamin D3, Beljakovinski napitki, Kreatin, Elektroliti..." style="width: 100%; font-size: 0.82rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Obroki glede na čas vadbe:
+                            </label>
+                            <input type="text" id="profHealthMealTiming" placeholder="Npr. Lahek obrok 2 uri pred tekom, regeneracijski obrok takoj po vadbi..." style="width: 100%; font-size: 0.82rem;">
+                        </div>
                     </div>
                 </div>
 
-                <!-- 3. Spanje & Stres -->
-                <div style="background: rgba(11, 15, 25, 0.6); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--card-border);">
-                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--accent-cyan); margin-bottom: 0.45rem;">
-                        😴 Spanje, regeneracija &amp; raven stresa:
-                    </div>
-                    <textarea id="profHealthSleep" rows="3" placeholder="Npr. 7-8 ur spanja, občasno prebujanje, raven stresa 6/10, utrujenost po službi..." style="width: 100%; font-size: 0.82rem;"></textarea>
-                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem;">
-                        Pomaga pri določanju ustrezne intenzitete in dni počitka.
+                <!-- 3. SKUPINA: SPANJE, POČUTJE & RAVEN STRESA -->
+                <div style="background: rgba(11, 15, 25, 0.65); padding: 1.1rem; border-radius: 0.85rem; border: 1px solid rgba(6, 182, 212, 0.3);">
+                    <h4 style="color: var(--accent-cyan); margin-bottom: 0.85rem; font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem;">
+                        😴 3. Spanje, regeneracija &amp; raven stresa
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.85rem;">
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Koliko ur v povprečju spite na noč?
+                            </label>
+                            <select id="profHealthSleepHours" style="width: 100%; font-size: 0.82rem;">
+                                <option value="Manj kot 6 ur (premalo spanja)">Manj kot 6 ur (premalo spanja)</option>
+                                <option value="6 – 7 ur">6 – 7 ur</option>
+                                <option value="7 – 8 ur (optimalno)">7 – 8 ur (optimalno)</option>
+                                <option value="8 – 9 ur (odlična regeneracija)">8 – 9 ur (odlična regeneracija)</option>
+                                <option value="Več kot 9 ur">Več kot 9 ur</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Kakšna je kakovost vašega spanca?
+                            </label>
+                            <select id="profHealthSleepQuality" style="width: 100%; font-size: 0.82rem;">
+                                <option value="Trden, globok in nemoten spanec">Trden, globok in nemoten spanec</option>
+                                <option value="Dober spanec z občasnim prebujanjem">Dober spanec z občasnim prebujanjem</option>
+                                <option value="Plitek spanec / težko zaspim">Plitek spanec / težko zaspim</option>
+                                <option value="Pogosta nespečnost in nemir">Pogosta nespečnost in nemir</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Raven vsakodnevnega psihičnega stresa:
+                            </label>
+                            <select id="profHealthStressLevel" style="width: 100%; font-size: 0.82rem;">
+                                <option value="Nizka raven stresa (1–3 / 10) · Sproščeno">Nizka raven stresa (1–3 / 10) · Sproščeno</option>
+                                <option value="Zmerna raven stresa (4–6 / 10) · Obvladljivo">Zmerna raven stresa (4–6 / 10) · Obvladljivo</option>
+                                <option value="Visoka raven stresa (7–8 / 10) · Občutna preobremenitev">Visoka raven stresa (7–8 / 10) · Občutna preobremenitev</option>
+                                <option value="Zelo visoka raven / izgorelost (9–10 / 10)">Zelo visoka raven / izgorelost (9–10 / 10)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Jutranje počutje &amp; energija čez dan:
+                            </label>
+                            <select id="profHealthEnergyLevel" style="width: 100%; font-size: 0.82rem;">
+                                <option value="Zjutraj spočit, stabilna energija čez dan">Zjutraj spočit, stabilna energija čez dan</option>
+                                <option value="Dobra energija z občasnim popoldanskim padcem">Dobra energija z občasnim popoldanskim padcem</option>
+                                <option value="Zjutraj utrujen, energijo dobim kasneje">Zjutraj utrujen, energijo dobim kasneje</option>
+                                <option value="Kronična utrujenost in pomanjkanje energije">Kronična utrujenost in pomanjkanje energije</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 4. Razvade & Odvisnosti -->
-                <div style="background: rgba(11, 15, 25, 0.6); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--card-border);">
-                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--accent-orange); margin-bottom: 0.45rem;">
-                        ☕ Razvade, odvisnosti &amp; navade:
-                    </div>
-                    <textarea id="profHealthHabits" rows="3" placeholder="Npr. 2 kavi na dan, občasne energijske pijače, nekadilec / kadilec, sladkor..." style="width: 100%; font-size: 0.82rem;"></textarea>
-                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem;">
-                        Vpliva na dinamiko srčnega utripa in hitrost regeneracije.
+                <!-- 4. SKUPINA: RAZVADE, ODVISNOSTI & POŽIVILA -->
+                <div style="background: rgba(11, 15, 25, 0.65); padding: 1.1rem; border-radius: 0.85rem; border: 1px solid rgba(245, 158, 11, 0.3);">
+                    <h4 style="color: var(--accent-orange); margin-bottom: 0.85rem; font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem;">
+                        ☕ 4. Razvade, odvisnosti &amp; življenjske navade
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.85rem;">
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Uživanje kofeina (kava, energijske pijače, čaji):
+                            </label>
+                            <select id="profHealthCaffeine" style="width: 100%; font-size: 0.82rem;">
+                                <option value="Brez kofeina (0 kave/dan)">Brez kofeina (0 kave/dan)</option>
+                                <option value="1 – 2 kavi na dan (zmerno)">1 – 2 kavi na dan (zmerno)</option>
+                                <option value="3 – 4 kave na dan">3 – 4 kave na dan</option>
+                                <option value="5+ kav ali redne energijske pijače">5+ kav ali redne energijske pijače</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Kajenje in nikotinski izdelki:
+                            </label>
+                            <select id="profHealthSmoking" style="width: 100%; font-size: 0.82rem;">
+                                <option value="Nekadilec">Nekadilec</option>
+                                <option value="Bivši kadilec (več kot 1 leto brez)">Bivši kadilec (več kot 1 leto brez)</option>
+                                <option value="Občasno / socialno kajenje">Občasno / socialno kajenje</option>
+                                <option value="Elektronske cigarete / vape / fuge">Elektronske cigarete / vape / fuge</option>
+                                <option value="Redni kadilec cigaret">Redni kadilec cigaret</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Uživanje alkohola:
+                            </label>
+                            <select id="profHealthAlcohol" style="width: 100%; font-size: 0.82rem;">
+                                <option value="Ne pijem / popolnoma brez alkohola">Ne pijem / popolnoma brez alkohola</option>
+                                <option value="Zelo redko (ob posebnih priložnostih)">Zelo redko (ob posebnih priložnostih)</option>
+                                <option value="Občasno ob vikendih (1–2 pijači)">Občasno ob vikendih (1–2 pijači)</option>
+                                <option value="Redno večkrat tedensko">Redno večkrat tedensko</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Uživanje sladkorja in predelanih prigrizkov:
+                            </label>
+                            <select id="profHealthSugar" style="width: 100%; font-size: 0.82rem;">
+                                <option value="Minimalno / se strogo izogibam">Minimalno / se strogo izogibam</option>
+                                <option value="Zmerno občasno">Zmerno občasno</option>
+                                <option value="Pogosto hrepenenje po sladkem">Pogosto hrepenenje po sladkem</option>
+                                <option value="Vsakodnevno uživanje sladkarij / sladkih pijač">Vsakodnevno uživanje sladkarij / sladkih pijač</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 5. Cilji & Trenutna pripravljenost -->
-                <div style="background: rgba(11, 15, 25, 0.6); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--card-border); grid-column: 1 / -1;">
-                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--accent-purple); margin-bottom: 0.45rem;">
-                        🎯 Glavni cilji, fitnes nivo &amp; posebna navodila za Gemini:
+                <!-- 5. SKUPINA: PRIPRAVLJENOST, CILJI & OPOMBE ZA AI TRENERJA -->
+                <div style="background: rgba(11, 15, 25, 0.65); padding: 1.1rem; border-radius: 0.85rem; border: 1px solid rgba(168, 85, 247, 0.3);">
+                    <h4 style="color: var(--accent-purple); margin-bottom: 0.85rem; font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem;">
+                        🎯 5. Telesna pripravljenost, cilji &amp; navodila za Gemini AI
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.85rem;">
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Trenutna raven telesne pripravljenosti:
+                            </label>
+                            <select id="profHealthFitnessLevel" style="width: 100%; font-size: 0.82rem;">
+                                <option value="Začetnik / vračanje po daljšem premoru">Začetnik / vračanje po daljšem premoru</option>
+                                <option value="Srednje pripravljen (1–2 vadbi na teden)">Srednje pripravljen (1–2 vadbi na teden)</option>
+                                <option value="Dobro treniran rekreativec (3–5 vadb na teden)">Dobro treniran rekreativec (3–5 vadb na teden)</option>
+                                <option value="Napredni športnik / visoka vzdržljivost">Napredni športnik / visoka vzdržljivost</option>
+                                <option value="Rehabilitacija po poškodbi">Rehabilitacija po poškodbi</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Hitrost regeneracije po vadbi:
+                            </label>
+                            <select id="profHealthRecovery" style="width: 100%; font-size: 0.82rem;">
+                                <option value="Hitra regeneracija (brez večjih bolečin v mišicah)">Hitra regeneracija (brez večjih bolečin v mišicah)</option>
+                                <option value="Normalna regeneracija (1–2 dni blage utrujenosti)">Normalna regeneracija (1–2 dni blage utrujenosti)</option>
+                                <option value="Počasna regeneracija (dolgotrajne bolečine v vezeh ali mišicah)">Počasna regeneracija (dolgotrajne bolečine v vezeh ali mišicah)</option>
+                            </select>
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Glavni cilji treninga na stezi:
+                            </label>
+                            <input type="text" id="profHealthGoals" placeholder="Npr. Kurjenje maščob v Coni 2 (104–130 BPM), krepitev golenice brez udarcev, hoja v strm klanec (8%), izguba teže..." style="width: 100%; font-size: 0.82rem;">
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                Dodatna posebna navodila in želje za Gemini AI trenerja:
+                            </label>
+                            <textarea id="profHealthNotes" rows="2" placeholder="Npr. Vedno predlagaj ogrevanje in ohlajanje, poudarek na tehniki hoje v klanec, opozori če utrip preseže 130 BPM..." style="width: 100%; font-size: 0.82rem;"></textarea>
+                        </div>
                     </div>
-                    <textarea id="profHealthGoals" rows="2" placeholder="Npr. Cilj je kurjenje maščob v Coni 2 (104-130 BPM), krepitev golenic brez udarcev, hoja v strm klanec (8%)..." style="width: 100%; font-size: 0.82rem;"></textarea>
                 </div>
             </div>
 
-            <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
-                <button class="btn btn-purple" onclick="saveActiveProfileSettings()" style="font-weight: 800; font-size: 0.9rem; padding: 0.6rem 1.25rem;">
-                    💾 Shrani Vprašalnik &amp; Celotni Profil
+            <div style="margin-top: 1.25rem; display: flex; justify-content: flex-end;">
+                <button class="btn btn-purple" onclick="saveActiveProfileSettings()" style="font-weight: 800; font-size: 0.92rem; padding: 0.65rem 1.4rem; box-shadow: 0 4px 14px rgba(168, 85, 247, 0.4);">
+                    💾 Shrani Celostni Zdravstveni Vprašalnik
                 </button>
             </div>
         </div>
@@ -3716,12 +3907,41 @@
         const h = prof.healthDetails || {};
         const label = document.getElementById('profHealthUserLabel');
         if (label) label.textContent = currentUser;
-        const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
-        setVal('profHealthInjuries', h.injuries || (currentUser === 'Miha' ? 'Poškodba/rehabilitacija sprednje tibialne mišice (anterior tibialis). Potrebno mehkejše blaženje (30 kPa) in strma hoja v klanec (naklon 7–8 %) namesto teka za razbremenitev meč in pokostnice.' : ''));
-        setVal('profHealthDiet', h.diet || '');
-        setVal('profHealthSleep', h.sleep || '');
-        setVal('profHealthHabits', h.habits || '');
-        setVal('profHealthGoals', h.goals || (currentUser === 'Miha' ? 'Kurjenje maščob v Coni 2 (104–130 BPM), krepitev golenice in sklepov brez udarcev, izboljšanje aerobne vzdržljivosti.' : ''));
+        const setVal = (id, v, fallback = '') => {
+            const el = document.getElementById(id);
+            if (el) el.value = v !== undefined && v !== null && v !== '' ? v : fallback;
+        };
+
+        // 1. Zdravje & zdravila
+        setVal('profHealthMedical', h.medical, currentUser === 'Miha' ? 'Povišana telesna teža (cilj izguba maščobe), občutljiva golenica' : '');
+        setVal('profHealthMedications', h.medications, 'Brez rednih zdravil');
+        setVal('profHealthHeadaches', h.headaches, 'Nikoli');
+        setVal('profHealthBloodPressure', h.bloodPressure, '120/80 mmHg');
+        setVal('profHealthInjuries', h.injuries, currentUser === 'Miha' ? 'Poškodba/rehabilitacija sprednje tibialne mišice (anterior tibialis). Potrebno mehkejše blaženje (30 kPa) in strma hoja v klanec (naklon 7–8 %) namesto teka za razbremenitev meč in pokostnice.' : '');
+
+        // 2. Hidracija & prehrana
+        setVal('profHealthWater', h.water, '2.0 – 2.5 L/dan (priporočeno)');
+        setVal('profHealthDietType', h.dietType, 'Uravnotežena mešana prehrana (vsejed)');
+        setVal('profHealthSupplements', h.supplements, 'Magnezij, Omega 3, Vitamin D3');
+        setVal('profHealthMealTiming', h.mealTiming, 'Lahek obrok 2h pred vadbo, beljakovine po vadbi');
+
+        // 3. Spanje & stres
+        setVal('profHealthSleepHours', h.sleepHours, '7 – 8 ur (optimalno)');
+        setVal('profHealthSleepQuality', h.sleepQuality, 'Trden, globok in nemoten spanec');
+        setVal('profHealthStressLevel', h.stressLevel, 'Zmerna raven stresa (4–6 / 10) · Obvladljivo');
+        setVal('profHealthEnergyLevel', h.energyLevel, 'Dobra energija z občasnim popoldanskim padcem');
+
+        // 4. Razvade
+        setVal('profHealthCaffeine', h.caffeine, '1 – 2 kavi na dan (zmerno)');
+        setVal('profHealthSmoking', h.smoking, 'Nekadilec');
+        setVal('profHealthAlcohol', h.alcohol, 'Občasno ob vikendih (1–2 pijači)');
+        setVal('profHealthSugar', h.sugar, 'Zmerno občasno');
+
+        // 5. Cilji & AI opombe
+        setVal('profHealthFitnessLevel', h.fitnessLevel, currentUser === 'Miha' ? 'Rehabilitacija po poškodbi' : 'Srednje pripravljen (1–2 vadbi na teden)');
+        setVal('profHealthRecovery', h.recovery, 'Normalna regeneracija (1–2 dni blage utrujenosti)');
+        setVal('profHealthGoals', h.goals, currentUser === 'Miha' ? 'Kurjenje maščob v Coni 2 (104–130 BPM), krepitev golenice in sklepov brez udarcev, hoja v strm klanec (7–8%), izboljšanje aerobne vzdržljivosti.' : 'Splošna kondicija, kurjenje kalorij in dobro počutje.');
+        setVal('profHealthNotes', h.notes, currentUser === 'Miha' ? 'Zaradi tibialis mišice vedno predlagaj hojo v klanec z zmernim tempom in nizkimi udarci ter opozori na pravilen položaj stopala.' : '');
 
         calculateProfileMetrics();
     }
@@ -3773,11 +3993,27 @@
             bmrFactor: 0.92,
             maxInclineLimit: 18.0,
             healthDetails: {
+                medical: '',
+                medications: '',
+                headaches: 'Nikoli',
+                bloodPressure: '',
                 injuries: '',
-                diet: '',
-                sleep: '',
-                habits: '',
-                goals: ''
+                water: '2.0 – 2.5 L/dan (priporočeno)',
+                dietType: 'Uravnotežena mešana prehrana (vsejed)',
+                supplements: '',
+                mealTiming: '',
+                sleepHours: '7 – 8 ur (optimalno)',
+                sleepQuality: 'Trden, globok in nemoten spanec',
+                stressLevel: 'Zmerna raven stresa (4–6 / 10) · Obvladljivo',
+                energyLevel: 'Dobra energija z občasnim popoldanskim padcem',
+                caffeine: '1 – 2 kavi na dan (zmerno)',
+                smoking: 'Nekadilec',
+                alcohol: 'Zelo redko (ob posebnih priložnostih)',
+                sugar: 'Zmerno občasno',
+                fitnessLevel: 'Srednje pripravljen (1–2 vadbi na teden)',
+                recovery: 'Normalna regeneracija (1–2 dni blage utrujenosti)',
+                goals: '',
+                notes: ''
             },
             updated_at: new Date().toISOString()
         };
@@ -3833,11 +4069,27 @@
         
         const getVal = id => (document.getElementById(id)?.value || '').trim();
         prof.healthDetails = {
+            medical: getVal('profHealthMedical'),
+            medications: getVal('profHealthMedications'),
+            headaches: getVal('profHealthHeadaches'),
+            bloodPressure: getVal('profHealthBloodPressure'),
             injuries: getVal('profHealthInjuries'),
-            diet: getVal('profHealthDiet'),
-            sleep: getVal('profHealthSleep'),
-            habits: getVal('profHealthHabits'),
-            goals: getVal('profHealthGoals')
+            water: getVal('profHealthWater'),
+            dietType: getVal('profHealthDietType'),
+            supplements: getVal('profHealthSupplements'),
+            mealTiming: getVal('profHealthMealTiming'),
+            sleepHours: getVal('profHealthSleepHours'),
+            sleepQuality: getVal('profHealthSleepQuality'),
+            stressLevel: getVal('profHealthStressLevel'),
+            energyLevel: getVal('profHealthEnergyLevel'),
+            caffeine: getVal('profHealthCaffeine'),
+            smoking: getVal('profHealthSmoking'),
+            alcohol: getVal('profHealthAlcohol'),
+            sugar: getVal('profHealthSugar'),
+            fitnessLevel: getVal('profHealthFitnessLevel'),
+            recovery: getVal('profHealthRecovery'),
+            goals: getVal('profHealthGoals'),
+            notes: getVal('profHealthNotes')
         };
         prof.updated_at = new Date().toISOString();
 
@@ -3876,7 +4128,7 @@
         await setUser(newName);
         populateProfileForm();
         alert(syncOk
-            ? `Profil in zdravstveni vprašalnik za '${newName}' sta shranjena in sinhronizirana za Gemini AI trenerja!`
+            ? `✅ Profil in celostni zdravstveni vprašalnik za '${newName}' sta uspešno shranjena ter sinhronizirana za Gemini AI!`
             : `Profil '${newName}' je shranjen lokalno. Sinhronizacija v oblak ni uspela — preveri Supabase povezavo.`);
     }
 
@@ -5401,11 +5653,31 @@
         const ss = String(elapsed % 60).padStart(2, '0');
 
         const hd = prof.healthDetails || {};
-        const injuries = hd.injuries || (currentUser === 'Miha' ? 'Poškodba/rehabilitacija sprednje tibialne mišice (anterior tibialis). Potrebno mehkejše blaženje (30 kPa) in strma hoja (naklon ~8 %) namesto teka za razbremenitev meč in pokostnice.' : '');
-        const diet = hd.diet || '';
-        const sleep = hd.sleep || '';
-        const habits = hd.habits || '';
-        const goals = hd.goals || (currentUser === 'Miha' ? 'Kurjenje maščobe v Coni 2 (104–130 BPM), krepitev golenice in sklepov brez udarcev, izboljšanje aerobne vzdržljivosti.' : '');
+        const medical = hd.medical || 'Ni posebnih kroničnih bolezni';
+        const medications = hd.medications || 'Brez zdravil';
+        const headaches = hd.headaches || 'Nikoli / redko';
+        const bloodPressure = hd.bloodPressure || 'Normalen (~120/80 mmHg)';
+        const injuries = hd.injuries || (currentUser === 'Miha' ? 'Poškodba/rehabilitacija sprednje tibialne mišice (anterior tibialis). Potrebno mehkejše blaženje (30 kPa) in strma hoja (naklon ~8 %) namesto teka za razbremenitev meč in pokostnice.' : 'Brez posebnih poškodb');
+        
+        const water = hd.water || '2.0 – 2.5 L/dan';
+        const dietType = hd.dietType || 'Uravnotežena vsejeda';
+        const supplements = hd.supplements || 'Magnezij, Omega 3, Vitamini';
+        const mealTiming = hd.mealTiming || 'Obrok pred/po vadbi';
+
+        const sleepHours = hd.sleepHours || '7 – 8 ur';
+        const sleepQuality = hd.sleepQuality || 'Trden spanec';
+        const stressLevel = hd.stressLevel || 'Zmerna raven stresa';
+        const energyLevel = hd.energyLevel || 'Dobra raven energije';
+
+        const caffeine = hd.caffeine || '1–2 kavi/dan';
+        const smoking = hd.smoking || 'Nekadilec';
+        const alcohol = hd.alcohol || 'Zelo redko';
+        const sugar = hd.sugar || 'Zmerno';
+
+        const fitnessLevel = hd.fitnessLevel || 'Srednje pripravljen';
+        const recovery = hd.recovery || 'Normalna regeneracija';
+        const goals = hd.goals || (currentUser === 'Miha' ? 'Kurjenje maščobe v Coni 2 (104–130 BPM), krepitev golenice brez udarcev, hoja v strm klanec (7–8%).' : 'Splošna kondicija in zdravje');
+        const notes = hd.notes || '';
 
         let note = '';
         if (currentUser === 'Miha') {
@@ -5427,13 +5699,22 @@
 - Cona kurjenja maščob (Zone 2): približno ${fatBurnMin}–${fatBurnMax} BPM
 - Varnostna meja naklona tekalne steze: ${maxInclineLimit} %
 
-CELOSTNI ZDRAVSTVENI & ŽIVLJENJSKI PROFIL (${currentUser}):
-- Poškodbe, sklepi & zdravstvena stanja: ${injuries || 'Brez posebnih zabeleženih poškodb'}
-- Prehrana, hidracija & prehranski dodatki: ${diet || 'Ni posebej specificirano'}
-- Spanje, regeneracija & raven stresa: ${sleep || 'Ni zabeleženo'}
-- Razvade / odvisnosti / navade (kava, nikotin, energijske pijače): ${habits || 'Ni zabeleženo'}
-- Cilji & prioritete treninga: ${goals || 'Splošna kondicija in zdravje'}
-* STROGO PRAVILO ZA GEMINI: Vse zgornje zdravstvene omejitve, poškodbe, raven stresa, prehrano in cilje dosledno upoštevaj pri vsakem predlogu vadbe, intervalnem programu, regeneraciji in analizi!
+PODROBNI ZDRAVSTVENI & ŽIVLJENJSKI PROFIL (${currentUser}):
+• ZDRAVSTVENO STANJE & BOLEZNI: ${medical}
+• ZDRAVILA & TERAPIJA: ${medications}
+• GLAVOBOLI / MIGRENE / VRTOGLAVICE: ${headaches}
+• KRVNI TLAK & UTRIP V MIROVANJU: ${bloodPressure}
+• POŠKODBE & SKLEPI / GOLENICA: ${injuries}
+• DNEVNA HIDRACIJA (VODA): ${water}
+• NAČIN PREHRANE: ${dietType} (prehranski dodatki: ${supplements}, obroki: ${mealTiming})
+• SPANJE: ${sleepHours} (${sleepQuality})
+• RAVEN STRESA: ${stressLevel} (počutje/energija: ${energyLevel})
+• RAZVADE & POŽIVILA: kofein: ${caffeine}, nikotin: ${smoking}, alkohol: ${alcohol}, sladkor: ${sugar}
+• TELESNA PRIPRAVLJENOST & REGENERACIJA: ${fitnessLevel}, regeneracija: ${recovery}
+• GLAVNI CILJI TRENINGA: ${goals}
+${notes ? `• POSEBNA NAVODILA UPORABNIKA: ${notes}` : ''}
+
+* STROGO PRAVILO ZA GEMINI: Vse zgornje zdravstvene parametre (zdravila, morebitne glavobole, hidracijo, spanje, poškodbo golenice/tibialis, raven stresa in prehrano) dosledno integriraj in upoštevaj pri vsakem predlogu treninga, intervalnem načrtu, prehranskem nasvetu in regeneraciji!
 
 TRENUTNO STANJE SEJE:
 - Hitrost: ${getEffectiveSpeedKmh().toFixed(1)} km/h
