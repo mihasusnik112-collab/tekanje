@@ -2487,7 +2487,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v50';
+    const APP_BUILD = 'v51';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -2669,8 +2669,9 @@
     let deviceReportsDistance = false;
     let lastWorkoutTickMs = null;
     let workoutTickInterval = null;
-    let fitshowStatusPollInterval = null;
     let zoneTimes = { ogrevanje: 0, fatburn: 0, aerobno: 0, anaerobno: 0, ekstremno: 0 };
+    let lastWorkoutFinishedAt = 0;
+    let isStoppingWorkout = false;
 
     let gpxPoints = [];
     let gpxTotalLength = 0.0;
@@ -6928,6 +6929,10 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             hasHadSpeedBefore = true;
             fitshowSessionLive = true;
             zeroSpeedStreak = 0;
+            // Ne začenjaj nove vadbe samodejno med ustavljanjem ali med cooldownom po zaključenem teku
+            if (isStoppingWorkout || Date.now() < ignorePhysicalStopUntil || (Date.now() - lastWorkoutFinishedAt) < 6000) {
+                return;
+            }
             if (!startTime && !isProgramActive) {
                 startTime = Date.now();
                 startTimer();
@@ -8521,17 +8526,48 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
 
     // UNIFICIRANA USTAVITEV VSEGA (VIDEO, AVDIO, MERJENJE & STEZA)
     async function stopWorkout(reason = 'user_click') {
+        if (isStoppingWorkout) return;
         if (!isWorkoutActive && !startTime && !isProgramActive && currentDistance <= 0.01 && totalCalories <= 0) return;
+        if (Date.now() - lastWorkoutFinishedAt < 3000) return;
+
+        isStoppingWorkout = true;
+        ignorePhysicalStopUntil = Date.now() + 8000;
 
         // 0. Zajemimo posnetek seje pred ustavljanjem in ponastavitvijo spremenljivk
         const sessionStartTime = startTime;
         const sessionDistance = Number(currentDistance || 0);
         const sessionCalories = Number(totalCalories || 0);
         const sessionWorkoutLog = workoutLog.length ? workoutLog.map(pt => ({ ...pt })) : [];
+        const sessionZoneTimes = { ...zoneTimes };
         const sessionIsProgram = isProgramActive;
         const sessionIsGpx = isGpxFollowingActive;
         const sessionGpxName = isGpxFollowingActive ? (document.getElementById('gpxName')?.textContent || 'GPX') : '';
         const sessionProgramName = (document.getElementById('currentProgramTitle')?.textContent || document.getElementById('wizProgramSelect')?.options?.[document.getElementById('wizProgramSelect')?.selectedIndex]?.text || '').trim();
+
+        let sessionDurationSec = sessionStartTime ? Math.floor((Date.now() - sessionStartTime) / 1000) : 0;
+        if (sessionDurationSec <= 0 && sessionWorkoutLog.length > 0) {
+            sessionDurationSec = Math.round(parseFloat(sessionWorkoutLog[sessionWorkoutLog.length - 1].time || 0));
+        }
+
+        const hrs = sessionWorkoutLog.filter(d => d.hr > 0).map(d => d.hr);
+        const sessionAvgHr = hrs.length > 0 ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : (currentHr > 0 ? currentHr : 0);
+        const sessionMaxHr = hrs.length > 0 ? Math.max(...hrs) : sessionAvgHr;
+
+        const sessionSnapshot = {
+            sessionStartTime,
+            sessionDurationSec,
+            sessionDistance,
+            sessionCalories,
+            sessionWorkoutLog,
+            sessionZoneTimes,
+            sessionAvgHr,
+            sessionMaxHr,
+            sessionIsProgram,
+            sessionIsGpx,
+            sessionGpxName,
+            sessionProgramName,
+            stopReason: reason
+        };
 
         isWorkoutActive = false;
         isProgramActive = false;
@@ -8587,28 +8623,25 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             lastExportWorkoutLog = sessionWorkoutLog.map(pt => ({ ...pt }));
         }
 
-        showAiDiagnosticModal();
+        // Pokaži diagnostiko s točnimi zajetimi podatki seje
+        showAiDiagnosticModal(sessionSnapshot);
 
         // 5. SHRANJEVANJE V ZGODOVINO (Supabase + lokalno)
-        await saveWorkoutToHistory({
-            sessionStartTime,
-            sessionDistance,
-            sessionCalories,
-            sessionWorkoutLog,
-            sessionIsProgram,
-            sessionIsGpx,
-            sessionGpxName,
-            sessionProgramName,
-            stopReason: reason
-        });
+        await saveWorkoutToHistory(sessionSnapshot);
 
         refreshHomeDashboard();
 
-        // Ponastavi sejo, da naslednji tek začne razdaljo od 0
+        // Ponastavi sejo, da naslednji tek začne razdaljo in čas od 0
         startTime = null;
+        currentDistance = 0.0;
+        totalCalories = 0.0;
         workoutLog = [];
+        zoneTimes = { ogrevanje: 0, fatburn: 0, aerobno: 0, anaerobno: 0, ekstremno: 0 };
         hasHadSpeedBefore = false;
         treadmillBeltStarted = false;
+        lastWorkoutFinishedAt = Date.now();
+        isStoppingWorkout = false;
+
         // Continuous listen ostane — aplikacija še naprej posluša stezo
         if (isTreadmillControllable()) {
             lastWorkoutTickMs = Date.now();
@@ -8619,10 +8652,19 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         }
     }
 
-    function showAiDiagnosticModal() {
+    function showAiDiagnosticModal(snapshot = null) {
         const isFemale = userProfiles[currentUser]?.gender === 'female';
         const baseCadence = currentSpeed > 0.5 ? Math.round(115 + (currentSpeed * 7)) : 160;
         const baseGct = isFemale ? 295 : 310;
+
+        const durSec = snapshot?.sessionDurationSec !== undefined ? snapshot.sessionDurationSec : (startTime ? Math.floor((Date.now() - startTime) / 1000) : 0);
+        const durMin = Math.floor(durSec / 60);
+        const durRemainderSec = durSec % 60;
+        const durFormatted = `${durMin}m ${durRemainderSec}s`;
+
+        const distKm = Number(snapshot?.sessionDistance !== undefined ? snapshot.sessionDistance : currentDistance).toFixed(2);
+        const cals = Math.round(Number(snapshot?.sessionCalories !== undefined ? snapshot.sessionCalories : totalCalories));
+        const zTimes = snapshot?.sessionZoneTimes || zoneTimes || {};
 
         let userAdvice = "";
         if (currentUser === 'Miha') {
@@ -8644,15 +8686,15 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             { key: 'anaerobno', label: 'Anaerobno', color: '#f97316' },
             { key: 'ekstremno', label: 'Ekstremno', color: '#ef4444' }
         ];
-        const totalZoneSec = zoneDefs.reduce((sum, z) => sum + (zoneTimes[z.key] || 0), 0);
+        const totalZoneSec = zoneDefs.reduce((sum, z) => sum + (zTimes[z.key] || 0), 0);
         const zoneBarSegments = zoneDefs.map(z => {
-            const sec = zoneTimes[z.key] || 0;
+            const sec = zTimes[z.key] || 0;
             const pct = totalZoneSec > 0 ? (sec / totalZoneSec) * 100 : 0;
             if (pct < 0.4) return '';
             return `<div title="${z.label}: ${fmtZone(sec)}" style="width:${pct.toFixed(2)}%;background:${z.color};height:100%;min-width:${pct > 0 ? '2px' : '0'};"></div>`;
         }).join('');
         const zoneLegend = zoneDefs.map(z => {
-            const sec = zoneTimes[z.key] || 0;
+            const sec = zTimes[z.key] || 0;
             const pct = totalZoneSec > 0 ? Math.round((sec / totalZoneSec) * 100) : 0;
             return `<div style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:#cbd5e1;">
                 <span style="width:10px;height:10px;border-radius:2px;background:${z.color};flex-shrink:0;"></span>
@@ -8662,12 +8704,14 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             </div>`;
         }).join('');
         
+        const hasHrData = totalZoneSec > 0 || (snapshot?.sessionAvgHr && snapshot.sessionAvgHr > 0);
+
         const bodyHtml = `
             <div style="display: flex; flex-direction: column; gap: 1rem;">
                 <div>
                     <strong>${isFemale ? '👩 Tekačica:' : '👨 Tekač:'}</strong> ${currentUser}<br>
-                    <strong>⏱️ Trajanje & Razdalja:</strong> ${document.getElementById('valTime').textContent} | ${currentDistance.toFixed(2)} km<br>
-                    <strong>🔥 Porabljene Kalorije:</strong> ${Math.round(totalCalories)} kcal (Fiziološki izračun)
+                    <strong>⏱️ Trajanje & Razdalja:</strong> ${durFormatted} | ${distKm} km<br>
+                    <strong>🔥 Porabljene Kalorije:</strong> ${cals} kcal (Fiziološki izračun)${snapshot?.sessionAvgHr > 0 ? `<br><strong>❤️ Povprečni utrip:</strong> ${snapshot.sessionAvgHr} BPM (max ${snapshot.sessionMaxHr || snapshot.sessionAvgHr} BPM)` : ''}
                 </div>
                 
                 <div style="background: rgba(236, 72, 153, 0.1); border: 1px solid var(--accent-pink); padding: 0.85rem; border-radius: 0.75rem;">
@@ -8679,13 +8723,17 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
 
                 <div style="background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(148, 163, 184, 0.35); padding: 0.85rem; border-radius: 0.75rem;">
                     <h4 style="color: #e2e8f0; margin-bottom: 0.55rem;">❤️ ČAS V CONAH SRČNEGA UTRIPA</h4>
+                    ${hasHrData ? `
                     <div style="display:flex;width:100%;height:18px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,0.08);margin-bottom:0.75rem;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.06);">
                         ${zoneBarSegments || '<div style="width:100%;height:100%;background:rgba(148,163,184,0.25);"></div>'}
                     </div>
                     <div style="display:flex;flex-direction:column;gap:0.35rem;">
                         ${zoneLegend}
+                    </div>` : `
+                    <div style="font-size:0.82rem;color:var(--text-muted);padding:0.4rem 0;">
+                        ⚠️ Med to vadbo pametna ura / merilnik srčnega utripa ni bil povezan prek Bluetooth. Za prikaz območij in časa v conah pred tekom povežite uro.
                     </div>
-                    ${totalZoneSec <= 0 ? '<div style="margin-top:0.5rem;font-size:0.75rem;color:var(--text-muted);">Med vadbo ni bilo zabeleženega utripa za cone.</div>' : ''}
+                    `}
                 </div>
 
                 <div style="background: rgba(6, 182, 212, 0.1); border: 1px solid var(--accent-cyan); padding: 0.85rem; border-radius: 0.75rem;">
@@ -9209,17 +9257,40 @@ Uporabi null, če vrednosti ni.`;
             userHistory = getLocalHistoryAll().filter(i => (i.user || i.user_name) === currentUser);
         }
 
+        // Samodejno filtriraj in počisti morebitne mikrozapise (<= 3s trajanja)
+        const validHistory = [];
+        const spuriousIds = [];
+        for (let i = 0; i < userHistory.length; i++) {
+            const item = userHistory[i];
+            const dur = item.duration_sec || item.durationSec || 0;
+            if (dur <= 3) {
+                const hasMatchingReal = userHistory.some((o, oIdx) => oIdx !== i && (o.duration_sec || o.durationSec || 0) > 30 && Math.abs((o.distance_km || 0) - (item.distance_km || 0)) < 0.1);
+                if (hasMatchingReal) {
+                    if (item.id) spuriousIds.push(item.id);
+                    continue;
+                }
+            }
+            validHistory.push(item);
+        }
+
+        // Če so bili najdeni podvojeni zapisi iz preteklosti, jih počisti v ozadju
+        if (spuriousIds.length > 0 && supabaseClient) {
+            supabaseClient.from('workouts').delete().in('id', spuriousIds).then(() => {
+                console.log(`Počiščeni ${spuriousIds.length} podvojeni mikrozapisi iz baze.`);
+            }).catch(() => {});
+        }
+
         const tbody = document.getElementById('historyTableBody');
         const nameEl = document.getElementById('historyUserName');
         if (nameEl) nameEl.textContent = currentUser;
 
-        if (userHistory.length === 0) {
+        if (validHistory.length === 0) {
             tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Ni še zabeleženih aktivnosti.</td></tr>`;
             return;
         }
 
         tbody.innerHTML = '';
-        for (const item of userHistory) {
+        for (const item of validHistory) {
             const dur = item.duration_sec || item.durationSec || 0;
             const dist = Number(item.distance_km || item.distanceKm || 0);
             const cals = item.calories || 0;
