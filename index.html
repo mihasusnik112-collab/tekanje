@@ -2487,7 +2487,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v49';
+    const APP_BUILD = 'v50';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -8521,7 +8521,18 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
 
     // UNIFICIRANA USTAVITEV VSEGA (VIDEO, AVDIO, MERJENJE & STEZA)
     async function stopWorkout(reason = 'user_click') {
-        if (!isWorkoutActive && !startTime && !isProgramActive) return;
+        if (!isWorkoutActive && !startTime && !isProgramActive && currentDistance <= 0.01 && totalCalories <= 0) return;
+
+        // 0. Zajemimo posnetek seje pred ustavljanjem in ponastavitvijo spremenljivk
+        const sessionStartTime = startTime;
+        const sessionDistance = Number(currentDistance || 0);
+        const sessionCalories = Number(totalCalories || 0);
+        const sessionWorkoutLog = workoutLog.length ? workoutLog.map(pt => ({ ...pt })) : [];
+        const sessionIsProgram = isProgramActive;
+        const sessionIsGpx = isGpxFollowingActive;
+        const sessionGpxName = isGpxFollowingActive ? (document.getElementById('gpxName')?.textContent || 'GPX') : '';
+        const sessionProgramName = (document.getElementById('currentProgramTitle')?.textContent || document.getElementById('wizProgramSelect')?.options?.[document.getElementById('wizProgramSelect')?.selectedIndex]?.text || '').trim();
+
         isWorkoutActive = false;
         isProgramActive = false;
         isGpxFollowingActive = false;
@@ -8572,16 +8583,30 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
 
         document.getElementById('btnStopWorkout').disabled = true;
 
-        if (workoutLog.length) {
-            lastExportWorkoutLog = workoutLog.map(pt => ({ ...pt }));
+        if (sessionWorkoutLog.length) {
+            lastExportWorkoutLog = sessionWorkoutLog.map(pt => ({ ...pt }));
         }
 
         showAiDiagnosticModal();
-        saveWorkoutToHistory();
+
+        // 5. SHRANJEVANJE V ZGODOVINO (Supabase + lokalno)
+        await saveWorkoutToHistory({
+            sessionStartTime,
+            sessionDistance,
+            sessionCalories,
+            sessionWorkoutLog,
+            sessionIsProgram,
+            sessionIsGpx,
+            sessionGpxName,
+            sessionProgramName,
+            stopReason: reason
+        });
+
         refreshHomeDashboard();
 
         // Ponastavi sejo, da naslednji tek začne razdaljo od 0
         startTime = null;
+        workoutLog = [];
         hasHadSpeedBefore = false;
         treadmillBeltStarted = false;
         // Continuous listen ostane — aplikacija še naprej posluša stezo
@@ -8706,11 +8731,12 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
 
     function parseWorkoutMeta(gpxName) {
         if (!gpxName) return { source: 'steza', notes: '', imageRef: '' };
-        if (String(gpxName).startsWith('manual|') || String(gpxName).startsWith('steza|')) {
-            const parts = String(gpxName).split('|');
-            return { source: parts[0] || 'manual', notes: parts[1] || '', imageRef: parts[2] || '' };
+        const str = String(gpxName);
+        if (str.startsWith('manual|') || str.startsWith('steza|') || str.startsWith('interval|') || str.startsWith('gpx|')) {
+            const parts = str.split('|');
+            return { source: parts[0] || 'steza', notes: parts[1] || '', imageRef: parts[2] || '' };
         }
-        return { source: 'gpx', notes: String(gpxName), imageRef: '' };
+        return { source: 'gpx', notes: str, imageRef: '' };
     }
 
     function initManualWorkoutForm() {
@@ -9063,35 +9089,61 @@ Uporabi null, če vrednosti ni.`;
         }
     }
 
-    async function saveWorkoutToHistory() {
-        if (!startTime || workoutLog.length === 0) return;
-        const durationSec = Math.floor((Date.now() - startTime) / 1000);
-        if (durationSec < 5) return;
+    async function saveWorkoutToHistory(snapshot = {}) {
+        const sessionStart = snapshot.sessionStartTime !== undefined ? snapshot.sessionStartTime : startTime;
+        const log = (snapshot.sessionWorkoutLog && snapshot.sessionWorkoutLog.length) ? snapshot.sessionWorkoutLog : workoutLog;
+        const distKm = parseFloat(Number(snapshot.sessionDistance !== undefined ? snapshot.sessionDistance : currentDistance).toFixed(2));
+        const cals = Math.round(Number(snapshot.sessionCalories !== undefined ? snapshot.sessionCalories : totalCalories));
+        
+        let durationSec = sessionStart ? Math.floor((Date.now() - sessionStart) / 1000) : 0;
+        if (durationSec <= 0 && log.length > 0) {
+            durationSec = Math.round(parseFloat(log[log.length - 1].time || 0));
+        }
 
-        lastExportWorkoutLog = workoutLog.map(pt => ({ ...pt }));
+        // Če je bila vadba le ponesrečen klik (< 5s trajanja in brez razdalje ter kalorij), je ne shranjuj
+        if (durationSec < 5 && distKm < 0.02 && cals < 1) {
+            console.log("Vadba prekratka (< 5s, 0 km, 0 kcal) — shranjevanje preskočeno.");
+            return;
+        }
 
-        const hrs = workoutLog.filter(d => d.hr > 0).map(d => d.hr);
-        const avgHr = hrs.length > 0 ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 0;
+        if (log.length) {
+            lastExportWorkoutLog = log.map(pt => ({ ...pt }));
+        }
+
+        const hrs = log.filter(d => d.hr > 0).map(d => d.hr);
+        const avgHr = hrs.length > 0 ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : (currentHr > 0 ? currentHr : 0);
+
+        let source = 'steza';
+        let notes = '';
+        if (snapshot.sessionIsGpx || isGpxFollowingActive) {
+            source = 'gpx';
+            notes = snapshot.sessionGpxName || (document.getElementById('gpxName')?.textContent || 'GPX Proga');
+        } else if (snapshot.sessionIsProgram || isProgramActive) {
+            source = 'interval';
+            notes = snapshot.sessionProgramName || 'Intervalni program';
+        }
+
+        const gpxMeta = encodeManualGpxName({ notes, source });
 
         const payload = {
             user_name: currentUser,
-            duration_sec: durationSec,
-            distance_km: parseFloat(currentDistance.toFixed(2)),
+            duration_sec: Math.max(1, durationSec),
+            distance_km: distKm,
             gravity_pct: 100,
-            effective_weight_kg: realWeightKg,
+            effective_weight_kg: realWeightKg || userProfiles[currentUser]?.weightKg || 70,
             impact_saved_kg: 0,
-            calories: Math.round(totalCalories),
+            calories: cals,
             avg_hr: avgHr,
-            gpx_name: encodeManualGpxName({ notes: isGpxFollowingActive ? (document.getElementById('gpxName')?.textContent || 'GPX') : '', source: isGpxFollowingActive ? 'gpx' : 'steza' })
+            gpx_name: gpxMeta
         };
 
         let cloudRow = null;
         if (supabaseClient) {
             try {
                 cloudRow = await insertWorkoutToSupabase(payload);
-                console.log('Vadba uspešno shranjena v Supabase!');
+                console.log('✅ Vadba uspešno shranjena v Supabase bazo workouts!');
             } catch (e) {
-                console.warn('Napaka pri pošiljanju v Supabase workouts:', e);
+                console.warn('Napaka pri pošiljanju v Supabase workouts (shranjujem lokalno):', e);
             }
         }
 
@@ -9102,22 +9154,29 @@ Uporabi null, če vrednosti ni.`;
             user_name: currentUser,
             date: new Date().toLocaleString('sl-SI'),
             created_at: cloudRow?.created_at || new Date().toISOString(),
-            duration_sec: durationSec,
-            distance_km: parseFloat(currentDistance.toFixed(2)),
-            user_weight_kg: realWeightKg,
-            effective_weight_kg: realWeightKg,
-            calories: Math.round(totalCalories),
+            duration_sec: Math.max(1, durationSec),
+            distance_km: distKm,
+            user_weight_kg: realWeightKg || userProfiles[currentUser]?.weightKg || 70,
+            effective_weight_kg: realWeightKg || userProfiles[currentUser]?.weightKg || 70,
+            calories: cals,
             avg_hr: avgHr,
-            gpx_name: payload.gpx_name
+            gpx_name: gpxMeta
         };
 
         const history = getLocalHistoryAll();
-        history.unshift(record);
+        const existingIdx = history.findIndex(h => cloudRow?.id && (h.id === cloudRow.id || h.supabase_id === cloudRow.id));
+        if (existingIdx >= 0) {
+            history[existingIdx] = record;
+        } else {
+            history.unshift(record);
+        }
         setLocalHistoryAll(history);
 
-        renderHistoryTable();
-        loadStats();
-        // Gemini coach: po shranjenem treningu predlagaj naslednje korake
+        try { await renderHistoryTable(); } catch (_) {}
+        try { loadStats(); } catch (_) {}
+        try { refreshHomeDashboard(); } catch (_) {}
+
+        // Gemini coach: po shranjenem treningu posodobi analizo
         runGeminiProgressCoach({ quiet: true, afterWorkout: true }).catch(() => {});
     }
 
