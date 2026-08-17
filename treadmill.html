@@ -2634,7 +2634,8 @@
     let controlPointChar = null;
     let fitshowWriteChar = null;
     let fitshowNotifyChar = null;
-    let treadmillProtocol = null; // 'ftms' | 'fitshow'
+    let rscChar = null;
+    let treadmillProtocol = null; // 'ftms' | 'fitshow' | 'ftms_monitor' | 'fitshow_monitor' | 'rsc_monitor'
     let treadmillBeltStarted = false;
     let lastTargetSpeed = 5.0;
     let lastTargetIncline = 0.0;
@@ -6481,12 +6482,20 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         return [
             FTMS_SERVICE_UUID,
             FITSHOW_SERVICE_UUID,
-            TREADMILL_DATA_CHAR_UUID,
-            TREADMILL_CONTROL_POINT_CHAR_UUID_1,
-            TREADMILL_CONTROL_POINT_CHAR_UUID_2,
-            FITSHOW_NOTIFY_UUID,
-            FITSHOW_WRITE_UUID,
-            '0000fe59-0000-1000-8000-00805f9b34fb'
+            '0000ffe0-0000-1000-8000-00805f9b34fb',
+            '0000ffe5-0000-1000-8000-00805f9b34fb',
+            '0000fe59-0000-1000-8000-00805f9b34fb',
+            '0000fee7-0000-1000-8000-00805f9b34fb',
+            '0000fe00-0000-1000-8000-00805f9b34fb',
+            '0000ffa0-0000-1000-8000-00805f9b34fb',
+            '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+            '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+            '00001814-0000-1000-8000-00805f9b34fb',
+            '00001816-0000-1000-8000-00805f9b34fb',
+            '0000180d-0000-1000-8000-00805f9b34fb',
+            '0000180a-0000-1000-8000-00805f9b34fb',
+            '00001800-0000-1000-8000-00805f9b34fb',
+            '00001801-0000-1000-8000-00805f9b34fb'
         ];
     }
 
@@ -6499,16 +6508,17 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             if (!silent) {
                 alert('Vaš mobilni brskalnik žal ne podpira Web Bluetooth API. Preverite, da uporabljate Google Chrome ali Microsoft Edge.');
             }
-            txtEl.textContent = 'Brez podpore za BLE';
+            if (txtEl) txtEl.textContent = 'Brez podpore za BLE';
             return false;
         }
 
-        if (!silent) txtEl.textContent = 'Iščem tekalno stezo...';
+        if (!silent && txtEl) txtEl.textContent = 'Iščem tekalno stezo...';
         treadmillProtocol = null;
         controlPointChar = null;
         fitshowWriteChar = null;
         fitshowNotifyChar = null;
         treadmillChar = null;
+        rscChar = null;
         treadmillBeltStarted = false;
 
         try {
@@ -6521,10 +6531,21 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                         filters: [
                             { services: [FTMS_SERVICE_UUID] },
                             { services: [FITSHOW_SERVICE_UUID] },
+                            { services: ['0000ffe0-0000-1000-8000-00805f9b34fb'] },
+                            { services: ['0000fe59-0000-1000-8000-00805f9b34fb'] },
                             { namePrefix: 'Kubi' },
                             { namePrefix: 'Fit' },
                             { namePrefix: 'GB' },
-                            { namePrefix: 'FS' }
+                            { namePrefix: 'FS' },
+                            { namePrefix: 'TM' },
+                            { namePrefix: 'Tread' },
+                            { namePrefix: 'Walk' },
+                            { namePrefix: 'Run' },
+                            { namePrefix: 'Pad' },
+                            { namePrefix: 'KL' },
+                            { namePrefix: 'Spax' },
+                            { namePrefix: 'Kingsmith' },
+                            { namePrefix: 'Rayspace' }
                         ],
                         optionalServices: optionalServices
                     });
@@ -6540,9 +6561,9 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             return await bindTreadmillDevice(device, { silent });
         } catch (e) {
             console.error("BLE error:", e);
-            txtEl.textContent = `Povezava spodletela: ${e.message}`;
+            if (txtEl) txtEl.textContent = `Povezava spodletela: ${e.message}`;
             if (!silent) {
-                alert(`Povezovanje s stezo spodletelo:\n${e.message}\n\nREŠITEV:\n1. Preverite, ali je Bluetooth na telefonu vklopljen.\n2. Odklopite aplikacijo FitShow na telefonu, če teče v ozadju.\n3. V nastavitvah telefona pod Chrome dovolite 'Naprave v bližini'.`);
+                alert(`Povezovanje s stezo spodletelo:\n${e.message}\n\nREŠITEV:\n1. Preverite, ali je Bluetooth na napravi vklopljen.\n2. Če imate na telefonu/tablici odprto aplikacijo FitShow ali Kinomap, jo popolnoma zaprite (lahko zaseda povezavo).\n3. V nastavitvah tablice pod Chrome dovolite 'Naprave v bližini' (Nearby devices) / 'Lokacija'.`);
             }
             return false;
         }
@@ -6553,12 +6574,12 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         const dotEl = document.getElementById('dotTreadmill');
 
         treadmillDevice = device;
-        if (!silent) txtEl.textContent = 'Povezovanje z ' + (treadmillDevice.name || 'stezo') + '...';
-        else txtEl.textContent = 'Samodejna povezava...';
+        if (!silent && txtEl) txtEl.textContent = 'Povezovanje z ' + (treadmillDevice.name || 'stezo') + '...';
+        else if (txtEl) txtEl.textContent = 'Samodejna povezava...';
 
-        if (treadmillDevice.gatt.connected) {
+        if (treadmillDevice.gatt && treadmillDevice.gatt.connected) {
             try { await treadmillDevice.gatt.disconnect(); } catch (e) {}
-            await sleepMs(200);
+            await sleepMs(250);
         }
 
         const server = await treadmillDevice.gatt.connect();
@@ -6568,6 +6589,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         controlPointChar = null;
         fitshowWriteChar = null;
         fitshowNotifyChar = null;
+        rscChar = null;
         treadmillProtocol = null;
         treadmillBeltStarted = false;
         fitshowDeviceState = 0;
@@ -6575,70 +6597,160 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         fitshowSessionLive = false;
         pendingFitshowTarget = null;
 
-        // 1) FitShow (FFF0) — prioritetno (večina "FitShow" stez ima tudi nepopoln FTMS)
-        let fsService = null;
+        // Univerzalno odkrivanje GATT storitev (Universal Service & Char Discovery)
+        let discoveredServices = [];
         try {
-            fsService = await server.getPrimaryService(FITSHOW_SERVICE_UUID);
-        } catch (e) {}
+            discoveredServices = await server.getPrimaryServices();
+        } catch (e) {
+            console.warn('getPrimaryServices() spodletel ali ni podprt, poskušam posamično:', e.message);
+        }
 
-        if (fsService) {
+        if (!discoveredServices || discoveredServices.length === 0) {
+            const candidateServiceUuids = [
+                FITSHOW_SERVICE_UUID,
+                FTMS_SERVICE_UUID,
+                '0000ffe0-0000-1000-8000-00805f9b34fb',
+                '0000fe59-0000-1000-8000-00805f9b34fb',
+                '0000ffe5-0000-1000-8000-00805f9b34fb',
+                '0000fee7-0000-1000-8000-00805f9b34fb',
+                '0000fe00-0000-1000-8000-00805f9b34fb',
+                '0000ffa0-0000-1000-8000-00805f9b34fb',
+                '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+                '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+                '00001814-0000-1000-8000-00805f9b34fb'
+            ];
+            discoveredServices = [];
+            for (const sUuid of candidateServiceUuids) {
+                try {
+                    const s = await server.getPrimaryService(sUuid);
+                    if (s) discoveredServices.push(s);
+                } catch (_) {}
+            }
+        }
+
+        let allChars = [];
+        for (const s of discoveredServices) {
             try {
-                fitshowNotifyChar = await fsService.getCharacteristic(FITSHOW_NOTIFY_UUID);
+                const chars = await s.getCharacteristics();
+                for (const c of chars) {
+                    allChars.push({
+                        serviceUuid: s.uuid.toLowerCase(),
+                        char: c,
+                        uuid: c.uuid.toLowerCase(),
+                        props: c.properties
+                    });
+                }
+            } catch (e) {
+                console.warn('GATT branje karakteristik storitve spodletelo:', s.uuid, e.message);
+            }
+        }
+
+        console.log('BLE odkritih karakteristik:', allChars.length, allChars.map(a => `${a.serviceUuid.slice(4,8)}->${a.uuid.slice(4,8)}`));
+
+        // 1. Dodelitev karakteristik po prioritetah
+        for (const item of allChars) {
+            const u = item.uuid;
+            const p = item.props;
+            const isWritable = !!(p.write || p.writeWithoutResponse);
+            const isNotifiable = !!(p.notify || p.indicate);
+
+            // FitShow Notify (fff1, ffe1, 8001, 6e400003 ali notify v fff0/ffe0/fe59/uart)
+            if (!fitshowNotifyChar && isNotifiable) {
+                if (u.includes('fff1') || u.includes('ffe1') || u.includes('8001') || u.includes('6e400003') ||
+                    item.serviceUuid.includes('fff0') || item.serviceUuid.includes('ffe0') || item.serviceUuid.includes('fe59') || item.serviceUuid.includes('6e400001')) {
+                    fitshowNotifyChar = item.char;
+                }
+            }
+
+            // FitShow Write (fff2, ffe2, 8002, 6e400002 ali writable v fff0/ffe0/fe59/uart)
+            if (!fitshowWriteChar && isWritable) {
+                if (u.includes('fff2') || u.includes('ffe2') || u.includes('8002') || u.includes('6e400002') ||
+                    (u.includes('fff1') && isWritable) || (u.includes('ffe1') && isWritable) ||
+                    item.serviceUuid.includes('fff0') || item.serviceUuid.includes('ffe0') || item.serviceUuid.includes('fe59') || item.serviceUuid.includes('6e400001')) {
+                    fitshowWriteChar = item.char;
+                }
+            }
+
+            // FTMS Treadmill Data (2ace ali 2acd)
+            if (!treadmillChar && isNotifiable && (u.includes('2ace') || u.includes('2acd'))) {
+                treadmillChar = item.char;
+            }
+
+            // FTMS Control Point (2ad9 ali 2ada z write/indicate)
+            if (!controlPointChar && (isWritable || p.indicate) && (u.includes('2ad9') || u.includes('2ada'))) {
+                controlPointChar = item.char;
+            }
+
+            // RSC (2a53)
+            if (!rscChar && isNotifiable && u.includes('2a53')) {
+                rscChar = item.char;
+            }
+        }
+
+        // 2. Določitev protokola
+        if (fitshowWriteChar) {
+            treadmillProtocol = 'fitshow';
+        } else if (controlPointChar) {
+            treadmillProtocol = 'ftms';
+        } else if (treadmillChar) {
+            treadmillProtocol = 'ftms_monitor';
+        } else if (fitshowNotifyChar) {
+            treadmillProtocol = 'fitshow_monitor';
+        } else if (rscChar) {
+            treadmillProtocol = 'rsc_monitor';
+        } else if (allChars.some(c => c.props.notify || c.props.indicate)) {
+            const fallbackNotif = allChars.find(c => c.props.notify || c.props.indicate);
+            fitshowNotifyChar = fallbackNotif.char;
+            treadmillProtocol = 'fitshow_monitor';
+        }
+
+        // 3. Naročnina na notifikacije
+        if (fitshowNotifyChar) {
+            try {
                 await fitshowNotifyChar.startNotifications();
                 fitshowNotifyChar.removeEventListener('characteristicvaluechanged', handleFitshowNotify);
                 fitshowNotifyChar.addEventListener('characteristicvaluechanged', handleFitshowNotify);
             } catch (e) {
-                console.warn('FitShow notify ni na voljo:', e);
-            }
-
-            try {
-                fitshowWriteChar = await fsService.getCharacteristic(FITSHOW_WRITE_UUID);
-                treadmillProtocol = 'fitshow';
-            } catch (e) {
-                console.warn('FitShow write ni na voljo:', e);
+                console.warn('FitShow notify startNotifications:', e.message);
             }
         }
 
-        // 2) FTMS — kot rezervna možnost / dodatni podatki
-        let ftmsService = null;
-        try {
-            ftmsService = await server.getPrimaryService(FTMS_SERVICE_UUID);
-        } catch (e) {}
-
-        if (ftmsService) {
+        if (treadmillChar) {
             try {
-                treadmillChar = await ftmsService.getCharacteristic(TREADMILL_DATA_CHAR_UUID);
                 await treadmillChar.startNotifications();
                 treadmillChar.removeEventListener('characteristicvaluechanged', handleTreadmillData);
                 treadmillChar.addEventListener('characteristicvaluechanged', handleTreadmillData);
             } catch (e) {
-                console.warn('FTMS data char ni na voljo:', e);
-            }
-
-            if (!fitshowWriteChar) {
-                try {
-                    controlPointChar = await ftmsService.getCharacteristic(TREADMILL_CONTROL_POINT_CHAR_UUID_2);
-                } catch (e1) {
-                    try {
-                        controlPointChar = await ftmsService.getCharacteristic(TREADMILL_CONTROL_POINT_CHAR_UUID_1);
-                    } catch (e2) {}
-                }
-
-                if (controlPointChar) {
-                    try {
-                        if (controlPointChar.properties.indicate || controlPointChar.properties.notify) {
-                            await controlPointChar.startNotifications();
-                        }
-                    } catch (e) {}
-                    treadmillProtocol = 'ftms';
-                    await bleWrite(controlPointChar, new Uint8Array([0x00]));
-                    await sleepMs(150);
-                }
+                console.warn('FTMS treadmillChar startNotifications:', e.message);
             }
         }
 
-        if (!isTreadmillControllable()) {
-            throw new Error('Steza je povezana, a ne najdem control/write karakteristike (FTMS 2AD9 ali FitShow FFF2).');
+        if (rscChar) {
+            try {
+                await rscChar.startNotifications();
+                rscChar.removeEventListener('characteristicvaluechanged', handleRscData);
+                rscChar.addEventListener('characteristicvaluechanged', handleRscData);
+            } catch (e) {
+                console.warn('RSC startNotifications:', e.message);
+            }
+        }
+
+        if (controlPointChar && treadmillProtocol === 'ftms') {
+            try {
+                if (controlPointChar.properties.indicate || controlPointChar.properties.notify) {
+                    await controlPointChar.startNotifications();
+                }
+            } catch (e) {}
+            try {
+                await bleWrite(controlPointChar, new Uint8Array([0x00]));
+                await sleepMs(150);
+            } catch (e) {
+                console.warn('FTMS OpCode 0x00 ni potreben ali ni podprt:', e.message);
+            }
+        }
+
+        if (!isTreadmillConnected()) {
+            throw new Error('Steza je povezavo sprejela, a na napravi ni bilo mogoče zaznati delujočih podatkovnih ali krmilnih kanalov (FTMS / FitShow / RSC). Preverite, da FitShow aplikacija ali ura nista hkrati povezani.');
         }
 
         // Shrani ime za naslednji samodejni reconnect
@@ -6653,15 +6765,22 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 if (d) d.classList.remove('connected');
                 controlPointChar = null;
                 fitshowWriteChar = null;
+                fitshowNotifyChar = null;
+                treadmillChar = null;
+                rscChar = null;
                 treadmillProtocol = null;
                 treadmillBeltStarted = false;
                 setTimeout(() => tryAutoConnectTreadmill({ silent: true }), 800);
             });
         } catch (e) {}
 
-        dotEl.classList.add('connected');
-        const modeLabel = treadmillProtocol === 'fitshow' ? 'FitShow' : 'FTMS';
-        txtEl.textContent = `${treadmillDevice.name || 'Povezano'} (${modeLabel}) · poslušam`;
+        if (dotEl) dotEl.classList.add('connected');
+        const modeLabel = treadmillProtocol === 'fitshow' ? 'FitShow' :
+                          treadmillProtocol === 'ftms' ? 'FTMS' :
+                          treadmillProtocol === 'ftms_monitor' ? 'FTMS Podatki' :
+                          treadmillProtocol === 'fitshow_monitor' ? 'FitShow Podatki' :
+                          treadmillProtocol === 'rsc_monitor' ? 'RSC Senzor' : 'BLE';
+        if (txtEl) txtEl.textContent = `${treadmillDevice.name || 'Povezano'} (${modeLabel}) · poslušam`;
         startContinuousTreadmillListen();
         return true;
     }
@@ -6681,7 +6800,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         // Watchdog: če povezava pade, jo vrni
         if (reconnectWatchdogInterval) clearInterval(reconnectWatchdogInterval);
         reconnectWatchdogInterval = setInterval(() => {
-            const connected = treadmillDevice?.gatt?.connected && isTreadmillControllable();
+            const connected = isTreadmillConnected();
             if (!connected) {
                 tryAutoConnectTreadmill({ silent: true });
             }
@@ -6695,7 +6814,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
     }
 
     async function tryAutoConnectTreadmill({ silent = true } = {}) {
-        if (isTreadmillControllable() && treadmillDevice?.gatt?.connected) return true;
+        if (isTreadmillConnected()) return true;
         if (!navigator.bluetooth) return false;
 
         try {
@@ -6731,13 +6850,13 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
 
         if (!silent) {
             const t = document.getElementById('textTreadmill');
-            if (t && !isTreadmillControllable()) t.textContent = 'Ni povezano — kliknite Poveži Stezo';
+            if (t && !isTreadmillConnected()) t.textContent = 'Ni povezano — kliknite Poveži Stezo';
         }
         return false;
     }
 
     async function ensureTreadmillConnected() {
-        if (isTreadmillControllable() && treadmillDevice?.gatt?.connected) return true;
+        if (isTreadmillConnected()) return true;
 
         const autoOk = await tryAutoConnectTreadmill({ silent: true });
         if (autoOk) return true;
@@ -6753,6 +6872,11 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
     function isTreadmillControllable() {
         return (treadmillProtocol === 'ftms' && !!controlPointChar) ||
                (treadmillProtocol === 'fitshow' && !!fitshowWriteChar);
+    }
+
+    function isTreadmillConnected() {
+        return !!(treadmillDevice && treadmillDevice.gatt && treadmillDevice.gatt.connected &&
+                 (controlPointChar || fitshowWriteChar || treadmillChar || fitshowNotifyChar || rscChar));
     }
 
     function sleepMs(ms) {
@@ -6811,10 +6935,14 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
     function updateTreadmillListenStatus() {
         const txtEl = document.getElementById('textTreadmill');
         if (!txtEl || !treadmillProtocol) return;
-        const modeLabel = treadmillProtocol === 'fitshow' ? 'FitShow' : 'FTMS';
+        const modeLabel = treadmillProtocol === 'fitshow' ? 'FitShow' :
+                          treadmillProtocol === 'ftms' ? 'FTMS' :
+                          treadmillProtocol === 'ftms_monitor' ? 'FTMS Podatki' :
+                          treadmillProtocol === 'fitshow_monitor' ? 'FitShow Podatki' :
+                          treadmillProtocol === 'rsc_monitor' ? 'RSC' : 'BLE';
         const st = treadmillProtocol === 'fitshow'
             ? ({ 1: 'STOP', 2: '3-2-1', 3: 'TEČE', 4: 'USTAVLJAM', 10: 'PAVZA' }[fitshowDeviceState] || `s${fitshowDeviceState}`)
-            : 'live';
+            : (treadmillProtocol.includes('monitor') ? 'monitor' : 'live');
         const bleAge = lastBleUpdateMs ? Math.round((Date.now() - lastBleUpdateMs) / 1000) : '—';
         txtEl.textContent = `${treadmillDevice?.name || 'Povezano'} (${modeLabel}) · ${st} · ${currentSpeed.toFixed(1)} km/h · BLE ${bleAge}s`;
     }
@@ -7253,6 +7381,10 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
 
     async function applyTreadmillTargets(speedKmh, inclinePercent, { start = false } = {}) {
         if (!isTreadmillControllable()) {
+            if (isTreadmillConnected()) {
+                console.info('Steza je v načinu spremljanja podatkov (brez oddaljenega BLE krmiljenja). Začnite tek na ročni konzoli steze.');
+                return true;
+            }
             console.warn('Steza ni pripravljena za ukaze (ni control point / FitShow write).');
             return false;
         }
@@ -7351,14 +7483,16 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                         { namePrefix: 'HUAWEI' },
                         { namePrefix: 'Huawei' },
                         { namePrefix: 'GT' },
-                        { namePrefix: 'Honor' }
+                        { namePrefix: 'Honor' },
+                        { namePrefix: 'Garmin' },
+                        { namePrefix: 'Polar' }
                     ],
-                    optionalServices: [HR_SERVICE_UUID, HR_MEASUREMENT_CHAR_UUID]
+                    optionalServices: [HR_SERVICE_UUID]
                 });
             } catch (e1) {
                 device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
-                    optionalServices: [HR_SERVICE_UUID, HR_MEASUREMENT_CHAR_UUID]
+                    optionalServices: [HR_SERVICE_UUID]
                 });
             }
 
@@ -7378,6 +7512,31 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             console.error("HR BLE error:", e);
             txtEl.textContent = `Napaka: ${e.message}`;
             alert(`Povezovanje z uro / trakom spodletelo:\n${e.message}\n\n1. Na uri vklopite 'Heart Rate Broadcast' ali 'Oddajanje utripa'.\n2. Prepričajte se, da ura ni že povezana z drugo aplikacijo.`);
+        }
+    }
+
+    function handleRscData(event) {
+        try {
+            const bytes = readBleBytes(event);
+            if (bytes.length < 4) return;
+            const data = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+            // Instantaneous speed: uint16 in 1/256 m/s -> km/h = (val / 256) * 3.6
+            const rawSpeed = data.getUint16(1, true);
+            const speedKmh = (rawSpeed / 256.0) * 3.6;
+            const cadence = data.getUint8(3); // SPM
+            if (speedKmh >= 0 && speedKmh < 35) {
+                currentSpeed = speedKmh;
+                lastBleUpdateMs = Date.now();
+            }
+            if (cadence > 0) {
+                const cadEl = document.getElementById('valCadence');
+                if (cadEl) cadEl.textContent = String(cadence);
+            }
+            onTreadmillLiveTelemetry();
+            updateUI();
+            updateTreadmillListenStatus();
+        } catch (e) {
+            console.warn('handleRscData:', e);
         }
     }
 
