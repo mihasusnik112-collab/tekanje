@@ -2646,6 +2646,7 @@
     let fitshowWasRunning = false;
     let fitshowSessionLive = false; // true šele ko je steza RES tekla (RUNNING + hitrost)
     let pendingFitshowTarget = null; // { speed, incline }
+    let fitshowStatusPollInterval = null;
     let fitshowTargetRetryTimer = null;
     let fitshowLastWriteMs = 0;
     let fitshowStartInProgress = false;
@@ -6763,6 +6764,10 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 const d = document.getElementById('dotTreadmill');
                 if (t) t.textContent = 'Prekinjeno — ponovno povezujem...';
                 if (d) d.classList.remove('connected');
+                if (fitshowStatusPollInterval) {
+                    clearInterval(fitshowStatusPollInterval);
+                    fitshowStatusPollInterval = null;
+                }
                 controlPointChar = null;
                 fitshowWriteChar = null;
                 fitshowNotifyChar = null;
