@@ -2209,7 +2209,7 @@
                 <div style="font-size: 0.95rem; font-weight: 700; color: var(--accent-cyan); margin-bottom: 0.65rem;">
                     ✍️ Ročni vnos vadbe (npr. iz ure / zunaj)
                 </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.5rem; margin-bottom: 0.65rem;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-bottom: 0.65rem;">
                     <div>
                         <label style="font-size:0.72rem;color:var(--text-muted);">Datum</label>
                         <input type="datetime-local" id="manualWorkoutDate" style="width:100%;">
@@ -2221,6 +2221,10 @@
                     <div>
                         <label style="font-size:0.72rem;color:var(--text-muted);">Razdalja (km)</label>
                         <input type="number" id="manualWorkoutDistance" min="0" step="0.01" placeholder="5.20" style="width:100%;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.72rem;color:var(--text-muted);">Naklon (%)</label>
+                        <input type="number" id="manualWorkoutIncline" min="0" max="25" step="0.5" placeholder="0.0" style="width:100%;">
                     </div>
                     <div>
                         <label style="font-size:0.72rem;color:var(--text-muted);">Kalorije</label>
@@ -2259,6 +2263,7 @@
                             <th>Vir</th>
                             <th>Trajanje</th>
                             <th>Razdalja</th>
+                            <th>Naklon</th>
                             <th>Teža</th>
                             <th>Kalorije</th>
                             <th>Povp. HR</th>
@@ -2267,7 +2272,7 @@
                         </tr>
                     </thead>
                     <tbody id="historyTableBody">
-                        <tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Ni še zabeleženih aktivnosti.</td></tr>
+                        <tr><td colspan="10" style="text-align: center; color: var(--text-muted);">Ni še zabeleženih aktivnosti.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -2487,7 +2492,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v52';
+    const APP_BUILD = 'v53';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -5640,7 +5645,12 @@
             const dist = Number(w.distance_km || w.distanceKm || 0).toFixed(2);
             const cals = w.calories || 0;
             const hr = w.avg_hr || w.avgHr || 0;
-            return `${idx + 1}. ${dateStr}: ${mins} min, ${dist} km, ${cals} kcal, avg HR ${hr || '—'}`;
+            const meta = parseWorkoutMeta(w.gpx_name);
+            const avgInc = w.avg_incline !== undefined ? Number(w.avg_incline) : (meta.avgIncline || 0);
+            const maxInc = w.max_incline !== undefined ? Number(w.max_incline) : (meta.maxIncline || 0);
+            const incStr = maxInc > 0 ? (avgInc === maxInc ? `${avgInc.toFixed(1)}%` : `povp. ${avgInc.toFixed(1)}% (max ${maxInc.toFixed(1)}%)`) : '0%';
+            const src = meta.source === 'manual' ? 'ročni vnos' : (meta.source === 'gpx' ? 'GPX proga' : (meta.source === 'interval' ? 'intervali' : 'steza'));
+            return `${idx + 1}. ${dateStr} (${src}): ${mins} min, ${dist} km, naklon ${incStr}, ${cals} kcal, avg HR ${hr ? hr + ' BPM' : '—'}${meta.notes ? ` [${meta.notes}]` : ''}`;
         }).join('\n');
     }
 
@@ -5766,11 +5776,11 @@ Naloga: Si osebni trener, ki SPREMLJA progress profila ${currentUser}.
 ${afterWorkout ? 'Pravkar je bil shranjen nov trening — vključi kratek povzetek zadnje vadbe in naslednji korak.' : 'Naredi analizo napredka na podlagi zgodovine.'}
 
 Odgovori v slovenščini, kratko (max ~220 besed), v strukturi:
-1) Ocena progressa (trend razdalje/časa/kalorij/HR)
-2) Kaj deluje / kaj popraviti
+1) Ocena progressa (trend razdalje/časa/naklona/kalorij/HR)
+2) Kaj deluje / kaj popraviti (vključno s primernostjo naklonov za sklepe in golenico/tibialis)
 3) Konkretni predlogi za naslednje 2–3 treninge (km/h, %, minute)
 4) Ena motivacijska opomba
-Za Miho upoštevaj tibialis (naklon ~8 %, zmerna hitrost).`;
+Za Miho upoštevaj tibialis (naklon ~7–8 %, zmerna hitrost hoje ~4.8–5.2 km/h).`;
 
             const { text, model } = await callGeminiGenerate({ userText: prompt, temperature: 0.55 });
             await recordGeminiRecommendation({ type: 'progress', text, model });
@@ -5793,8 +5803,8 @@ Za Miho upoštevaj tibialis (naklon ~8 %, zmerna hitrost).`;
 
 OBVEZNO:
 - Odgovarjaj v slovenščini, jasno, konkretno in prijazno.
-- Pokrivaj: fitnes, tek/hoja na tekalni stezi, intervalni treningi, šport, zdravje, regeneracija, prehrana, hidracija, spanec, srčni utrip, naklon, kalorije, sestava telesa, poškodbe (npr. shin splints / tibialis), motivacija.
-- Upoštevaj PODANI kontekst profila in meritev — ne ignoriraj teže, HR, naklona, omejitev.
+- Pokrivaj: fitnes, tek/hoja na tekalni stezi, intervalni treningi, analiza naklonov (incline %), šport, zdravje, regeneracija, prehrana, hidracija, spanec, srčni utrip, kalorije, sestava telesa, poškodbe (npr. shin splints / tibialis), motivacija.
+- Upoštevaj PODANI kontekst profila, naklonov in meritev — ne ignoriraj teže, HR, naklona (v zgodovini treningov in trenutni seji), omejitev.
 - Dajaj praktične predloge (številke: km/h, %, BPM, minute, kcal, g beljakovin …).
 - Če manjkajo podatki, povej kaj manjka in vseeno podaj najboljši možen nasvet.
 - Nisi zdravnik: pri bolečinah, bolezni ali sumu na poškodbo priporoči strokovno pomoč.
@@ -8718,6 +8728,10 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         const sessionAvgHr = hrs.length > 0 ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : (currentHr > 0 ? currentHr : 0);
         const sessionMaxHr = hrs.length > 0 ? Math.max(...hrs) : sessionAvgHr;
 
+        const incs = sessionWorkoutLog.map(d => Number(d.incline || 0));
+        let sessionAvgIncline = incs.length > 0 ? parseFloat((incs.reduce((a, b) => a + b, 0) / incs.length).toFixed(1)) : parseFloat(Number(currentIncline || 0).toFixed(1));
+        let sessionMaxIncline = incs.length > 0 ? parseFloat(Math.max(...incs).toFixed(1)) : sessionAvgIncline;
+
         const sessionSnapshot = {
             sessionStartTime,
             sessionDurationSec,
@@ -8727,6 +8741,8 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             sessionZoneTimes,
             sessionAvgHr,
             sessionMaxHr,
+            sessionAvgIncline,
+            sessionMaxIncline,
             sessionIsProgram,
             sessionIsGpx,
             sessionGpxName,
@@ -8831,9 +8847,15 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         const cals = Math.round(Number(snapshot?.sessionCalories !== undefined ? snapshot.sessionCalories : totalCalories));
         const zTimes = snapshot?.sessionZoneTimes || zoneTimes || {};
 
+        const incAvg = snapshot?.sessionAvgIncline !== undefined ? Number(snapshot.sessionAvgIncline) : currentIncline;
+        const incMax = snapshot?.sessionMaxIncline !== undefined ? Number(snapshot.sessionMaxIncline) : incAvg;
+        const incFormatted = incMax > 0 ? (incAvg === incMax ? `${incAvg.toFixed(1)} %` : `${incAvg.toFixed(1)} % (max ${incMax.toFixed(1)} %)`) : '0.0 %';
+
         let userAdvice = "";
         if (currentUser === 'Miha') {
-            userAdvice = 'Pri naklonu 8% vaša golenica (tibialis) ni obremenjena z udarci, kalorijska poraba pa je bila maksimalna.';
+            userAdvice = incAvg >= 6.0
+                ? `Odlično Miha! S povprečnim naklonom ${incAvg.toFixed(1)}% je bila tvoja sprednja golenica (tibialis) popolnoma razbremenjena udarcev, kalorijska poraba pa visoka.`
+                : 'Za optimalno razbremenitev anteriornega tibialisa priporočamo naklon med 7% in 8% ter zmerno hitrost hoje.';
         } else {
             userAdvice = 'Bravo Veronika! Odlično opravljen trening z optimalno porabo kalorij in stabilno tekaško držo.';
         }
@@ -8876,6 +8898,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 <div>
                     <strong>${isFemale ? '👩 Tekačica:' : '👨 Tekač:'}</strong> ${currentUser}<br>
                     <strong>⏱️ Trajanje & Razdalja:</strong> ${durFormatted} | ${distKm} km<br>
+                    <strong>⛰️ Naklon steze:</strong> ${incFormatted}<br>
                     <strong>🔥 Porabljene Kalorije:</strong> ${cals} kcal (Fiziološki izračun)${snapshot?.sessionAvgHr > 0 ? `<br><strong>❤️ Povprečni utrip:</strong> ${snapshot.sessionAvgHr} BPM (max ${snapshot.sessionMaxHr || snapshot.sessionAvgHr} BPM)` : ''}
                 </div>
                 
@@ -8936,20 +8959,28 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         localStorage.setItem('ble_workout_imgs_v1', JSON.stringify(map || {}));
     }
 
-    function encodeManualGpxName({ notes = '', imageRef = '', source = 'manual' } = {}) {
-        // gpx_name uporabljamo kot metapodatke (brez spremembe sheme)
+    function encodeManualGpxName({ notes = '', imageRef = '', source = 'manual', avgIncline = 0, maxIncline = 0 } = {}) {
+        // gpx_name uporabljamo kot metapodatke (brez spremembe sheme v Supabase)
         const safeNotes = String(notes || '').replace(/\|/g, '/').slice(0, 180);
-        return `${source}|${safeNotes}|${imageRef || ''}`;
+        const incAvg = Number(avgIncline || 0).toFixed(1);
+        const incMax = Number(maxIncline || 0).toFixed(1);
+        return `${source}|${safeNotes}|${imageRef || ''}|${incAvg}|${incMax}`;
     }
 
     function parseWorkoutMeta(gpxName) {
-        if (!gpxName) return { source: 'steza', notes: '', imageRef: '' };
+        if (!gpxName) return { source: 'steza', notes: '', imageRef: '', avgIncline: 0, maxIncline: 0 };
         const str = String(gpxName);
         if (str.startsWith('manual|') || str.startsWith('steza|') || str.startsWith('interval|') || str.startsWith('gpx|')) {
             const parts = str.split('|');
-            return { source: parts[0] || 'steza', notes: parts[1] || '', imageRef: parts[2] || '' };
+            return {
+                source: parts[0] || 'steza',
+                notes: parts[1] || '',
+                imageRef: parts[2] || '',
+                avgIncline: parseFloat(parts[3]) || 0,
+                maxIncline: parseFloat(parts[4]) || 0
+            };
         }
-        return { source: 'gpx', notes: str, imageRef: '' };
+        return { source: 'gpx', notes: str, imageRef: '', avgIncline: 0, maxIncline: 0 };
     }
 
     function initManualWorkoutForm() {
@@ -9059,9 +9090,9 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         try {
             const prompt = `${buildGeminiUserContext()}
 
-Naloga: Preberi metrike vadbe s priloženega screenshota pametne ure / Huawei Health / Garmin / Samsung Health.
+Naloga: Preberi metrike vadbe s priloženega screenshota pametne ure / tekalne steze / Huawei Health / Garmin / Samsung Health.
 Vrni SAMO JSON (brez markdown):
-{"duration_min":null,"distance_km":null,"calories":null,"avg_hr":null,"notes":"kratko"}
+{"duration_min":null,"distance_km":null,"incline_pct":null,"calories":null,"avg_hr":null,"notes":"kratko"}
 Uporabi null, če vrednosti ni.`;
             const { text } = await callGeminiGenerate({
                 userText: prompt,
@@ -9077,6 +9108,7 @@ Uporabi null, če vrednosti ni.`;
             if (!parsed) throw new Error('Gemini ni vrnil JSON meritev.');
             if (parsed.duration_min != null) document.getElementById('manualWorkoutMinutes').value = Number(parsed.duration_min);
             if (parsed.distance_km != null) document.getElementById('manualWorkoutDistance').value = Number(parsed.distance_km);
+            if (parsed.incline_pct != null) document.getElementById('manualWorkoutIncline').value = Number(parsed.incline_pct);
             if (parsed.calories != null) document.getElementById('manualWorkoutCalories').value = Math.round(Number(parsed.calories));
             if (parsed.avg_hr != null) document.getElementById('manualWorkoutHr').value = Math.round(Number(parsed.avg_hr));
             if (parsed.notes) document.getElementById('manualWorkoutNotes').value = parsed.notes;
@@ -9101,6 +9133,7 @@ Uporabi null, če vrednosti ni.`;
         initManualWorkoutForm();
         const minutes = parseFloat(document.getElementById('manualWorkoutMinutes').value);
         const distance = parseFloat(document.getElementById('manualWorkoutDistance').value);
+        const incline = parseFloat(document.getElementById('manualWorkoutIncline')?.value) || 0;
         const calories = parseFloat(document.getElementById('manualWorkoutCalories').value);
         const avgHr = parseFloat(document.getElementById('manualWorkoutHr').value);
         const weight = parseFloat(document.getElementById('manualWorkoutWeight').value) || realWeightKg || 70;
@@ -9122,7 +9155,7 @@ Uporabi null, če vrednosti ni.`;
             setWorkoutImagesMap(map);
         }
 
-        const gpxName = encodeManualGpxName({ notes, imageRef, source: 'manual' });
+        const gpxName = encodeManualGpxName({ notes, imageRef, source: 'manual', avgIncline: incline, maxIncline: incline });
         const payload = {
             user_name: currentUser,
             duration_sec: durationSec,
@@ -9145,7 +9178,7 @@ Uporabi null, če vrednosti ni.`;
                     const finalRef = await uploadWorkoutScreenshot(manualWorkoutImageDataUrl, cloudRow.id);
                     if (finalRef && finalRef !== imageRef) {
                         await supabaseClient.from('workouts').update({
-                            gpx_name: encodeManualGpxName({ notes, imageRef: finalRef, source: 'manual' })
+                            gpx_name: encodeManualGpxName({ notes, imageRef: finalRef, source: 'manual', avgIncline: incline, maxIncline: incline })
                         }).eq('id', cloudRow.id);
                         const map = getWorkoutImagesMap();
                         map[finalRef] = manualWorkoutImageDataUrl;
@@ -9170,11 +9203,13 @@ Uporabi null, če vrednosti ni.`;
             created_at: createdAt,
             duration_sec: durationSec,
             distance_km: parseFloat(distance.toFixed(2)),
+            avg_incline: incline,
+            max_incline: incline,
             user_weight_kg: weight,
             effective_weight_kg: weight,
             calories: Math.round(calories || 0),
             avg_hr: Math.round(avgHr || 0) || 0,
-            gpx_name: encodeManualGpxName({ notes, imageRef, source: 'manual' }),
+            gpx_name: encodeManualGpxName({ notes, imageRef, source: 'manual', avgIncline: incline, maxIncline: incline }),
             source: 'manual'
         };
 
@@ -9185,6 +9220,7 @@ Uporabi null, če vrednosti ni.`;
         // Počisti formo (razen teže)
         document.getElementById('manualWorkoutMinutes').value = '';
         document.getElementById('manualWorkoutDistance').value = '';
+        if (document.getElementById('manualWorkoutIncline')) document.getElementById('manualWorkoutIncline').value = '';
         document.getElementById('manualWorkoutCalories').value = '';
         document.getElementById('manualWorkoutHr').value = '';
         document.getElementById('manualWorkoutNotes').value = '';
@@ -9326,6 +9362,10 @@ Uporabi null, če vrednosti ni.`;
         const hrs = log.filter(d => d.hr > 0).map(d => d.hr);
         const avgHr = hrs.length > 0 ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : (currentHr > 0 ? currentHr : 0);
 
+        const incs = log.filter(d => d.incline !== undefined && d.incline !== null).map(d => Number(d.incline || 0));
+        let avgIncline = snapshot.sessionAvgIncline !== undefined ? Number(snapshot.sessionAvgIncline) : (incs.length > 0 ? parseFloat((incs.reduce((a, b) => a + b, 0) / incs.length).toFixed(1)) : 0);
+        let maxIncline = snapshot.sessionMaxIncline !== undefined ? Number(snapshot.sessionMaxIncline) : (incs.length > 0 ? parseFloat(Math.max(...incs).toFixed(1)) : avgIncline);
+
         let source = 'steza';
         let notes = '';
         if (snapshot.sessionIsGpx || isGpxFollowingActive) {
@@ -9336,7 +9376,7 @@ Uporabi null, če vrednosti ni.`;
             notes = snapshot.sessionProgramName || 'Intervalni program';
         }
 
-        const gpxMeta = encodeManualGpxName({ notes, source });
+        const gpxMeta = encodeManualGpxName({ notes, source, avgIncline, maxIncline });
 
         const payload = {
             user_name: currentUser,
@@ -9369,6 +9409,8 @@ Uporabi null, če vrednosti ni.`;
             created_at: cloudRow?.created_at || new Date().toISOString(),
             duration_sec: Math.max(1, durationSec),
             distance_km: distKm,
+            avg_incline: avgIncline,
+            max_incline: maxIncline,
             user_weight_kg: realWeightKg || userProfiles[currentUser]?.weightKg || 70,
             effective_weight_kg: realWeightKg || userProfiles[currentUser]?.weightKg || 70,
             calories: cals,
@@ -9450,7 +9492,7 @@ Uporabi null, če vrednosti ni.`;
         if (nameEl) nameEl.textContent = currentUser;
 
         if (validHistory.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Ni še zabeleženih aktivnosti.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted);">Ni še zabeleženih aktivnosti.</td></tr>`;
             return;
         }
 
@@ -9465,7 +9507,10 @@ Uporabi null, če vrednosti ni.`;
             const min = Math.floor(dur / 60);
             const sec = dur % 60;
             const meta = parseWorkoutMeta(item.gpx_name);
-            const sourceLabel = meta.source === 'manual' ? '✍️ Ročno' : (meta.source === 'gpx' ? '🗺️ GPX' : '🏃 Steza');
+            const avgInc = item.avg_incline !== undefined ? Number(item.avg_incline) : (meta.avgIncline || 0);
+            const maxInc = item.max_incline !== undefined ? Number(item.max_incline) : (meta.maxIncline || 0);
+            const inclineDisplay = maxInc > 0 ? (avgInc === maxInc ? `<strong>${avgInc.toFixed(1)}%</strong>` : `<strong>${avgInc.toFixed(1)}%</strong> <span style="font-size:0.7rem;color:var(--text-muted);">(max ${maxInc.toFixed(1)}%)</span>`) : '<span style="color:var(--text-muted);">0.0%</span>';
+            const sourceLabel = meta.source === 'manual' ? '✍️ Ročno' : (meta.source === 'gpx' ? '🗺️ GPX' : (meta.source === 'interval' ? '⚡ Intervali' : '🏃 Steza'));
             const rowId = `histimg_${String(item.id).replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
             tbody.innerHTML += `
@@ -9474,11 +9519,12 @@ Uporabi null, če vrednosti ni.`;
                     <td>${sourceLabel}</td>
                     <td>${min}m ${sec}s</td>
                     <td>${dist.toFixed(2)} km</td>
+                    <td>${inclineDisplay}</td>
                     <td>${weight} kg</td>
                     <td>${cals} kcal</td>
                     <td>${hr}${hr !== '--' ? ' BPM' : ''}</td>
                     <td id="${rowId}" style="min-width:56px;">${meta.imageRef ? '…' : '—'}</td>
-                    <td><button class="btn btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="deleteHistoryItem('${item.id}')">Izbriši</button>
+                    <td><button class="btn btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="deleteHistoryItem('${item.id}')">Izbriši</button></td>
                 </tr>
             `;
 
@@ -9621,10 +9667,12 @@ Uporabi null, če vrednosti ni.`;
         const userHistory = getLocalHistoryAll().filter(i => (i.user || i.user_name) === currentUser);
         if (userHistory.length === 0) return alert("Ni podatkov.");
 
-        let csv = "data:text/csv;charset=utf-8,Uporabnik,Datum,Vir,Trajanje_s,Razdalja_km,Teza_kg,Kalorije_kcal,Povp_HR,Opomba\n";
+        let csv = "data:text/csv;charset=utf-8,Uporabnik,Datum,Vir,Trajanje_s,Razdalja_km,Naklon_povp_pct,Naklon_max_pct,Teza_kg,Kalorije_kcal,Povp_HR,Opomba\n";
         userHistory.forEach(r => {
             const meta = parseWorkoutMeta(r.gpx_name);
-            csv += `"${r.user || r.user_name}","${r.date || r.created_at || ''}","${meta.source}",${r.duration_sec || r.durationSec || 0},${r.distance_km || r.distanceKm || 0},${r.effective_weight_kg || r.user_weight_kg || realWeightKg || userProfiles[currentUser]?.weightKg || 70},${r.calories || 0},${r.avg_hr || ''},"${(meta.notes || '').replace(/"/g, "'")}"\n`;
+            const avgInc = r.avg_incline !== undefined ? Number(r.avg_incline) : (meta.avgIncline || 0);
+            const maxInc = r.max_incline !== undefined ? Number(r.max_incline) : (meta.maxIncline || 0);
+            csv += `"${r.user || r.user_name}","${r.date || r.created_at || ''}","${meta.source}",${r.duration_sec || r.durationSec || 0},${r.distance_km || r.distanceKm || 0},${avgInc.toFixed(1)},${maxInc.toFixed(1)},${r.effective_weight_kg || r.user_weight_kg || realWeightKg || userProfiles[currentUser]?.weightKg || 70},${r.calories || 0},${r.avg_hr || ''},"${(meta.notes || '').replace(/"/g, "'")}"\n`;
         });
 
         const encodedUri = encodeURI(csv);
