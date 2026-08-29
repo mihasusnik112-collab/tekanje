@@ -1120,6 +1120,131 @@
         .home-insight .label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; }
         .home-insight .value { font-size: 1.05rem; font-weight: 700; color: var(--text-main); }
         .home-insight .hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+        /* CELOSTNA OSKRBA & PREHRANA STILI */
+        .hol-subtab-bar {
+            display: flex;
+            gap: 0.45rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+            scrollbar-width: thin;
+            margin-bottom: 1rem;
+        }
+        .hol-subtab-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            padding: 0.5rem 0.85rem;
+            border-radius: 0.65rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .hol-subtab-btn:hover {
+            color: var(--text-main);
+            background: rgba(255,255,255,0.09);
+            border-color: rgba(6, 182, 212, 0.4);
+        }
+        .hol-subtab-btn.active {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2));
+            border-color: var(--accent-green);
+            color: #fff;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+        }
+        .hol-panel { display: none; flex-direction: column; gap: 1rem; }
+        .hol-panel.active { display: flex; }
+        .hol-metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.75rem;
+        }
+        .hol-card {
+            background: rgba(11, 15, 25, 0.7);
+            border: 1px solid var(--card-border);
+            border-radius: 0.9rem;
+            padding: 1rem;
+        }
+        .hol-card-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            margin-bottom: 0.45rem;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .hol-supp-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 0.75rem;
+            padding: 0.75rem 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            transition: border-color 0.2s;
+        }
+        .hol-supp-item:hover {
+            border-color: rgba(139, 92, 246, 0.4);
+        }
+        .hol-badge-form {
+            font-size: 0.7rem;
+            padding: 0.15rem 0.45rem;
+            border-radius: 999px;
+            font-weight: 600;
+        }
+        .hol-badge-capsule { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.4); }
+        .hol-badge-powder { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); }
+        .hol-badge-liquid { background: rgba(6, 182, 212, 0.2); color: #67e8f9; border: 1px solid rgba(6, 182, 212, 0.4); }
+        .hol-checklist-label {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            user-select: none;
+        }
+        .hol-checklist-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent-green);
+            cursor: pointer;
+        }
+        .breathing-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            background: radial-gradient(circle at center, rgba(6, 182, 212, 0.12), transparent 70%);
+            border-radius: 1rem;
+            border: 1px solid rgba(6, 182, 212, 0.25);
+            text-align: center;
+        }
+        .breathing-circle {
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            background: radial-gradient(circle at center, rgba(6, 182, 212, 0.4), rgba(16, 185, 129, 0.15));
+            border: 2px solid var(--accent-cyan);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: #fff;
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.4);
+            margin-bottom: 1rem;
+            transition: transform 3.8s ease-in-out;
+        }
+        .breathing-circle.inhale { transform: scale(1.35); border-color: var(--accent-green); box-shadow: 0 0 35px rgba(16, 185, 129, 0.6); }
+        .breathing-circle.hold { transform: scale(1.35); border-color: var(--accent-cyan); box-shadow: 0 0 35px rgba(6, 182, 212, 0.6); }
+        .breathing-circle.exhale { transform: scale(0.9); border-color: var(--accent-purple); box-shadow: 0 0 20px rgba(139, 92, 246, 0.4); }
     </style>
 </head>
 <body>
@@ -1148,7 +1273,8 @@
     <div class="clean-selector" id="appCleanSelector">
         <button class="selector-btn active" data-section="secLive" onclick="switchSection('secLive', event)">🏃♂️ Tek v Živo</button>
         <button class="selector-btn" data-section="secMedia" onclick="switchSection('secMedia', event)">🎬 Video in Audio</button>
-        <button class="selector-btn" data-section="secProfiles" onclick="switchSection('secProfiles', event)">⚙️ Profili & Nastavitve</button>
+        <button class="selector-btn" data-section="secProfiles" onclick="switchSection('secProfiles', event)">⚙️ Profili & Vprašalnik</button>
+        <button class="selector-btn" data-section="secHolisticCare" onclick="switchSection('secHolisticCare', event)">🥗 Celostna Oskrba & Prehrana</button>
         <button class="selector-btn" data-section="secGemini" onclick="switchSection('secGemini', event)">🤖 Gemini AI Asistent & Trener</button>
         <button class="selector-btn" data-section="secPrograms" onclick="switchSection('secPrograms', event)">⏱️ Intervalni Programi</button>
         <button class="selector-btn" data-section="secGpx" onclick="switchSection('secGpx', event)">🗺️ GPX & Supabase Proge</button>
@@ -1911,9 +2037,12 @@
                 </div>
             </div>
 
-            <div style="margin-top: 1.25rem; display: flex; justify-content: flex-end;">
+            <div style="margin-top: 1.25rem; display: flex; justify-content: flex-end; gap: 0.6rem; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="saveActiveProfileSettings(); switchSectionById('secHolisticCare');" style="font-weight: 800; font-size: 0.92rem; padding: 0.65rem 1.4rem; background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan)); color: #022c22;">
+                    🥗 Shrani &amp; Odpri Celostno Oskrbo
+                </button>
                 <button class="btn btn-purple" onclick="saveActiveProfileSettings()" style="font-weight: 800; font-size: 0.92rem; padding: 0.65rem 1.4rem; box-shadow: 0 4px 14px rgba(168, 85, 247, 0.4);">
-                    💾 Shrani Celostni Zdravstveni Vprašalnik
+                    💾 Shrani Vprašalnik
                 </button>
             </div>
         </div>
@@ -1950,6 +2079,440 @@
                 </div>
                 <div style="font-size:0.74rem;color:var(--text-muted);margin-top:0.45rem;line-height:1.4;">
                     💡 Ključ se shrani trajno v lokalni pomnilnik naprave za vse profile.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEKCIJA: CELOSTNA OSKRBA, PREHRANA, DODATKI, SPANJE & ZDRAVJE -->
+    <div id="secHolisticCare" class="section-view">
+        <div class="card" style="border-color: var(--accent-green); background: radial-gradient(circle at top left, rgba(16, 185, 129, 0.12), var(--card-bg) 75%);">
+            <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem;">
+                <div>
+                    <div class="card-title" style="color: var(--accent-green); display: flex; align-items: center; gap: 0.5rem; font-size: 1.25rem;">
+                        🥗 Celostna Zdravstvena Oskrba, Prehrana &amp; Regeneracija (<span id="holisticUserTitle">Miha</span>)
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+                        Zdravstveni vprašalnik · Personalizirana prehrana · Prehranski dodatki · Zdravila · Spanje &amp; Stres
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                    <button class="btn btn-purple" onclick="runGeminiHolisticCareAnalysis()" style="font-size: 0.8rem; padding: 0.45rem 0.85rem;" title="Gemini izdela 360° celostni načrt oskrbe">
+                        ✨ Gemini Celostni Načrt
+                    </button>
+                    <button class="btn btn-secondary" onclick="switchSectionById('secProfiles')" style="font-size: 0.8rem; padding: 0.45rem 0.85rem;" title="Uredi zdravstveni vprašalnik v profilih">
+                        ⚙️ Uredi Vprašalnik
+                    </button>
+                </div>
+            </div>
+
+            <!-- PODZAVIHRI CELOSTNE OSKRBE -->
+            <div class="hol-subtab-bar">
+                <button type="button" class="hol-subtab-btn active" id="btnHolTabHealth" onclick="switchHolisticSubTab('health')">
+                    📋 1. Zdravje &amp; Fiziologija
+                </button>
+                <button type="button" class="hol-subtab-btn" id="btnHolTabNutrition" onclick="switchHolisticSubTab('nutrition')">
+                    🥗 2. Prehrana &amp; Jedilniki
+                </button>
+                <button type="button" class="hol-subtab-btn" id="btnHolTabSupplements" onclick="switchHolisticSubTab('supplements')">
+                    💊 3. Prehranski Dodatki
+                </button>
+                <button type="button" class="hol-subtab-btn" id="btnHolTabSleepStress" onclick="switchHolisticSubTab('sleepStress')">
+                    😴 4. Spanje &amp; Stres
+                </button>
+                <button type="button" class="hol-subtab-btn" id="btnHolTabGeminiPlan" onclick="switchHolisticSubTab('geminiPlan')">
+                    🤖 5. Gemini AI 360° Načrt
+                </button>
+            </div>
+
+            <!-- PANEL 1: ZDRAVJE & FIZIOLOGIJA -->
+            <div id="holPanelHealth" class="hol-panel active">
+                <div class="hol-metric-grid">
+                    <div class="hol-card">
+                        <div class="hol-card-title">⚖️ Telesna Sestava</div>
+                        <div style="font-size:1.15rem;font-weight:800;color:#fff;" id="holMetricWeight">-- kg</div>
+                        <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.25rem;" id="holMetricBmi">ITM: --</div>
+                        <div style="font-size:0.75rem;color:var(--accent-cyan);margin-top:0.2rem;" id="holMetricAgeHeight">-- let · -- cm</div>
+                    </div>
+                    <div class="hol-card">
+                        <div class="hol-card-title">🔥 Dnevna Poraba (TDEE)</div>
+                        <div style="font-size:1.15rem;font-weight:800;color:var(--accent-green);" id="holMetricTdee">-- kcal</div>
+                        <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.25rem;" id="holMetricBmr">Bazalni (BMR): -- kcal</div>
+                        <div style="font-size:0.75rem;color:var(--accent-orange);margin-top:0.2rem;" id="holMetricDeficit">Cilj za izgubo maščob: -- kcal</div>
+                    </div>
+                    <div class="hol-card">
+                        <div class="hol-card-title">❤️ Srce &amp; Krvni Tlak</div>
+                        <div style="font-size:1.05rem;font-weight:700;color:#fff;" id="holMetricBp">--</div>
+                        <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.25rem;" id="holMetricMaxHr">Max HR: -- BPM</div>
+                        <div style="font-size:0.75rem;color:var(--accent-green);margin-top:0.2rem;" id="holMetricFatBurnHr">Zone 2: -- BPM</div>
+                    </div>
+                    <div class="hol-card">
+                        <div class="hol-card-title">🛡️ Stanje Sklepov &amp; Golenice</div>
+                        <div style="font-size:0.85rem;font-weight:700;color:#fca5a5;" id="holMetricInjuryTitle">Tibialis &amp; Sklepi</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;line-height:1.35;" id="holMetricInjuryDesc">--</div>
+                    </div>
+                </div>
+
+                <div class="hol-card" style="border-color: rgba(239, 68, 68, 0.35); background: rgba(239, 68, 68, 0.05);">
+                    <div class="hol-card-title" style="color: var(--accent-red);">
+                        🏥 Zdravstveno Stanje, Zdravila &amp; Opozorila
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:0.75rem;font-size:0.82rem;line-height:1.45;color:#e2e8f0;">
+                        <div>
+                            <strong style="color:var(--text-muted);">Bolezni / Kronična stanja:</strong>
+                            <div id="holHealthMedicalVal" style="color:#fff;margin-top:0.15rem;">Brez posebnih stanj</div>
+                        </div>
+                        <div>
+                            <strong style="color:var(--text-muted);">Zdravila &amp; Redna terapija:</strong>
+                            <div id="holHealthMedicationsVal" style="color:#fff;margin-top:0.15rem;">Brez zdravil</div>
+                        </div>
+                        <div>
+                            <strong style="color:var(--text-muted);">Glavoboli &amp; Migrene:</strong>
+                            <div id="holHealthHeadachesVal" style="color:#fff;margin-top:0.15rem;">Nikoli</div>
+                        </div>
+                        <div>
+                            <strong style="color:var(--text-muted);">Raven stresa &amp; Energija:</strong>
+                            <div id="holHealthStressVal" style="color:#fff;margin-top:0.15rem;">Zmerna raven</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hol-card" style="border-color: rgba(6, 182, 212, 0.35);">
+                    <div class="hol-card-title" style="color: var(--accent-cyan);">
+                        💡 Fiziološka Priporočila za Vadbo na Tekalni Stezi
+                    </div>
+                    <div style="font-size: 0.85rem; line-height: 1.55; color: #cbd5e1;" id="holPhysiologyAdviceText">
+                        Nalaganje priporočil za profil...
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL 2: PREHRANA & JEDILNIKI -->
+            <div id="holPanelNutrition" class="hol-panel">
+                <div class="hol-card" style="border-color: var(--accent-green); background: rgba(16, 185, 129, 0.06);">
+                    <div class="card-header" style="margin-bottom:0.6rem;">
+                        <div class="hol-card-title" style="color: var(--accent-green); font-size: 0.95rem;">
+                            🎯 Ciljni Dnevni Vnos Makrohranil za <span id="holNutrUserLabel">Miha</span>
+                        </div>
+                        <span class="badge" style="border-color:var(--accent-green);color:var(--accent-green);" id="holNutrDietBadge">Uravnotežena</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.65rem;">
+                        <div style="background: rgba(11, 15, 25, 0.6); padding: 0.65rem; border-radius: 0.65rem; border: 1px solid var(--card-border); text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-muted);">KALORIJE / DAN</div>
+                            <div style="font-size: 1.15rem; font-weight: 800; color: #fff;" id="holNutrCals">--</div>
+                            <div style="font-size: 0.68rem; color: var(--accent-green);" id="holNutrCalsHint">deficit za fatburn</div>
+                        </div>
+                        <div style="background: rgba(11, 15, 25, 0.6); padding: 0.65rem; border-radius: 0.65rem; border: 1px solid var(--card-border); text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-muted);">BELJAKOVINE</div>
+                            <div style="font-size: 1.15rem; font-weight: 800; color: var(--accent-cyan);" id="holNutrProtein">-- g</div>
+                            <div style="font-size: 0.68rem; color: var(--text-muted);" id="holNutrProteinPerKg">~1.8 g/kg</div>
+                        </div>
+                        <div style="background: rgba(11, 15, 25, 0.6); padding: 0.65rem; border-radius: 0.65rem; border: 1px solid var(--card-border); text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-muted);">ZDRAVE MAŠČOBE</div>
+                            <div style="font-size: 1.15rem; font-weight: 800; color: var(--accent-orange);" id="holNutrFats">-- g</div>
+                            <div style="font-size: 0.68rem; color: var(--text-muted);">~0.8 g/kg (hormoni)</div>
+                        </div>
+                        <div style="background: rgba(11, 15, 25, 0.6); padding: 0.65rem; border-radius: 0.65rem; border: 1px solid var(--card-border); text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-muted);">OGLJIKOVI HIDRATI</div>
+                            <div style="font-size: 1.15rem; font-weight: 800; color: var(--accent-pink);" id="holNutrCarbs">-- g</div>
+                            <div style="font-size: 0.68rem; color: var(--text-muted);">energija za stezo</div>
+                        </div>
+                        <div style="background: rgba(11, 15, 25, 0.6); padding: 0.65rem; border-radius: 0.65rem; border: 1px solid var(--card-border); text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-muted);">VODA / TEKOČINA</div>
+                            <div style="font-size: 1.15rem; font-weight: 800; color: #38bdf8;" id="holNutrWater">-- L</div>
+                            <div style="font-size: 0.68rem; color: var(--text-muted);">+ 0.5L ob vadbi</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ČASOVNICA OBROKOV (NUTRIENT TIMING) -->
+                <div class="hol-card">
+                    <div class="hol-card-title">⏰ Strategija &amp; Časovna Razporeditev Obrokov (Nutrient Timing)</div>
+                    <div style="display: flex; flex-direction: column; gap: 0.65rem; font-size: 0.82rem;">
+                        <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+                            <span style="font-size: 1.25rem;">🌅</span>
+                            <div>
+                                <strong style="color: #fff;">1. Jutranji obrok (Stabilizacija krvnega sladkorja):</strong>
+                                <div style="color: var(--text-muted); margin-top: 0.1rem;">Visok beljakovinski delež z vlakninami (jajca z avokadom ali grški jogurt / ovsena kaša z merico beljakovin in jagodičevjem). Brez sladkih pekovskih izdelkov.</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+                            <span style="font-size: 1.25rem;">⚡</span>
+                            <div>
+                                <strong style="color: var(--accent-orange);">2. Obrok pred vadbo na stezi (1.5 – 2 uri prej):</strong>
+                                <div style="color: var(--text-muted); margin-top: 0.1rem;">Lahek, hitro prebavljiv obrok (npr. banana, riževi vaflji s tanko plastjo arašidovega masla) + 300–400 ml vode za polno celično hidracijo pred naporom.</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+                            <span style="font-size: 1.25rem;">🏃</span>
+                            <div>
+                                <strong style="color: var(--accent-green);">3. Regeneracijski obrok po vadbi (30–60 min po teku):</strong>
+                                <div style="color: var(--text-muted); margin-top: 0.1rem;">Anabolično okno za obnovo mišic in glikogena: 25–35 g beljakovin (pusto meso, riba, tofu ali proteinski shake) + kompleksni ogljikovi hidrati (riž, sladki krompir, kvinoja) in zelenjava.</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+                            <span style="font-size: 1.25rem;">🌙</span>
+                            <div>
+                                <strong style="color: var(--accent-purple);">4. Lahka večerja za globok spanec (2.5 – 3 ure pred spanjem):</strong>
+                                <div style="color: var(--text-muted); margin-top: 0.1rem;">Hrana bogata z magnezijem in triptofanom (losos, puran, bučna semena, brokoli). Izogibajte se alkoholu, enostavnemu sladkorju in pretežkim maščobam, ki motijo fazo globokega spanca.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GEMINI AI GENERATOR JEDILNIKA -->
+                <div class="hol-card" style="border-color: var(--accent-cyan);">
+                    <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.65rem;">
+                        <div class="hol-card-title" style="color: var(--accent-cyan);">
+                            ✨ Gemini AI Personaliziran Generator Jedilnika
+                        </div>
+                        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                            <select id="holSelectDietStyle" style="font-size: 0.78rem; padding: 0.35rem 0.6rem;">
+                                <option value="balanced">Uravnotežen športni jedilnik</option>
+                                <option value="fatloss">Jedilnik za maksimalno kurjenje maščob (Zone 2)</option>
+                                <option value="highprotein">Visokobeljakovinski jedilnik</option>
+                                <option value="mediterranean">Mediteranski protivnetni jedilnik</option>
+                                <option value="lowcarb">Low-Carb / LCHF jedilnik</option>
+                                <option value="intermittent">Intermittent Fasting (16/8 protokol)</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="generateHolisticMealPlan()" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
+                                🍽️ Generiraj Jedilnik
+                            </button>
+                        </div>
+                    </div>
+                    <div id="holMealPlanResultBox" style="font-size: 0.85rem; line-height: 1.55; color: #cbd5e1; background: rgba(11,15,25,0.6); padding: 0.85rem; border-radius: 0.65rem; border: 1px solid var(--card-border);">
+                        Kliknite gumb '🍽️ Generiraj Jedilnik' zgoraj. Gemini bo sestavil konkreten načrt z gramaturami, sestavinami in recepti za zajtrk, kosilo, malico in večerjo glede na vaše podatke!
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL 3: PREHRANSKI DODATKI -->
+            <div id="holPanelSupplements" class="hol-panel">
+                <div class="hol-card" style="border-color: var(--accent-purple); background: rgba(139, 92, 246, 0.05);">
+                    <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.6rem;">
+                        <div>
+                            <div class="hol-card-title" style="color: var(--accent-purple); font-size: 0.95rem;">
+                                💊 Protokol Prehranskih Dodatkov v Različnih Oblikah
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                Kapsule · Praški v napitkih · Oljne kapljice · Šumeče oblike · Časovna sinergija
+                            </div>
+                        </div>
+                        <button class="btn btn-purple" onclick="runGeminiSupplementReview()" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
+                            ✨ Gemini Pregled Dodatkov
+                        </button>
+                    </div>
+
+                    <!-- PREGLED PO OBLIKAH -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
+                        <!-- KAPSULE IN TABLETE -->
+                        <div class="hol-card" style="background: rgba(11,15,25,0.6);">
+                            <div class="hol-card-title" style="color: #c4b5fd;">
+                                💊 1. Kapsule / Tablete
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 0.45rem; font-size: 0.78rem;">
+                                <div class="hol-supp-item">
+                                    <div>
+                                        <strong>Omega-3 (EPA / DHA)</strong>
+                                        <div style="color: var(--text-muted); font-size: 0.72rem;">1500–2000 mg · Protivnetno delovanje za sklepe in ožilje</div>
+                                    </div>
+                                    <span class="hol-badge-form hol-badge-capsule">Z obrokom</span>
+                                </div>
+                                <div class="hol-supp-item">
+                                    <div>
+                                        <strong>Magnezijev Bisglicinat</strong>
+                                        <div style="color: var(--text-muted); font-size: 0.72rem;">300–400 mg elementarnega Mg · Sprostitev mišic &amp; spanec</div>
+                                    </div>
+                                    <span class="hol-badge-form hol-badge-capsule">Zvečer</span>
+                                </div>
+                                <div class="hol-supp-item">
+                                    <div>
+                                        <strong>Cink pikolinat + B-Kompleks</strong>
+                                        <div style="color: var(--text-muted); font-size: 0.72rem;">15 mg Zn · Energijski metabolizem in imunski sistem</div>
+                                    </div>
+                                    <span class="hol-badge-form hol-badge-capsule">Zjutraj</span>
+                                </div>
+                                <div class="hol-supp-item">
+                                    <div>
+                                        <strong>Ašvaganda (KSM-66)</strong>
+                                        <div style="color: var(--text-muted); font-size: 0.72rem;">300–600 mg · Znižanje kortizola in obvladovanje stresa</div>
+                                    </div>
+                                    <span class="hol-badge-form hol-badge-capsule">Popoldne/Zvečer</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PRAŠKI IN NAPITKI -->
+                        <div class="hol-card" style="background: rgba(11,15,25,0.6);">
+                            <div class="hol-card-title" style="color: #6ee7b7;">
+                                🥤 2. Praški / Topljivi Napitki
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 0.45rem; font-size: 0.78rem;">
+                                <div class="hol-supp-item">
+                                    <div>
+                                        <strong>Elektroliti v prašku</strong>
+                                        <div style="color: var(--text-muted); font-size: 0.72rem;">Natrij, kalij, magnezij v 500ml vode brez dodanega sladkorja</div>
+                                    </div>
+                                    <span class="hol-badge-form hol-badge-powder">Med tekom</span>
+                                </div>
+                                <div class="hol-supp-item">
+                                    <div>
+                                        <strong>Sirotkine beljakovine (Whey / Izolat)</strong>
+                                        <div style="color: var(--text-muted); font-size: 0.72rem;">25–30 g beljakovin v vodi ali mleku za hitro sintezo mišic</div>
+                                    </div>
+                                    <span class="hol-badge-form hol-badge-powder">Po vadbi</span>
+                                </div>
+                                <div class="hol-supp-item">
+                                    <div>
+                                        <strong>Kreatin monohidrat</strong>
+                                        <div style="color: var(--text-muted); font-size: 0.72rem;">3–5 g dnevno · Celična energija (ATP), moč in regeneracija</div>
+                                    </div>
+                                    <span class="hol-badge-form hol-badge-powder">Vsak dan</span>
+                                </div>
+                                <div class="hol-supp-item">
+                                    <div>
+                                        <strong>Kolagenski peptidi + Vitamin C</strong>
+                                        <div style="color: var(--text-muted); font-size: 0.72rem;">10–15 g · Zaščita vezi, tetiv in golenice (tibialis)</div>
+                                    </div>
+                                    <span class="hol-badge-form hol-badge-powder">Zjutraj/Po vadbi</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- KAPLJICE IN TEKOČINE -->
+                        <div class="hol-card" style="background: rgba(11,15,25,0.6);">
+                            <div class="hol-card-title" style="color: #67e8f9;">
+                                🧪 3. Kapljice &amp; Tekoče Oblike
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 0.45rem; font-size: 0.78rem;">
+                                <div class="hol-supp-item">
+                                    <div>
+                                        <strong>Vitamin D3 + K2 (v oljnih kapljicah)</strong>
+                                        <div style="color: var(--text-muted); font-size: 0.72rem;">2000–4000 IE D3 + 100mcg K2 · Absorpcija kalcija v kosti</div>
+                                    </div>
+                                    <span class="hol-badge-form hol-badge-liquid">Zjutraj z maščobo</span>
+                                </div>
+                                <div class="hol-supp-item">
+                                    <div>
+                                        <strong>Tekoči izvleček kamilice / Pasijonke</strong>
+                                        <div style="color: var(--text-muted); font-size: 0.72rem;">Naravna pomiritev živčnega sistema pred spanjem</div>
+                                    </div>
+                                    <span class="hol-badge-form hol-badge-liquid">30min pred spanjem</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DNEVNI INTERAKTIVNI SLEDILNIK DODATKOV -->
+                    <div class="hol-card" style="border-color: var(--accent-green); background: rgba(16, 185, 129, 0.04);">
+                        <div class="card-header" style="margin-bottom: 0.5rem;">
+                            <div class="hol-card-title" style="color: var(--accent-green);">
+                                ✅ Dnevni Sledilnik Jemanja Dodatkov (<span id="holSuppTodayDate">Danes</span>)
+                            </div>
+                            <button class="btn btn-secondary" style="font-size:0.72rem;padding:0.25rem 0.5rem;" onclick="resetDailySupplements()">↺ Ponastavi dan</button>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.6rem;" id="holSuppChecklistGrid">
+                            <!-- DINAMIČNO GENERIRANI KLJUKCI -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hol-card" id="holSuppReviewBox" style="display:none; border-color: var(--accent-purple);">
+                    <div class="hol-card-title" style="color: var(--accent-pink);">
+                        💡 Gemini AI Ocena Prehranskih Dodatkov &amp; Varnost
+                    </div>
+                    <div id="holSuppReviewContent" style="font-size: 0.85rem; line-height: 1.55; color: #cbd5e1;"></div>
+                </div>
+            </div>
+
+            <!-- PANEL 4: SPANJE & STRES -->
+            <div id="holPanelSleepStress" class="hol-panel">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0.75rem;">
+                    <!-- 10-3-2-1-0 PROTOKOL ZA SPANEC -->
+                    <div class="hol-card" style="border-color: var(--accent-cyan); background: rgba(6, 182, 212, 0.05);">
+                        <div class="hol-card-title" style="color: var(--accent-cyan); font-size: 0.95rem;">
+                            🌙 Protokol 10-3-2-1-0 za Popolno Nočno Regeneracijo
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.65rem; font-size: 0.82rem; margin-top: 0.5rem;">
+                            <div style="display: flex; gap: 0.65rem; align-items: center;">
+                                <span style="font-size: 1.1rem; font-weight: 800; color: #38bdf8; min-width: 2.2rem;">10 h</span>
+                                <div><strong>Brez kofeina:</strong> Zadnja kava najmanj 10 ur pred spanjem (razpolovna doba kofeina je ~6 ur).</div>
+                            </div>
+                            <div style="display: flex; gap: 0.65rem; align-items: center;">
+                                <span style="font-size: 1.1rem; font-weight: 800; color: #38bdf8; min-width: 2.2rem;">3 h</span>
+                                <div><strong>Brez težke hrane &amp; alkohola:</strong> Prebava ponoči ne sme dvigovati srčnega utripa in telesne temperature.</div>
+                            </div>
+                            <div style="display: flex; gap: 0.65rem; align-items: center;">
+                                <span style="font-size: 1.1rem; font-weight: 800; color: #38bdf8; min-width: 2.2rem;">2 h</span>
+                                <div><strong>Brez intenzivnega treninga:</strong> Zaključi tek ali hojo v klanec vsaj 2 uri pred spanjem za padec adrenalina.</div>
+                            </div>
+                            <div style="display: flex; gap: 0.65rem; align-items: center;">
+                                <span style="font-size: 1.1rem; font-weight: 800; color: #38bdf8; min-width: 2.2rem;">1 h</span>
+                                <div><strong>Brez modre svetlobe / zaslonov:</strong> Izklopi telefon/tablico ali uporabi nočni filter za naraven dvig melatonina.</div>
+                            </div>
+                            <div style="display: flex; gap: 0.65rem; align-items: center;">
+                                <span style="font-size: 1.1rem; font-weight: 800; color: var(--accent-green); min-width: 2.2rem;">0</span>
+                                <div><strong>Nočnih prebujanj:</strong> Temna, prezračena soba z idealno temperaturo 18–19 °C.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- INTERAKTIVNI DIHALNI VODNIK (BOX BREATHING / 4-7-8) -->
+                    <div class="hol-card" style="border-color: var(--accent-green); display: flex; flex-direction: column;">
+                        <div class="hol-card-title" style="color: var(--accent-green); font-size: 0.95rem;">
+                            🧘 Dihalna Vaja za Takojšnjo Sprostitev &amp; Padec Utripa
+                        </div>
+                        <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.85rem;">
+                            Aktivira parasimpatični živec (vagus), zniža raven kortizola in umiri srčni utrip po napornem teku ali stresnem dnevu.
+                        </p>
+                        
+                        <div class="breathing-box" style="flex: 1;">
+                            <div class="breathing-circle" id="breathingCircleEl">
+                                <span id="breathingPhaseText" style="font-size: 0.95rem;">VDIH</span>
+                                <span id="breathingSecText" style="font-size: 1.4rem; font-weight: 800;">4s</span>
+                            </div>
+                            <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.75rem;" id="breathingInstructionText">
+                                Škatlasto dihanje (Box Breathing): 4s vdih ➔ 4s zadrži ➔ 4s izdih ➔ 4s zadrži
+                            </div>
+                            <button class="btn btn-primary" id="btnToggleBreathing" onclick="toggleBreathingExercise()" style="font-size: 0.82rem; padding: 0.45rem 1rem;">
+                                ▶ Začni 2-minutno Dihanje
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hol-card" style="margin-top: 0.75rem; border-color: var(--accent-purple);">
+                    <div class="card-header" style="margin-bottom: 0.45rem;">
+                        <div class="hol-card-title" style="color: var(--accent-pink);">
+                            📉 Znižanje Stresa &amp; Regeneracijski Nasveti za <span id="holStressUserLabel">Miha</span>
+                        </div>
+                        <button class="btn btn-purple" onclick="runGeminiSleepStressAdvisor()" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;">
+                            ✨ Gemini Analiza Spanja
+                        </button>
+                    </div>
+                    <div id="holSleepAdvisorBox" style="font-size: 0.85rem; line-height: 1.55; color: #cbd5e1;">
+                        Kliknite '✨ Gemini Analiza Spanja' za podrobna priporočila glede na vaše vpisane podatke o spanju, stresu in energiji.
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL 5: GEMINI AI 360° NAČRT -->
+            <div id="holPanelGeminiPlan" class="hol-panel">
+                <div class="hol-card" style="border-color: var(--accent-purple); background: rgba(139, 92, 246, 0.08);">
+                    <div class="card-header" style="margin-bottom: 0.65rem;">
+                        <div class="hol-card-title" style="color: var(--accent-pink); font-size: 1.05rem;">
+                            🧠 360° Celostni Zdravstveni &amp; Športni Načrt Gemini AI
+                        </div>
+                        <button class="btn btn-purple" onclick="runGeminiHolisticCareAnalysis()" style="font-size: 0.82rem; padding: 0.45rem 1rem;">
+                            🚀 Osveži Celostni Načrt
+                        </button>
+                    </div>
+                    <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.85rem; line-height: 1.45;">
+                        Gemini AI v tem načrtu združi vse podatke: zdravstveno stanje, poškodbo golenice (tibialis), zdravila, krvni tlak, hidracijo, prehrano, prehranske dodatke v različnih oblikah, spanje, stres in zgodovino treningov ter pripravi optimalno strategijo.
+                    </p>
+                    <div id="holisticGeminiPlanOutput" style="font-size: 0.9rem; line-height: 1.6; color: var(--text-main); background: rgba(11,15,25,0.7); padding: 1.1rem; border-radius: 0.85rem; border: 1px solid var(--card-border); min-height: 160px;">
+                        Kliknite zgornji gumb '🚀 Osveži Celostni Načrt'. Gemini bo sintetiziral vaš celostni vprašalnik in pripravil strokovna priporočila za celostno oskrbo!
+                    </div>
                 </div>
             </div>
         </div>
@@ -1994,17 +2557,20 @@
 
             <!-- HITRI GEMINI AKCIJSKI GUMBI -->
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
-                <button class="btn btn-purple" onclick="runGeminiFullAnalysis()">
-                    ⚡ Celostna AI Analiza & Predlogi Vadb
+                <button class="btn btn-primary" onclick="switchSectionById('secHolisticCare')" style="background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan)); color: #022c22; font-weight: 800;">
+                    🥗 Celostna Oskrba &amp; Prehrana
                 </button>
-                <button class="btn btn-primary" onclick="generateAndApplyAiWorkout()">
-                    ✨ Generiraj & Vnesi Nov AI Trening
+                <button class="btn btn-purple" onclick="runGeminiFullAnalysis()">
+                    ⚡ Celostna AI Analiza
+                </button>
+                <button class="btn btn-secondary" onclick="generateAndApplyAiWorkout()">
+                    ✨ AI Trening
                 </button>
                 <button class="btn btn-secondary" onclick="answerOptimalHrWithGemini()">
                     ❤️ Optimalen Utrip (HR)
                 </button>
                 <button class="btn btn-secondary" onclick="runGeminiProgressCoach()">
-                    📈 Analiziraj moj progress
+                    📈 Moj Progress
                 </button>
             </div>
 
@@ -2492,7 +3058,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v53';
+    const APP_BUILD = 'v54';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -2959,6 +3525,9 @@
         if (secId === 'secProfiles') {
             syncProfilesFromSupabase().then(() => populateProfileForm());
         }
+        if (secId === 'secHolisticCare') {
+            renderHolisticCareDashboard();
+        }
         if (secId === 'secHistory') {
             initManualWorkoutForm();
             renderHistoryTable();
@@ -3322,6 +3891,7 @@
         refreshHrZoneLabels();
         updateHrHudUi(currentHr);
         await syncGeminiHealth(name);
+        renderHolisticCareDashboard();
         await loadSavedYouTubeVideos();
         await loadSavedYouTubeAudio();
         updateLiveKpaCard();
@@ -6022,6 +6592,442 @@ Uporabi null, če vrednosti ni mogoče zanesljivo prebrati.
         };
 
         reader.readAsDataURL(file);
+    }
+
+    // --- CELOSTNA OSKRBA, PREHRANA, PREHRANSKI DODATKI, SPANJE & ZDRAVJE ---
+    let activeHolisticSubTab = 'health';
+    let breathingInterval = null;
+    let isBreathingActive = false;
+
+    function switchHolisticSubTab(tabKey) {
+        activeHolisticSubTab = tabKey;
+        const tabMap = {
+            health: { btn: 'btnHolTabHealth', panel: 'holPanelHealth' },
+            nutrition: { btn: 'btnHolTabNutrition', panel: 'holPanelNutrition' },
+            supplements: { btn: 'btnHolTabSupplements', panel: 'holPanelSupplements' },
+            sleepStress: { btn: 'btnHolTabSleepStress', panel: 'holPanelSleepStress' },
+            geminiPlan: { btn: 'btnHolTabGeminiPlan', panel: 'holPanelGeminiPlan' }
+        };
+
+        Object.keys(tabMap).forEach(k => {
+            const entry = tabMap[k];
+            const btnEl = document.getElementById(entry.btn);
+            const pnlEl = document.getElementById(entry.panel);
+            if (btnEl) btnEl.classList.toggle('active', k === tabKey);
+            if (pnlEl) pnlEl.classList.toggle('active', k === tabKey);
+        });
+
+        if (tabKey === 'supplements') {
+            renderDailySupplementChecklist();
+        }
+    }
+
+    function renderHolisticCareDashboard() {
+        const prof = userProfiles[currentUser] || {};
+        const isFemale = prof.gender === 'female';
+        const weight = parseFloat(prof.weightKg) || (isFemale ? 65 : 85);
+        const height = parseFloat(prof.heightCm) || (isFemale ? 168 : 180);
+        const age = parseInt(prof.age) || (prof.birthdate ? (calcAgeFromBirthdate(prof.birthdate) || 30) : 30);
+        const h = prof.healthDetails || {};
+
+        // 1. Zglavja & imena
+        const titleEl = document.getElementById('holisticUserTitle');
+        if (titleEl) titleEl.textContent = currentUser;
+        const nutrUserLabel = document.getElementById('holNutrUserLabel');
+        if (nutrUserLabel) nutrUserLabel.textContent = currentUser;
+        const stressUserLabel = document.getElementById('holStressUserLabel');
+        if (stressUserLabel) stressUserLabel.textContent = currentUser;
+
+        // 2. Telesna sestava in ITM
+        const bmi = (weight / Math.pow(height / 100, 2)).toFixed(1);
+        let bmiCat = "Normalna teža";
+        if (bmi < 18.5) bmiCat = "Vitko";
+        else if (bmi >= 25 && bmi < 30) bmiCat = "Povečana teža";
+        else if (bmi >= 30) bmiCat = "Povišan ITM";
+
+        const weightEl = document.getElementById('holMetricWeight');
+        if (weightEl) weightEl.textContent = `${weight.toFixed(1)} kg`;
+        const bmiEl = document.getElementById('holMetricBmi');
+        if (bmiEl) bmiEl.textContent = `ITM: ${bmi} (${bmiCat})`;
+        const ageHeightEl = document.getElementById('holMetricAgeHeight');
+        if (ageHeightEl) ageHeightEl.textContent = `${age} let · ${height} cm`;
+
+        // 3. Kalorije: BMR (Mifflin-St Jeor) in TDEE
+        const bmr = Math.round(isFemale
+            ? (10 * weight + 6.25 * height - 5 * age - 161)
+            : (10 * weight + 6.25 * height - 5 * age + 5));
+        const tdee = Math.round(bmr * 1.38); // Zmerna aktivnost s stezo
+        const targetCals = Math.max(1400, tdee - 400); // 400 kcal deficit za kurjenje maščob
+
+        const tdeeEl = document.getElementById('holMetricTdee');
+        if (tdeeEl) tdeeEl.textContent = `${tdee} kcal`;
+        const bmrEl = document.getElementById('holMetricBmr');
+        if (bmrEl) bmrEl.textContent = `Bazalni (BMR): ${bmr} kcal`;
+        const deficitEl = document.getElementById('holMetricDeficit');
+        if (deficitEl) deficitEl.textContent = `Cilj za izgubo maščob: ~${targetCals} kcal`;
+
+        // 4. Srčni utrip & cone
+        const maxHr = Math.round(prof.maxHr || (220 - age));
+        const fatBurnMin = Math.round(maxHr * 0.60);
+        const fatBurnMax = Math.round(maxHr * 0.75);
+
+        const bpEl = document.getElementById('holMetricBp');
+        if (bpEl) bpEl.textContent = h.bloodPressure || '120/80 mmHg';
+        const maxHrEl = document.getElementById('holMetricMaxHr');
+        if (maxHrEl) maxHrEl.textContent = `Max HR: ${maxHr} BPM`;
+        const fatBurnHrEl = document.getElementById('holMetricFatBurnHr');
+        if (fatBurnHrEl) fatBurnHrEl.textContent = `Zone 2: ${fatBurnMin}–${fatBurnMax} BPM`;
+
+        // 5. Poškodbe & Sklepi / Tibialis
+        const injuryTitleEl = document.getElementById('holMetricInjuryTitle');
+        const injuryDescEl = document.getElementById('holMetricInjuryDesc');
+        if (currentUser === 'Miha') {
+            if (injuryTitleEl) injuryTitleEl.textContent = 'Tibialis Anterior (Golenica)';
+            if (injuryDescEl) injuryDescEl.innerHTML = '<span style="color:#67e8f9;">Rehabilitacija:</span> Hoja v klanec (naklon 7–8%), hitrost ~4.8–5.2 km/h, mehko blaženje 30 kPa, brez sunkovitega teka po ravnem.';
+        } else {
+            if (injuryTitleEl) injuryTitleEl.textContent = 'Sklepi & Varnost';
+            if (injuryDescEl) injuryDescEl.textContent = h.injuries || 'Brez zaznanih poškodb. Ohranjajte stabilno tekaško kadenco.';
+        }
+
+        // 6. Zdravstvene vrednosti v pregledni kartici
+        const setVal = (id, val, fallback = '—') => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = (val && String(val).trim()) ? val : fallback;
+        };
+        setVal('holHealthMedicalVal', h.medical, 'Ni posebnih kroničnih stanj');
+        setVal('holHealthMedicationsVal', h.medications, 'Brez rednih zdravil');
+        setVal('holHealthHeadachesVal', h.headaches, 'Nikoli / zelo redko');
+        setVal('holHealthStressVal', `${h.stressLevel || 'Zmerna raven'} (Energija: ${h.energyLevel || 'Dobra'})`);
+
+        // 7. Fiziološki nasvet za profil
+        const adviceEl = document.getElementById('holPhysiologyAdviceText');
+        if (adviceEl) {
+            if (currentUser === 'Miha') {
+                adviceEl.innerHTML = `
+                    • <strong style="color:var(--accent-green);">Optimalen kardio režim:</strong> Zaradi sprednje tibialne mišice (golenica) je tek po ravnem odsvetovan. Hoja pod <strong>naklonom 7–8 % pri hitrosti 4.8–5.2 km/h</strong> omogoča popolno razbremenitev pokostnice, hkrati pa v Coni 2 (<strong>${fatBurnMin}–${fatBurnMax} BPM</strong>) maksimalno kuri maščobo.<br>
+                    • <strong style="color:var(--accent-cyan);">Blaženje tekalne steze:</strong> Priporočen tlak zračnega blaženja je <strong>30 kPa</strong> za mehak pristanek stopala.<br>
+                    • <strong style="color:var(--accent-orange);">Regeneracija:</strong> Po hoji naredite nežno raztezanje meč in dorzifleksijo stopal ter zaužijte magnezij za preprečevanje zakrčenosti.
+                `;
+            } else {
+                adviceEl.innerHTML = `
+                    • <strong style="color:var(--accent-green);">Optimalen kardio režim:</strong> Intervalni tek ali zmeren aerobni tek v Coni 2 (<strong>${fatBurnMin}–${fatBurnMax} BPM</strong>) z naklonom 1–3 % za stabilno krepitev srčno-žilnega sistema.<br>
+                    • <strong style="color:var(--accent-pink);">Ženski fiziološki profil:</strong> Prilagodite intenzivnost počutju in fazi regeneracije. Poskrbite za zadosten vnos beljakovin in hidracijo z elektroliti.
+                `;
+            }
+        }
+
+        // 8. Makrohranila v zavihku prehrane
+        const proteinG = Math.round(weight * 1.8);
+        const fatG = Math.round(weight * 0.85);
+        const carbsG = Math.max(80, Math.round((targetCals - (proteinG * 4 + fatG * 9)) / 4));
+        const waterL = Math.max(2.2, ((weight * 0.033) + 0.4)).toFixed(1);
+
+        const nutrCalsEl = document.getElementById('holNutrCals');
+        if (nutrCalsEl) nutrCalsEl.textContent = `${targetCals} kcal`;
+        const nutrProtEl = document.getElementById('holNutrProtein');
+        if (nutrProtEl) nutrProtEl.textContent = `${proteinG} g`;
+        const nutrProtPerKgEl = document.getElementById('holNutrProteinPerKg');
+        if (nutrProtPerKgEl) nutrProtPerKgEl.textContent = `~1.8 g/kg (${Math.round(proteinG * 4)} kcal)`;
+        const nutrFatsEl = document.getElementById('holNutrFats');
+        if (nutrFatsEl) nutrFatsEl.textContent = `${fatG} g`;
+        const nutrCarbsEl = document.getElementById('holNutrCarbs');
+        if (nutrCarbsEl) nutrCarbsEl.textContent = `${carbsG} g`;
+        const nutrWaterEl = document.getElementById('holNutrWater');
+        if (nutrWaterEl) nutrWaterEl.textContent = `${waterL} L`;
+
+        const dietBadge = document.getElementById('holNutrDietBadge');
+        if (dietBadge) dietBadge.textContent = h.dietType || 'Uravnotežena';
+
+        renderDailySupplementChecklist();
+    }
+
+    function getTodayDateKey() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function getDailySupplementStorageKey() {
+        return `ble_supp_checklist_${currentUser}_${getTodayDateKey()}`;
+    }
+
+    function renderDailySupplementChecklist() {
+        const container = document.getElementById('holSuppChecklistGrid');
+        if (!container) return;
+
+        const dateEl = document.getElementById('holSuppTodayDate');
+        if (dateEl) {
+            dateEl.textContent = new Date().toLocaleDateString('sl-SI', { weekday: 'long', day: 'numeric', month: 'long' });
+        }
+
+        const savedState = JSON.parse(localStorage.getItem(getDailySupplementStorageKey())) || {};
+
+        const defaultSupps = [
+            { id: 'd3k2', label: 'Vitamin D3 + K2 (kapljice)', timing: 'Zjutraj ob zajtrku', form: 'Kapljice' },
+            { id: 'omega3', label: 'Omega-3 EPA/DHA (kapsula)', timing: 'Zjutraj ali ob kosilu', form: 'Kapsula' },
+            { id: 'zinc_b', label: 'Cink + B-kompleks', timing: 'Dopoldne z obrokom', form: 'Kapsula' },
+            { id: 'electrolytes', label: 'Elektroliti v vodi (bidon)', timing: 'Pred / med tekom', form: 'Prašek' },
+            { id: 'whey_protein', label: 'Beljakovinski shake (Whey / Rastlinski)', timing: 'Takoj po teku', form: 'Prašek' },
+            { id: 'collagen', label: 'Kolagen + Vit C (golenica/sklepi)', timing: 'Po vadbi ali zjutraj', form: 'Prašek' },
+            { id: 'creatine', label: 'Kreatin monohidrat (3–5g)', timing: 'Po vadbi v vodi', form: 'Prašek' },
+            { id: 'magnesium', label: 'Magnezijev bisglicinat', timing: '30 min pred spanjem', form: 'Kapsula' },
+            { id: 'ashwa', label: 'Ašvaganda KSM-66 (antistres)', timing: 'Zvečer', form: 'Kapsula' }
+        ];
+
+        let html = '';
+        defaultSupps.forEach(s => {
+            const isChecked = !!savedState[s.id];
+            html += `
+                <div class="hol-supp-item" style="background: ${isChecked ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.03)'}; border-color: ${isChecked ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.08)'};">
+                    <label class="hol-checklist-label">
+                        <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleHolisticSupplement('${s.id}', this.checked)">
+                        <div>
+                            <span style="font-weight:700;color:${isChecked ? '#fff' : '#e2e8f0'};text-decoration:${isChecked ? 'line-through' : 'none'};">${s.label}</span>
+                            <div style="font-size:0.7rem;color:var(--text-muted);">${s.timing} · <em>${s.form}</em></div>
+                        </div>
+                    </label>
+                    <span style="font-size:0.75rem;color:${isChecked ? 'var(--accent-green)' : 'var(--text-muted)'};">${isChecked ? '✅ Vzeto' : 'Čaka'}</span>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    function toggleHolisticSupplement(suppId, isChecked) {
+        const key = getDailySupplementStorageKey();
+        const savedState = JSON.parse(localStorage.getItem(key)) || {};
+        if (isChecked) {
+            savedState[suppId] = true;
+        } else {
+            delete savedState[suppId];
+        }
+        localStorage.setItem(key, JSON.stringify(savedState));
+        renderDailySupplementChecklist();
+    }
+
+    function resetDailySupplements() {
+        if (confirm('Ponastavim kljukice dodatkov za danes?')) {
+            localStorage.removeItem(getDailySupplementStorageKey());
+            renderDailySupplementChecklist();
+        }
+    }
+
+    // --- GEMINI AI CELOSTNA ANALIZA IN GENERATOR JEDILNIKA ---
+    async function generateHolisticMealPlan() {
+        if (!requireGeminiApiKey()) return;
+        if (geminiBusy) return;
+        geminiBusy = true;
+
+        const resultBox = document.getElementById('holMealPlanResultBox');
+        if (resultBox) resultBox.innerHTML = '<span style="color:var(--accent-cyan);">⏳ Gemini AI sestavlja vaš personaliziran celostni jedilnik z recepti in gramaturami…</span>';
+
+        const dietStyle = document.getElementById('holSelectDietStyle')?.value || 'balanced';
+
+        try {
+            const prompt = `${buildGeminiUserContext()}
+
+Naloga: Sestavi PODROBEN IN KONKRETEN JEDILNIK ZA DANAŠNJI DAN za uporabnika ${currentUser}.
+Stil prehrane: ${dietStyle}
+Upoštevaj:
+- Težo, spol, cilje vadbe na tekalni stezi (kurjenje maščob v Coni 2, zaščita golenice/tibialis).
+- Časovno razporeditev obrokov (zajtrk, obrok pred vadbo, regeneracijski obrok po vadbi, lahka večerja za spanec).
+- Točne gramature (npr. 80g ovsenih kosmičev, 200g piščančjih prsi, 150g borovnic), makrohranila (B / M / OH) in kalorije na obrok.
+- Preprosto pripravo z dostopnimi sestavinami.
+
+Odgovori v slovenščini, pregledno z ikonami in strukturiranimi odstavki.`;
+
+            const { text, model } = await callGeminiGenerate({ userText: prompt, temperature: 0.5 });
+            if (resultBox) {
+                resultBox.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;font-size:0.75rem;color:var(--text-muted);">
+                        <span>🍽️ Personaliziran jedilnik za ${currentUser}</span>
+                        <span>${model} · ${new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    ${formatGeminiHtml(text)}
+                `;
+            }
+            await recordGeminiRecommendation({ type: 'jedilnik', text, model });
+        } catch (err) {
+            console.warn(err);
+            if (resultBox) resultBox.innerHTML = `<span style="color:var(--accent-red);">Napaka pri generiranju: ${err.message || err}</span>`;
+        } finally {
+            geminiBusy = false;
+        }
+    }
+
+    async function runGeminiSupplementReview() {
+        if (!requireGeminiApiKey()) return;
+        if (geminiBusy) return;
+        geminiBusy = true;
+
+        const box = document.getElementById('holSuppReviewBox');
+        const content = document.getElementById('holSuppReviewContent');
+        if (box) box.style.display = 'block';
+        if (content) content.innerHTML = '<span style="color:var(--accent-purple);">⏳ Gemini pregleduje dodatke, oblike in morebitne interakcije…</span>';
+
+        try {
+            const prompt = `${buildGeminiUserContext()}
+
+Naloga: Preglej prehranske dodatke, njihove oblike (kapsule, praški, kapljice) in varnost za uporabnika ${currentUser}.
+Vključi:
+1) Oceno primernosti dodatkov glede na zdravstveno stanje, zdravila, poškodbo golenice (tibialis) in tek na stezi.
+2) Časovno sinergijo (kdaj vzeti kaj za maksimalno absorpcijo in preprečevanje motenj spanca).
+3) Opozorila glede varnosti ali morebitnih interakcij.
+Odgovori v slovenščini, kratko in strokovno.`;
+
+            const { text, model } = await callGeminiGenerate({ userText: prompt, temperature: 0.45 });
+            if (content) {
+                content.innerHTML = `
+                    <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">${formatGeminiDate(new Date().toISOString())} · Pregled dodatkov · ${model}</div>
+                    ${formatGeminiHtml(text)}
+                `;
+            }
+            await recordGeminiRecommendation({ type: 'dodatki', text, model });
+        } catch (err) {
+            console.warn(err);
+            if (content) content.innerHTML = `<span style="color:var(--accent-red);">Napaka: ${err.message || err}</span>`;
+        } finally {
+            geminiBusy = false;
+        }
+    }
+
+    async function runGeminiSleepStressAdvisor() {
+        if (!requireGeminiApiKey()) return;
+        if (geminiBusy) return;
+        geminiBusy = true;
+
+        const content = document.getElementById('holSleepAdvisorBox');
+        if (content) content.innerHTML = '<span style="color:var(--accent-cyan);">⏳ Gemini analizira vzorce spanja in regeneracije…</span>';
+
+        try {
+            const prompt = `${buildGeminiUserContext()}
+
+Naloga: Analiziraj spanje, raven stresa in energijo uporabnika ${currentUser}.
+Vključi:
+1) Oceno trenutnega spanca (${userProfiles[currentUser]?.healthDetails?.sleepHours || '7 ur'}, kakovost: ${userProfiles[currentUser]?.healthDetails?.sleepQuality || 'dobra'}).
+2) 3 konkretne večerne navade za znižanje kortizola po teku na stezi.
+3) Priporočila za magnezij, zelišča ali dihalne vaje pred spanjem.
+Odgovori v slovenščini, praktično in jedrnato.`;
+
+            const { text, model } = await callGeminiGenerate({ userText: prompt, temperature: 0.5 });
+            if (content) {
+                content.innerHTML = `
+                    <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">${formatGeminiDate(new Date().toISOString())} · Analiza spanja · ${model}</div>
+                    ${formatGeminiHtml(text)}
+                `;
+            }
+            await recordGeminiRecommendation({ type: 'spanje_stres', text, model });
+        } catch (err) {
+            console.warn(err);
+            if (content) content.innerHTML = `<span style="color:var(--accent-red);">Napaka: ${err.message || err}</span>`;
+        } finally {
+            geminiBusy = false;
+        }
+    }
+
+    async function runGeminiHolisticCareAnalysis() {
+        if (!requireGeminiApiKey()) return;
+        if (geminiBusy) return;
+        geminiBusy = true;
+
+        switchHolisticSubTab('geminiPlan');
+        const output = document.getElementById('holisticGeminiPlanOutput');
+        if (output) output.innerHTML = '<span style="color:var(--accent-pink);">⏳ Gemini AI pripravlja 360° Celostni Načrt Oskrbe (Trening + Prehrana + Dodatki + Spanje + Zdravje)…</span>';
+
+        try {
+            const prompt = `${buildGeminiUserContext()}
+
+Naloga: Naredi 360° CELOSTNI ZDRAVSTVENI & ŠPORTNI NAČRT OSKRBE za ${currentUser}.
+Strokovno in celovito obravnavaj:
+1. 🩺 ZDRAVSTVENA OBRAVNAVA & PREVENTIVA (varna vadba, krvni tlak, zdravila, zaščita golenice/tibialis z naklonom 7–8%).
+2. 🥗 NAČRT PREHRANJEVANJA (dnevni kalorijski in makro cilji za Zone 2 kurjenje maščob, razporeditev obrokov okoli teka).
+3. 💊 PREHRANSKI DODATKI V RAZLIČNIH OBLIKAH (kapsule, praški, kapljice, točen čas jemanja in namen).
+4. 😴 SPANJE, REGENERACIJA & KORTIZOL (protokol za znižanje stresa in globok nočni spanec).
+5. 🚀 3 KLJUČNE AKCIJE ZA DANAŠNJI DAN.
+
+Odgovori v slovenščini, strukturirano z naslovi in jasnimi alinejami.`;
+
+            const { text, model } = await callGeminiGenerate({ userText: prompt, temperature: 0.55 });
+            if (output) {
+                output.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;font-size:0.78rem;color:var(--text-muted);border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:0.4rem;">
+                        <strong style="color:var(--accent-pink);">360° Celostni Načrt za ${currentUser}</strong>
+                        <span>${model} · ${formatGeminiDate(new Date().toISOString())}</span>
+                    </div>
+                    ${formatGeminiHtml(text)}
+                `;
+            }
+            await recordGeminiRecommendation({ type: 'celostna_oskrba_360', text, model });
+            await recordGeminiChat('user', 'Izdelaj 360° celostni načrt oskrbe');
+            await recordGeminiChat('model', text);
+        } catch (err) {
+            console.warn(err);
+            if (output) output.innerHTML = `<span style="color:var(--accent-red);">Napaka: ${err.message || err}</span>`;
+        } finally {
+            geminiBusy = false;
+        }
+    }
+
+    // --- INTERAKTIVNO ŠKATLASTO DIHANJE (BOX BREATHING 4-4-4-4) ---
+    function toggleBreathingExercise() {
+        const btn = document.getElementById('btnToggleBreathing');
+        const circle = document.getElementById('breathingCircleEl');
+        const phaseText = document.getElementById('breathingPhaseText');
+        const secText = document.getElementById('breathingSecText');
+        const instrText = document.getElementById('breathingInstructionText');
+
+        if (isBreathingActive) {
+            // Ustavi dihanje
+            if (breathingInterval) clearInterval(breathingInterval);
+            breathingInterval = null;
+            isBreathingActive = false;
+            if (btn) btn.textContent = '▶ Začni 2-minutno Dihanje';
+            if (circle) {
+                circle.className = 'breathing-circle';
+            }
+            if (phaseText) phaseText.textContent = 'VDIH';
+            if (secText) secText.textContent = '4s';
+            if (instrText) instrText.textContent = 'Škatlasto dihanje (Box Breathing): 4s vdih ➔ 4s zadrži ➔ 4s izdih ➔ 4s zadrži';
+            return;
+        }
+
+        isBreathingActive = true;
+        if (btn) btn.textContent = '⏹ Ustavi Dihanje';
+
+        // 4 faze: Inhale (4s) -> Hold (4s) -> Exhale (4s) -> Hold (4s)
+        const phases = [
+            { name: 'VDIH', cls: 'inhale', hint: 'Globoko vdihnite skozi nos…', color: '#10b981' },
+            { name: 'ZADRŽI', cls: 'hold', hint: 'Zadržite zrak v pljučih…', color: '#06b6d4' },
+            { name: 'IZDIH', cls: 'exhale', hint: 'Počasi in popolnoma izdihnite skozi usta…', color: '#8b5cf6' },
+            { name: 'ZADRŽI', cls: 'hold', hint: 'Prazna pljuča, popolna sprostitev…', color: '#38bdf8' }
+        ];
+
+        let phaseIdx = 0;
+        let count = 4;
+
+        const updatePhase = () => {
+            const cur = phases[phaseIdx];
+            if (circle) {
+                circle.className = `breathing-circle ${cur.cls}`;
+            }
+            if (phaseText) {
+                phaseText.textContent = cur.name;
+                phaseText.style.color = cur.color;
+            }
+            if (secText) secText.textContent = `${count}s`;
+            if (instrText) instrText.textContent = cur.hint;
+        };
+
+        updatePhase();
+
+        breathingInterval = setInterval(() => {
+            count--;
+            if (count <= 0) {
+                phaseIdx = (phaseIdx + 1) % phases.length;
+                count = 4;
+            }
+            updatePhase();
+        }, 1000);
     }
 
     async function runGeminiFullAnalysis() {
