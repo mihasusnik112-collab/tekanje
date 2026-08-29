@@ -4564,7 +4564,6 @@
         updateUI();
 
         document.getElementById('btnStopWorkout').disabled = false;
-        alert("▶ TEK SE JE PRIČEL! Steza samodejno nastavlja hitrost in naklon. Glasbo lahko med tekom zamenjaš zgoraj.");
     }
 
     // --- GEMINI AI VIRTUALNI ASISTENT, TRENER IN UVOZ SLIK ---
@@ -8108,10 +8107,14 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
                 if (currentStepIdx < programSteps.length) {
                     executeStep(programSteps[currentStepIdx], false);
                 } else {
-                    // Konec programa → obvezno ustavi stezo in ponastavi cilje
+                    // Konec programa → obvezno takoj prekliči interval, da se ne proži ponavljajoče
+                    if (activeProgramInterval) {
+                        clearInterval(activeProgramInterval);
+                        activeProgramInterval = null;
+                    }
+                    isProgramActive = false;
                     try { playIntervalAlert(); } catch (_) {}
                     await stopWorkout('interval_completed');
-                    alert(`Intervalni trening za ${currentUser} je uspešno zaključen! Steza je ustavljena. Odlično delo! 🎉`);
                 }
             }
         }, 1000);
@@ -8494,8 +8497,6 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
 
         document.getElementById('btnStopWorkout').disabled = false;
         switchSectionById('secLive');
-
-        alert(`🚀 GPX PROGA JE ZAŽENJENA NA STEZI!\nSteza bo samodejno prilagajala naklon terenu (varnostno omejeno na max ${maxInclineLimit}%).`);
     }
 
     function haversineDistance(lat1, lon1, lat2, lon2) {
