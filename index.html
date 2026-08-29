@@ -2118,7 +2118,7 @@
                     💊 3. Prehranski Dodatki
                 </button>
                 <button type="button" class="hol-subtab-btn" id="btnHolTabSleepStress" onclick="switchHolisticSubTab('sleepStress')">
-                    😴 4. Spanje &amp; Stres
+                    😴 4. Dnevnik &amp; Analiza Spanja
                 </button>
                 <button type="button" class="hol-subtab-btn" id="btnHolTabGeminiPlan" onclick="switchHolisticSubTab('geminiPlan')">
                     🤖 5. Gemini AI 360° Načrt
@@ -2425,8 +2425,233 @@
                 </div>
             </div>
 
-            <!-- PANEL 4: SPANJE & STRES -->
+            <!-- PANEL 4: SPREMLJANJE, DNEVNIK & ANALIZA SPANJA -->
             <div id="holPanelSleepStress" class="hol-panel">
+                <!-- KPI KARTICE SPANJA -->
+                <div class="hol-metric-grid">
+                    <div class="hol-card">
+                        <div class="hol-card-title">⏱️ Povprečni Spanec (7 dni)</div>
+                        <div style="font-size:1.15rem;font-weight:800;color:#38bdf8;" id="sleepKpiAvgDuration">-- h / noč</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.2rem;" id="sleepKpiTargetLabel">Cilj: 7.5–8.5 h</div>
+                    </div>
+                    <div class="hol-card">
+                        <div class="hol-card-title">⭐ Kakovost Spanca</div>
+                        <div style="font-size:1.15rem;font-weight:800;color:var(--accent-green);" id="sleepKpiAvgQuality">-- / 5</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.2rem;" id="sleepKpiQualityLabel">Ocena regeneracije</div>
+                    </div>
+                    <div class="hol-card">
+                        <div class="hol-card-title">🌙 Cirkadiani Ritem</div>
+                        <div style="font-size:1.05rem;font-weight:700;color:#fff;" id="sleepKpiTiming">--</div>
+                        <div style="font-size:0.75rem;color:var(--accent-cyan);margin-top:0.2rem;">Rednost odhoda v posteljo</div>
+                    </div>
+                    <div class="hol-card">
+                        <div class="hol-card-title">❤️ Utrip &amp; Regeneracija</div>
+                        <div style="font-size:1.05rem;font-weight:700;color:#fca5a5;" id="sleepKpiRhr">-- BPM</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.2rem;" id="sleepKpiHrv">HRV: -- ms</div>
+                    </div>
+                </div>
+
+                <!-- DNEVNIK SPANJA: VNOS & UVOZ POSNETKA ZASLONA URE -->
+                <div class="hol-card" style="border-color: var(--accent-cyan); background: radial-gradient(circle at top left, rgba(6, 182, 212, 0.08), var(--card-bg) 75%);">
+                    <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <div>
+                            <div class="hol-card-title" style="color: var(--accent-cyan); font-size: 1rem;">
+                                📝 Vnos Dnevnika Spanja (<span id="sleepFormUserLabel">Miha</span>)
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                Vnesite podatke ročno ali naložite sliko zaslona iz aplikacije ure (Huawei Health, Garmin, Apple, itd.)
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                            <input type="file" id="sleepImageUploadInput" accept="image/*" style="display: none;" onchange="handleSleepImageOcr(event)">
+                            <button class="btn btn-purple" onclick="document.getElementById('sleepImageUploadInput').click()" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
+                                📷 Uvozi Sliko Spanja (OCR)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="sleepOcrStatusBox" style="display: none; padding: 0.65rem 0.85rem; border-radius: 0.65rem; background: rgba(139, 92, 246, 0.15); border: 1px solid var(--accent-purple); font-size: 0.82rem; margin-bottom: 0.85rem; color: #cbd5e1;"></div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                📅 Noč / Datum:
+                            </label>
+                            <input type="date" id="sleepInputDate" style="width: 100%; font-size: 0.85rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                🌙 Čas odhoda v posteljo:
+                            </label>
+                            <input type="time" id="sleepInputBedtime" value="23:00" onchange="calculateSleepInputDuration()" style="width: 100%; font-size: 0.85rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                ☀️ Čas bujenja:
+                            </label>
+                            <input type="time" id="sleepInputWakeTime" value="07:15" onchange="calculateSleepInputDuration()" style="width: 100%; font-size: 0.85rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                ⏱️ Izračunano trajanje:
+                            </label>
+                            <div id="sleepDurationBadge" style="padding: 0.6rem 0.85rem; background: rgba(11, 15, 25, 0.8); border: 1px solid var(--card-border); border-radius: 0.65rem; font-size: 0.88rem; font-weight: 700; color: var(--accent-cyan);">
+                                8 ur 15 min (8.25 h)
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                ⭐ Kakovost spanca:
+                            </label>
+                            <select id="sleepInputQuality" style="width: 100%; font-size: 0.85rem;">
+                                <option value="5">⭐⭐⭐⭐⭐ 5 - Vrhunski, globok in osvežujoč</option>
+                                <option value="4" selected>⭐⭐⭐⭐ 4 - Dober spanec (1 manjše prebujenje)</option>
+                                <option value="3">⭐⭐⭐ 3 - Povprečen spanec</option>
+                                <option value="2">⭐⭐ 2 - Slab, prekinjen ali plitek spanec</option>
+                                <option value="1">⭐ 1 - Zelo slab spanec / nespečnost</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                                ⚡ Jutranja energija &amp; spočitost:
+                            </label>
+                            <select id="sleepInputEnergy" style="width: 100%; font-size: 0.85rem;">
+                                <option value="10">⚡ 10/10 - Poln energije, takoj pripravljen</option>
+                                <option value="8" selected>⚡ 8/10 - Dobro spočit, stabilna energija</option>
+                                <option value="6">⚡ 6/10 - Zmerna energija, potreben čas</option>
+                                <option value="4">⚡ 4/10 - Utrujen, zaspan</option>
+                                <option value="2">⚡ 2/10 - Izčrpan, težko vstajanje</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- NAPREDNE METRIKE IZ URE (OPCIJSKO) -->
+                    <div style="margin-top: 0.85rem; padding: 0.75rem; background: rgba(11, 15, 25, 0.5); border: 1px solid rgba(255,255,255,0.06); border-radius: 0.65rem;">
+                        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.45rem; text-transform: uppercase; letter-spacing: 0.04em;">
+                            📊 Dodatne metrike ure (opcijsko):
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.55rem;">
+                            <div>
+                                <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.15rem;">Globok spanec (%)</label>
+                                <input type="number" id="sleepInputDeepPct" placeholder="Npr. 22" min="0" max="100" style="width: 100%; font-size: 0.8rem;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.15rem;">REM spanec (%)</label>
+                                <input type="number" id="sleepInputRemPct" placeholder="Npr. 25" min="0" max="100" style="width: 100%; font-size: 0.8rem;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.15rem;">Utrip v miru (RHR)</label>
+                                <input type="number" id="sleepInputRhr" placeholder="Npr. 54" min="30" max="120" style="width: 100%; font-size: 0.8rem;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.15rem;">HRV / Stres (ms)</label>
+                                <input type="number" id="sleepInputHrv" placeholder="Npr. 65" min="0" max="250" style="width: 100%; font-size: 0.8rem;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-bottom: 0.15rem;">Št. prebujanj</label>
+                                <input type="number" id="sleepInputAwakenings" placeholder="Npr. 1" min="0" max="20" style="width: 100%; font-size: 0.8rem;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DEJAVNIKI IN OZNAKE -->
+                    <div style="margin-top: 0.85rem;">
+                        <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.35rem;">
+                            🏷️ Dejavniki, ki so vplivali na spanec:
+                        </label>
+                        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;" id="sleepFactorChipsContainer">
+                            <label class="home-chip" style="cursor: pointer;"><input type="checkbox" value="kofein" style="margin-right: 0.3rem;">☕ Pozni kofein</label>
+                            <label class="home-chip" style="cursor: pointer;"><input type="checkbox" value="trening" style="margin-right: 0.3rem;">🏃 Pozni tek / hoja</label>
+                            <label class="home-chip" style="cursor: pointer;"><input type="checkbox" value="ekran" style="margin-right: 0.3rem;">📱 Zaslon pred spanjem</label>
+                            <label class="home-chip" style="cursor: pointer;"><input type="checkbox" value="alkohol" style="margin-right: 0.3rem;">🍷 Alkohol</label>
+                            <label class="home-chip" style="cursor: pointer;"><input type="checkbox" value="vecera" style="margin-right: 0.3rem;">🥗 Težka večerja</label>
+                            <label class="home-chip" style="cursor: pointer;"><input type="checkbox" value="stres" style="margin-right: 0.3rem;">⚡ Psihični stres</label>
+                            <label class="home-chip" style="cursor: pointer;"><input type="checkbox" value="dihanje" style="margin-right: 0.3rem;">🧘 Dihalna vaja / Magnezij</label>
+                            <label class="home-chip" style="cursor: pointer;"><input type="checkbox" value="hladno" style="margin-right: 0.3rem;">❄️ Hladna soba (18°C)</label>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 0.85rem;">
+                        <label style="font-size: 0.78rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.25rem;">
+                            💬 Opombe o počutju ali noči:
+                        </label>
+                        <input type="text" id="sleepInputNotes" placeholder="Npr. Spanje po vadbi v klanec je bilo globoko, brez bolečin v golenici..." style="width: 100%; font-size: 0.82rem;">
+                    </div>
+
+                    <div style="margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" onclick="resetSleepForm()" style="font-size: 0.82rem; padding: 0.5rem 1rem;">
+                            ↺ Počisti
+                        </button>
+                        <button class="btn btn-primary" onclick="saveSleepLogFromForm()" style="font-size: 0.85rem; font-weight: 800; padding: 0.55rem 1.4rem; background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan)); color: #022c22;">
+                            💾 Shrani Dnevnik Spanja
+                        </button>
+                    </div>
+                </div>
+
+                <!-- GRAF TREND SPANJA -->
+                <div class="hol-card" style="border-color: var(--accent-green);">
+                    <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.6rem;">
+                        <div class="hol-card-title" style="color: var(--accent-green);">
+                            📈 Trend Trajanja &amp; Kakovosti Spanca (Zadnjih 14 dni)
+                        </div>
+                        <span class="badge" style="border-color: var(--accent-green); color: var(--accent-green);">
+                            🎯 Cilj: 7.5–8.5 h
+                        </span>
+                    </div>
+                    <div style="position: relative; height: 220px; width: 100%;">
+                        <canvas id="sleepTrendChartCanvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- GEMINI AI ANALIZA SPANJA & KORELACIJA S TRENINGOM -->
+                <div class="hol-card" style="border-color: var(--accent-purple); background: rgba(139, 92, 246, 0.06);">
+                    <div class="card-header" style="flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.6rem;">
+                        <div>
+                            <div class="hol-card-title" style="color: var(--accent-pink); font-size: 0.95rem;">
+                                🧠 Gemini AI Poglobljena Analiza Spanja &amp; Treninga
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                Odkrijte povezavo med vadbo na tekalni stezi, prehrano, stresom in regeneracijo
+                            </div>
+                        </div>
+                        <button class="btn btn-purple" onclick="runGeminiDeepSleepAnalysis()" style="font-size: 0.8rem; padding: 0.45rem 1rem;">
+                            ✨ Zaženi Analizo Spanja
+                        </button>
+                    </div>
+                    <div id="sleepGeminiAnalysisBox" style="font-size: 0.85rem; line-height: 1.55; color: #cbd5e1; background: rgba(11,15,25,0.65); padding: 0.95rem; border-radius: 0.75rem; border: 1px solid var(--card-border);">
+                        Kliknite '✨ Zaženi Analizo Spanja'. Gemini bo pregledal vaše zabeležene noči, jih primerjal z naklonom in intenzivnostjo treningov na stezi ter pripravil natančne nasvete za hitrejšo regeneracijo!
+                    </div>
+                </div>
+
+                <!-- TABELA ZGODOVINE SPANJA -->
+                <div class="hol-card">
+                    <div class="card-header" style="margin-bottom: 0.6rem;">
+                        <div class="hol-card-title" style="color: #fff;">
+                            📜 Zgodovina Nočnega Spanja
+                        </div>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);" id="sleepLogCountBadge">0 vnosov</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Datum</th>
+                                    <th>Čas (Postelja ➔ Vstajanje)</th>
+                                    <th>Trajanje</th>
+                                    <th>Kakovost</th>
+                                    <th>Utrip / HRV</th>
+                                    <th>Dejavniki &amp; Opombe</th>
+                                    <th style="text-align: right;">Dejanja</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sleepHistoryTableBody">
+                                <tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Ni še vnesenih podatkov o spanju. Izpolnite zgornji obrazec.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 10-3-2-1-0 PROTOKOL IN DIHALNA VAJA -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0.75rem;">
                     <!-- 10-3-2-1-0 PROTOKOL ZA SPANEC -->
                     <div class="hol-card" style="border-color: var(--accent-cyan); background: rgba(6, 182, 212, 0.05);">
@@ -2478,20 +2703,6 @@
                                 ▶ Začni 2-minutno Dihanje
                             </button>
                         </div>
-                    </div>
-                </div>
-
-                <div class="hol-card" style="margin-top: 0.75rem; border-color: var(--accent-purple);">
-                    <div class="card-header" style="margin-bottom: 0.45rem;">
-                        <div class="hol-card-title" style="color: var(--accent-pink);">
-                            📉 Znižanje Stresa &amp; Regeneracijski Nasveti za <span id="holStressUserLabel">Miha</span>
-                        </div>
-                        <button class="btn btn-purple" onclick="runGeminiSleepStressAdvisor()" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;">
-                            ✨ Gemini Analiza Spanja
-                        </button>
-                    </div>
-                    <div id="holSleepAdvisorBox" style="font-size: 0.85rem; line-height: 1.55; color: #cbd5e1;">
-                        Kliknite '✨ Gemini Analiza Spanja' za podrobna priporočila glede na vaše vpisane podatke o spanju, stresu in energiji.
                     </div>
                 </div>
             </div>
@@ -3058,7 +3269,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v54';
+    const APP_BUILD = 'v55';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -6278,6 +6489,12 @@
         const lastCoach = localStorage.getItem(getCoachNotesKey()) || getGeminiHealth().lastRecommendation || '';
         const healthCtx = buildGeminiHealthContextForPrompt();
 
+        const recentSleep = (getSleepLogs(currentUser) || []).slice(0, 5);
+        let sleepSummaryText = '';
+        if (recentSleep.length > 0) {
+            sleepSummaryText = `\nZADNJI DNEVNIKI SPANJA (${currentUser}):\n` + recentSleep.map(l => `• ${l.date}: ${l.durationHours}h (${l.bedtime}➔${l.wakeTime}), ocena ${l.quality}/5 ⭐, RHR: ${l.rhr || '?'} BPM, dejavniki: ${(l.factors || []).join(', ') || 'brez'}`).join('\n');
+        }
+
         return `AKTIVNI PROFIL UPORABNIKA:
 - Ime: ${currentUser}
 - Spol: ${gender}
@@ -6317,6 +6534,7 @@ TRENUTNO STANJE SEJE:
 
 ZGODOVINA TRENINGOV (najnovejši najprej):
 ${getRecentWorkoutsForGemini(12)}
+${sleepSummaryText}
 
 ${lastCoach ? `ZADNJI GEMINI COACH ZAPIS:\n${lastCoach}\n` : ''}
 ${healthCtx ? `\nZDRAVSTVENA ZGODOVINA PROFILA (Supabase / lokalno):\n${healthCtx}\n` : ''}
@@ -6620,6 +6838,11 @@ Uporabi null, če vrednosti ni mogoče zanesljivo prebrati.
         if (tabKey === 'supplements') {
             renderDailySupplementChecklist();
         }
+        if (tabKey === 'sleepStress') {
+            initSleepForm();
+            renderSleepDashboard();
+            syncSleepLogsBidirectional(currentUser).then(() => renderSleepDashboard());
+        }
     }
 
     function renderHolisticCareDashboard() {
@@ -6739,6 +6962,7 @@ Uporabi null, če vrednosti ni mogoče zanesljivo prebrati.
         if (dietBadge) dietBadge.textContent = h.dietType || 'Uravnotežena';
 
         renderDailySupplementChecklist();
+        renderSleepDashboard();
     }
 
     function getTodayDateKey() {
@@ -7028,6 +7252,519 @@ Odgovori v slovenščini, strukturirano z naslovi in jasnimi alinejami.`;
             }
             updatePhase();
         }, 1000);
+    }
+
+    // --- SPREMLJANJE IN ANALIZA SPANJA (SLEEP TRACKING & ANALYTICS) ---
+    let sleepTrendChart = null;
+
+    function getSleepLogsKey(user = currentUser) {
+        return `ble_sleep_logs_${user}`;
+    }
+
+    function getSleepLogsRouteName(user = currentUser) {
+        return `SLEEP_LOGS::${user}`;
+    }
+
+    function getSleepLogs(user = currentUser) {
+        try {
+            const raw = localStorage.getItem(getSleepLogsKey(user));
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function saveSleepLogsLocally(logs, user = currentUser) {
+        localStorage.setItem(getSleepLogsKey(user), JSON.stringify(logs));
+    }
+
+    async function syncSleepLogsBidirectional(user = currentUser) {
+        if (!supabaseClient || !user) return getSleepLogs(user);
+        const routeName = getSleepLogsRouteName(user);
+        let localLogs = getSleepLogs(user);
+
+        try {
+            const { data: rows, error } = await supabaseClient
+                .from('routes')
+                .select('id, video_url')
+                .eq('name', routeName)
+                .order('id', { ascending: false })
+                .limit(1);
+
+            if (!error && rows?.length && rows[0].video_url) {
+                try {
+                    let remoteLogs = rows[0].video_url;
+                    if (typeof remoteLogs === 'string') {
+                        remoteLogs = JSON.parse(remoteLogs);
+                    }
+                    if (Array.isArray(remoteLogs)) {
+                        // Združi lokalne in oddaljene zapise po ID / datumu
+                        const logMap = new Map();
+                        remoteLogs.forEach(l => { if (l && l.date) logMap.set(l.date, l); });
+                        localLogs.forEach(l => { if (l && l.date) logMap.set(l.date, l); });
+                        localLogs = Array.from(logMap.values()).sort((a, b) => b.date.localeCompare(a.date));
+                        saveSleepLogsLocally(localLogs, user);
+                    }
+                } catch (e) {
+                    console.warn('Napaka pri branju oddaljenih zapisov spanja:', e);
+                }
+            }
+
+            // Shrani združene zapise nazaj v Supabase
+            const jsonStr = JSON.stringify(localLogs);
+            if (rows?.length) {
+                await supabaseClient.from('routes').update({ video_url: jsonStr }).eq('id', rows[0].id);
+            } else {
+                await supabaseClient.from('routes').insert({ name: routeName, video_url: jsonStr });
+            }
+        } catch (err) {
+            console.warn('Sleep sync err:', err);
+        }
+
+        return localLogs;
+    }
+
+    function initSleepForm() {
+        const dateInput = document.getElementById('sleepInputDate');
+        if (dateInput && !dateInput.value) {
+            const d = new Date();
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            dateInput.value = `${yyyy}-${mm}-${dd}`;
+        }
+        calculateSleepInputDuration();
+    }
+
+    function calculateSleepInputDuration() {
+        const bedEl = document.getElementById('sleepInputBedtime');
+        const wakeEl = document.getElementById('sleepInputWakeTime');
+        const badgeEl = document.getElementById('sleepDurationBadge');
+        if (!bedEl || !wakeEl || !badgeEl) return 8.0;
+
+        const bedVal = bedEl.value || '23:00';
+        const wakeVal = wakeEl.value || '07:00';
+
+        const [bH, bM] = bedVal.split(':').map(Number);
+        const [wH, wM] = wakeVal.split(':').map(Number);
+
+        let bedMinutes = bH * 60 + bM;
+        let wakeMinutes = wH * 60 + wM;
+
+        let diff = wakeMinutes - bedMinutes;
+        if (diff <= 0) diff += 1440; // nočni prehod čez polnoč
+
+        const hours = Math.floor(diff / 60);
+        const mins = diff % 60;
+        const totalHours = (diff / 60).toFixed(2);
+
+        badgeEl.textContent = `${hours} ur ${mins} min (${totalHours} h)`;
+        return parseFloat(totalHours);
+    }
+
+    async function saveSleepLogFromForm() {
+        const date = document.getElementById('sleepInputDate')?.value;
+        if (!date) return alert('Prosimo, izberite datum noči!');
+
+        const bedtime = document.getElementById('sleepInputBedtime')?.value || '23:00';
+        const wakeTime = document.getElementById('sleepInputWakeTime')?.value || '07:00';
+        const durationHours = calculateSleepInputDuration();
+        const quality = parseInt(document.getElementById('sleepInputQuality')?.value) || 4;
+        const energy = parseInt(document.getElementById('sleepInputEnergy')?.value) || 8;
+
+        const getNum = id => {
+            const v = parseFloat(document.getElementById(id)?.value);
+            return isNaN(v) ? null : v;
+        };
+
+        const deepPct = getNum('sleepInputDeepPct');
+        const remPct = getNum('sleepInputRemPct');
+        const rhr = getNum('sleepInputRhr');
+        const hrv = getNum('sleepInputHrv');
+        const awakenings = getNum('sleepInputAwakenings');
+
+        // Zberi označene dejavnike
+        const checkedFactors = [];
+        const chips = document.querySelectorAll('#sleepFactorChipsContainer input[type="checkbox"]:checked');
+        chips.forEach(c => checkedFactors.push(c.value));
+
+        const notes = (document.getElementById('sleepInputNotes')?.value || '').trim();
+
+        const newEntry = {
+            id: `sleep_${date}_${Date.now()}`,
+            date,
+            bedtime,
+            wakeTime,
+            durationHours,
+            quality,
+            energy,
+            deepPct,
+            remPct,
+            rhr,
+            hrv,
+            awakenings,
+            factors: checkedFactors,
+            notes,
+            created_at: new Date().toISOString()
+        };
+
+        let logs = getSleepLogs();
+        // Če že obstaja zapis za ta datum, ga posodobi
+        const existingIdx = logs.findIndex(l => l.date === date);
+        if (existingIdx >= 0) {
+            logs[existingIdx] = newEntry;
+        } else {
+            logs.push(newEntry);
+        }
+
+        logs.sort((a, b) => b.date.localeCompare(a.date));
+        saveSleepLogsLocally(logs);
+        renderSleepDashboard();
+
+        syncSleepLogsBidirectional(currentUser).then(() => {
+            renderSleepDashboard();
+        });
+
+        alert(`✅ Zapis spanja za ${date} (${durationHours} h) je uspešno shranjen!`);
+    }
+
+    function resetSleepForm() {
+        initSleepForm();
+        const bedEl = document.getElementById('sleepInputBedtime');
+        if (bedEl) bedEl.value = '23:00';
+        const wakeEl = document.getElementById('sleepInputWakeTime');
+        if (wakeEl) wakeEl.value = '07:15';
+        const qualEl = document.getElementById('sleepInputQuality');
+        if (qualEl) qualEl.value = '4';
+        const engEl = document.getElementById('sleepInputEnergy');
+        if (engEl) engEl.value = '8';
+
+        ['sleepInputDeepPct', 'sleepInputRemPct', 'sleepInputRhr', 'sleepInputHrv', 'sleepInputAwakenings', 'sleepInputNotes'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+
+        document.querySelectorAll('#sleepFactorChipsContainer input[type="checkbox"]').forEach(c => c.checked = false);
+        calculateSleepInputDuration();
+    }
+
+    async function deleteSleepLogEntry(id) {
+        if (!confirm('Ali res želite izbrisati ta zapis spanja?')) return;
+        let logs = getSleepLogs();
+        logs = logs.filter(l => l.id !== id && l.date !== id);
+        saveSleepLogsLocally(logs);
+        renderSleepDashboard();
+        await syncSleepLogsBidirectional(currentUser);
+        renderSleepDashboard();
+    }
+
+    function renderSleepDashboard() {
+        const formUserLabel = document.getElementById('sleepFormUserLabel');
+        if (formUserLabel) formUserLabel.textContent = currentUser;
+
+        const logs = getSleepLogs(currentUser);
+        renderSleepKpiCards(logs);
+        renderSleepTrendChart(logs);
+        renderSleepHistoryTable(logs);
+    }
+
+    function renderSleepKpiCards(logs) {
+        const avgDurEl = document.getElementById('sleepKpiAvgDuration');
+        const avgQualEl = document.getElementById('sleepKpiAvgQuality');
+        const timingEl = document.getElementById('sleepKpiTiming');
+        const rhrEl = document.getElementById('sleepKpiRhr');
+
+        if (!logs || logs.length === 0) {
+            if (avgDurEl) avgDurEl.textContent = 'Brez vnosov';
+            if (avgQualEl) avgQualEl.textContent = '-- / 5';
+            if (timingEl) timingEl.textContent = '--';
+            if (rhrEl) rhrEl.textContent = '-- BPM';
+            return;
+        }
+
+        const recent = logs.slice(0, 7);
+        const totalDur = recent.reduce((sum, l) => sum + (Number(l.durationHours) || 0), 0);
+        const avgDur = (totalDur / recent.length).toFixed(1);
+        const totalQual = recent.reduce((sum, l) => sum + (Number(l.quality) || 3), 0);
+        const avgQual = (totalQual / recent.length).toFixed(1);
+
+        if (avgDurEl) avgDurEl.textContent = `${avgDur} h / noč`;
+        if (avgQualEl) avgQualEl.textContent = `${avgQual} / 5 ⭐`;
+
+        const latest = recent[0];
+        if (timingEl && latest) {
+            timingEl.textContent = `${latest.bedtime} ➔ ${latest.wakeTime}`;
+        }
+
+        const rhrLogs = recent.filter(l => l.rhr && Number(l.rhr) > 0);
+        if (rhrEl) {
+            if (rhrLogs.length > 0) {
+                const avgRhr = Math.round(rhrLogs.reduce((s, l) => s + Number(l.rhr), 0) / rhrLogs.length);
+                rhrEl.textContent = `${avgRhr} BPM`;
+            } else {
+                rhrEl.textContent = 'Ura ni vnesena';
+            }
+        }
+    }
+
+    function renderSleepTrendChart(logs) {
+        const canvas = document.getElementById('sleepTrendChartCanvas');
+        if (!canvas) return;
+
+        const sorted = [...(logs || [])].sort((a, b) => a.date.localeCompare(b.date)).slice(-14);
+
+        const labels = sorted.map(l => {
+            const parts = l.date.split('-');
+            return `${parts[2]}.${parts[1]}`;
+        });
+        const dataValues = sorted.map(l => Number(l.durationHours) || 0);
+        const barColors = sorted.map(l => {
+            const q = Number(l.quality) || 3;
+            const d = Number(l.durationHours) || 0;
+            if (d >= 7.5 && q >= 4) return '#10b981'; // Odličen
+            if (d >= 6.5) return '#06b6d4'; // Dober
+            if (d >= 5.5) return '#f59e0b'; // Zmeren
+            return '#ef4444'; // Premalo / slab
+        });
+
+        if (sleepTrendChart) {
+            sleepTrendChart.destroy();
+            sleepTrendChart = null;
+        }
+
+        const ctx = canvas.getContext('2d');
+        if (!window.Chart) return;
+
+        sleepTrendChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels.length ? labels : ['Ni podatkov'],
+                datasets: [
+                    {
+                        label: 'Trajanje spanja (h)',
+                        data: dataValues.length ? dataValues : [0],
+                        backgroundColor: barColors.length ? barColors : ['#06b6d4'],
+                        borderRadius: 6,
+                        borderSkipped: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const idx = ctx.dataIndex;
+                                const item = sorted[idx];
+                                if (!item) return `${ctx.parsed.y} h`;
+                                return `${item.durationHours} h (${item.bedtime} - ${item.wakeTime}) · Ocena: ${item.quality}/5 ⭐`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#94a3b8', font: { size: 10 } }
+                    },
+                    y: {
+                        min: 0,
+                        suggestedMax: 10,
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: { size: 10 },
+                            callback: (v) => `${v}h`
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderSleepHistoryTable(logs) {
+        const tbody = document.getElementById('sleepHistoryTableBody');
+        const countBadge = document.getElementById('sleepLogCountBadge');
+        if (!tbody) return;
+
+        if (countBadge) countBadge.textContent = `${logs.length} vnosov`;
+
+        if (!logs || logs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:1.2rem;">Ni še vnesenih podatkov o spanju. Izpolnite zgornji obrazec.</td></tr>`;
+            return;
+        }
+
+        const factorLabels = {
+            kofein: '☕ Kofein',
+            trening: '🏃 Pozni tek',
+            ekran: '📱 Ekran',
+            alkohol: '🍷 Alkohol',
+            vecera: '🥗 Težka večerja',
+            stres: '⚡ Stres',
+            dihanje: '🧘 Dihanje',
+            hladno: '❄️ Hladno'
+        };
+
+        let html = '';
+        logs.forEach(l => {
+            const stars = '⭐'.repeat(Math.max(1, Math.min(5, l.quality || 3)));
+            const factorsHtml = (l.factors || []).map(f => `<span style="font-size:0.68rem;background:rgba(255,255,255,0.08);padding:0.15rem 0.35rem;border-radius:4px;margin-right:0.2rem;">${factorLabels[f] || f}</span>`).join('');
+            const rhrStr = l.rhr ? `${l.rhr} BPM` : '—';
+            const hrvStr = l.hrv ? ` · ${l.hrv} ms` : '';
+
+            html += `
+                <tr>
+                    <td style="font-weight:700;color:#fff;">${l.date}</td>
+                    <td style="color:var(--accent-cyan);">${l.bedtime} ➔ ${l.wakeTime}</td>
+                    <td style="font-weight:800;color:var(--accent-green);">${l.durationHours} h</td>
+                    <td>${stars} <span style="font-size:0.75rem;color:var(--text-muted);">(${l.quality}/5)</span></td>
+                    <td style="font-size:0.8rem;color:#fca5a5;">${rhrStr}${hrvStr}</td>
+                    <td style="font-size:0.78rem;color:#cbd5e1;">
+                        ${factorsHtml}
+                        ${l.notes ? `<div style="color:var(--text-muted);font-style:italic;margin-top:0.15rem;">${l.notes}</div>` : ''}
+                    </td>
+                    <td style="text-align: right;">
+                        <button class="btn btn-secondary" style="font-size:0.72rem;padding:0.25rem 0.5rem;color:#ef4444;" onclick="deleteSleepLogEntry('${l.id || l.date}')" title="Izbriši zapis">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
+    }
+
+    async function handleSleepImageOcr(event) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        if (!requireGeminiApiKey()) return;
+        if (geminiBusy) return;
+        geminiBusy = true;
+
+        const statusBox = document.getElementById('sleepOcrStatusBox');
+        if (statusBox) {
+            statusBox.style.display = 'block';
+            statusBox.innerHTML = '<span style="color:var(--accent-cyan);">⏳ Gemini AI analizira posnetek zaslona aplikacije ure (Huawei / Garmin / Apple)...</span>';
+        }
+
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const prompt = `Analiziraj priloženo sliko zaslona iz aplikacije za spremljanje spanja (Huawei Health, Garmin Connect, Apple Health, Samsung Health, Polar, Whoop).
+Razpoznaj in vrni SAMO veljaven JSON objekt v naslednji obliki:
+{
+  "date": "YYYY-MM-DD", // datum noči (če ni viden, vrni null)
+  "bedtime": "HH:MM", // čas odhoda v posteljo / začetek spanja
+  "wake_time": "HH:MM", // čas bujenja
+  "duration_hours": 7.5, // skupno trajanje spanja v urah (številka)
+  "quality_stars": 4, // ocena kakovosti od 1 do 5 (glede na sleep score)
+  "deep_sleep_pct": null, // % globokega spanca (če obstaja)
+  "rem_sleep_pct": null, // % REM spanca (če obstaja)
+  "resting_hr": null, // utrip v mirovanju med spanjem v BPM
+  "hrv": null, // HRV v ms
+  "awakenings": null // število prebujanj
+}
+Če katere vrednosti ne moreš zanesljivo razbrati, nastavi na null.`;
+
+                const { text, model } = await callGeminiGenerate({
+                    userText: prompt,
+                    imageDataUrl: e.target.result,
+                    jsonMode: true,
+                    temperature: 0.2
+                });
+
+                let parsed = null;
+                try {
+                    parsed = JSON.parse(text);
+                } catch (_) {
+                    const m = text.match(/\{[\s\S]*\}/);
+                    if (m) parsed = JSON.parse(m[0]);
+                }
+
+                if (parsed) {
+                    if (parsed.date) document.getElementById('sleepInputDate').value = parsed.date;
+                    if (parsed.bedtime) document.getElementById('sleepInputBedtime').value = parsed.bedtime;
+                    if (parsed.wake_time) document.getElementById('sleepInputWakeTime').value = parsed.wake_time;
+                    if (parsed.quality_stars) document.getElementById('sleepInputQuality').value = String(parsed.quality_stars);
+                    if (parsed.deep_sleep_pct) document.getElementById('sleepInputDeepPct').value = parsed.deep_sleep_pct;
+                    if (parsed.rem_sleep_pct) document.getElementById('sleepInputRemPct').value = parsed.rem_sleep_pct;
+                    if (parsed.resting_hr) document.getElementById('sleepInputRhr').value = parsed.resting_hr;
+                    if (parsed.hrv) document.getElementById('sleepInputHrv').value = parsed.hrv;
+                    if (parsed.awakenings) document.getElementById('sleepInputAwakenings').value = parsed.awakenings;
+
+                    calculateSleepInputDuration();
+
+                    if (statusBox) {
+                        statusBox.innerHTML = `<strong style="color:var(--accent-green);">✅ Podatki o spanju uspešno razpoznani!</strong> (${model})<br>Čas: ${parsed.bedtime || '?'} ➔ ${parsed.wake_time || '?'}, Trajanje: ${parsed.duration_hours || '?'} h. Preverite in kliknite '💾 Shrani Dnevnik Spanja'.`;
+                    }
+                } else {
+                    throw new Error('Ni bilo mogoče razbrati podatkov o spanju.');
+                }
+            } catch (err) {
+                console.error(err);
+                if (statusBox) {
+                    statusBox.innerHTML = `<span style="color:var(--accent-red);">Napaka pri razpoznavi slike: ${err.message || err}</span>`;
+                }
+            } finally {
+                geminiBusy = false;
+                event.target.value = '';
+            }
+        };
+
+        reader.readAsDataURL(file);
+    }
+
+    async function runGeminiDeepSleepAnalysis() {
+        if (!requireGeminiApiKey()) return;
+        if (geminiBusy) return;
+        geminiBusy = true;
+
+        const box = document.getElementById('sleepGeminiAnalysisBox');
+        if (box) box.innerHTML = '<span style="color:var(--accent-pink);">⏳ Gemini AI analizira povezavo med vašim spanjem, vadbami na tekalni stezi in regeneracijo…</span>';
+
+        const sleepLogs = getSleepLogs(currentUser).slice(0, 10);
+        const sleepLogsText = sleepLogs.map(l => `- Datum: ${l.date} · Trajanje: ${l.durationHours}h (${l.bedtime}–${l.wakeTime}) · Kakovost: ${l.quality}/5 ⭐ · RHR: ${l.rhr || '?'} BPM · Dejavniki: ${(l.factors || []).join(', ') || 'brez'} · Opombe: ${l.notes || 'brez'}`).join('\n');
+
+        try {
+            const prompt = `${buildGeminiUserContext()}
+
+ZADNJI ZAPISI SPANJA UPORABNIKA (${currentUser}):
+${sleepLogsText || 'Uporabnik še ni vnesel specifičnih nočnih zapisov, analiziraj glede na splošni vprašalnik o spanju.'}
+
+Naloga: Naredi POGLOBLJENO ZDRAVSTVENO & ŠPORTNO ANALIZO SPANJA IN REGENERACIJE za ${currentUser}.
+Strukturirano vključi:
+1. 🛌 OCENA CIRKADIANEGA RITMA & KAKOVOSTI (trajanje, rednost, ocena faz globokega spanca).
+2. 🏃 KORELACIJA MED TRENINGI NA STEZI IN SPANCEM (kako vadba v Coni 2, nakloni in čas treninga vplivajo na srčni utrip v mirovanju ter nočno regeneracijo).
+3. ⚡ PREPOZNANI MOTILCI & FAKTORJI (kofein, pozni trening, težka večerja, modra svetloba).
+4. 🌙 PERSONALIZIRANI VEČERNI PROTOKOL ZA DANES (točen čas za zadnji kofein, zadnji obrok, magnezij, dihalne vaje).
+5. 🚀 3 KONKRETNA PRIPOROČILA ZA MAKSIMALNO REGENERACIJO.
+
+Odgovori v slovenščini, strokovno in pregledno.`;
+
+            const { text, model } = await callGeminiGenerate({ userText: prompt, temperature: 0.5 });
+            if (box) {
+                box.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.65rem;font-size:0.78rem;color:var(--text-muted);border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:0.35rem;">
+                        <strong style="color:var(--accent-pink);">🧠 Poglobljena Analiza Spanja &amp; Treninga za ${currentUser}</strong>
+                        <span>${model} · ${formatGeminiDate(new Date().toISOString())}</span>
+                    </div>
+                    ${formatGeminiHtml(text)}
+                `;
+            }
+            await recordGeminiRecommendation({ type: 'analiza_spanja', text, model });
+            await recordGeminiChat('user', 'Poglobljena analiza spanja in regeneracije');
+            await recordGeminiChat('model', text);
+        } catch (err) {
+            console.warn(err);
+            if (box) box.innerHTML = `<span style="color:var(--accent-red);">Napaka pri analizi spanja: ${err.message || err}</span>`;
+        } finally {
+            geminiBusy = false;
+        }
     }
 
     async function runGeminiFullAnalysis() {
