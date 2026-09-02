@@ -3078,6 +3078,11 @@
                     <div style="font-size: 2.2rem; font-weight: 700;" id="statTotalCals">0</div>
                     <div style="font-size: 0.8rem; color: var(--accent-cyan);">kcal</div>
                 </div>
+                <div style="background: rgba(11, 15, 25, 0.6); padding: 1rem; border-radius: 1rem; text-align: center;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">POVP. NAKLON VADB</div>
+                    <div style="font-size: 2.2rem; font-weight: 700; color: #f59e0b;" id="statAvgIncline">0.0</div>
+                    <div style="font-size: 0.8rem; color: #f59e0b;">% (max <span id="statMaxIncline">0.0</span>%)</div>
+                </div>
             </div>
 
             <div style="margin-top: 1.5rem;">
@@ -3269,7 +3274,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v55';
+    const APP_BUILD = 'v56';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -11053,13 +11058,20 @@ Uporabi null, če vrednosti ni.`;
                 .order('created_at', { ascending: false });
 
             const otherUsers = getLocalHistoryAll().filter(i => (i.user || i.user_name) !== currentUser);
-            const syncedUser = (cloudFresh || []).map(c => ({
-                ...c,
-                synced: true,
-                supabase_id: c.id,
-                user_name: c.user_name,
-                date: c.created_at ? new Date(c.created_at).toLocaleString('sl-SI') : '-'
-            }));
+            const syncedUser = (cloudFresh || []).map(c => {
+                const meta = parseWorkoutMeta(c.gpx_name);
+                const avgInc = c.avg_incline !== undefined && c.avg_incline !== null ? Number(c.avg_incline) : (meta.avgIncline || 0);
+                const maxInc = c.max_incline !== undefined && c.max_incline !== null ? Number(c.max_incline) : (meta.maxIncline || avgInc);
+                return {
+                    ...c,
+                    synced: true,
+                    supabase_id: c.id,
+                    user_name: c.user_name,
+                    avg_incline: avgInc,
+                    max_incline: maxInc,
+                    date: c.created_at ? new Date(c.created_at).toLocaleString('sl-SI') : '-'
+                };
+            });
             setLocalHistoryAll([...syncedUser, ...otherUsers]);
 
             // Prednaloži slike
@@ -11455,6 +11467,10 @@ Uporabi null, če vrednosti ni.`;
 
         const distances = data.map(item => Number(item.distance_km || item.distanceKm || 0));
         const heartRates = data.map(item => Number(item.avg_hr || item.avgHr || 0));
+        const inclines = data.map(item => {
+            const meta = parseWorkoutMeta(item.gpx_name);
+            return item.avg_incline !== undefined && item.avg_incline !== null ? Number(item.avg_incline) : (meta.avgIncline || 0);
+        });
 
         statsProgressChart = new Chart(ctx, {
             type: 'bar',
@@ -11481,6 +11497,18 @@ Uporabi null, če vrednosti ni.`;
                         pointRadius: 4,
                         tension: 0.35,
                         yAxisID: 'y1'
+                    },
+                    {
+                        label: 'Povp. naklon (%)',
+                        data: inclines,
+                        type: 'line',
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#f59e0b',
+                        pointRadius: 4,
+                        tension: 0.25,
+                        yAxisID: 'y2'
                     }
                 ]
             },
@@ -11507,6 +11535,15 @@ Uporabi null, če vrednosti ni.`;
                         grid: { drawOnChartArea: false },
                         min: 60,
                         max: 200
+                    },
+                    y2: {
+                        type: 'linear',
+                        position: 'right',
+                        title: { display: true, text: 'Naklon (%)', color: '#f59e0b', font: { family: 'Outfit', weight: 'bold' } },
+                        ticks: { color: '#f59e0b', callback: v => v + '%' },
+                        grid: { drawOnChartArea: false },
+                        min: 0,
+                        suggestedMax: 12
                     }
                 },
                 plugins: {
@@ -11535,9 +11572,24 @@ Uporabi null, če vrednosti ni.`;
         const totalSec = userHistory.reduce((acc, i) => acc + (i.duration_sec || i.durationSec || 0), 0);
         const totalCals = userHistory.reduce((acc, i) => acc + (i.calories || 0), 0);
 
+        const incs = userHistory.map(i => {
+            const meta = parseWorkoutMeta(i.gpx_name);
+            return i.avg_incline !== undefined && i.avg_incline !== null ? Number(i.avg_incline) : (meta.avgIncline || 0);
+        });
+        const maxIncs = userHistory.map(i => {
+            const meta = parseWorkoutMeta(i.gpx_name);
+            return i.max_incline !== undefined && i.max_incline !== null ? Number(i.max_incline) : (meta.maxIncline || 0);
+        });
+        const avgInclineAll = incs.length > 0 ? (incs.reduce((a, b) => a + b, 0) / incs.length).toFixed(1) : '0.0';
+        const maxInclineAll = maxIncs.length > 0 ? Math.max(...maxIncs).toFixed(1) : '0.0';
+
         document.getElementById('statTotalDist').textContent = totalDist.toFixed(1);
         document.getElementById('statTotalTime').textContent = Math.round(totalSec / 60);
         document.getElementById('statTotalCals').textContent = totalCals;
+        const avgIncEl = document.getElementById('statAvgIncline');
+        if (avgIncEl) avgIncEl.textContent = avgInclineAll;
+        const maxIncEl = document.getElementById('statMaxIncline');
+        if (maxIncEl) maxIncEl.textContent = maxInclineAll;
 
         renderStatsProgressChart(userHistory);
     }
