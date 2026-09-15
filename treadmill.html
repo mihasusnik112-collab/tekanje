@@ -3287,7 +3287,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v58';
+    const APP_BUILD = 'v59';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -3532,6 +3532,16 @@
     }
     window.addEventListener('orientationchange', checkOrientationFullscreen);
     window.addEventListener('resize', checkOrientationFullscreen);
+
+    function handleFullscreenChange() {
+        const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+        if (!fsEl) {
+            parkVideoContainer();
+            if (typeof updateWorkoutViewSwitcherUi === 'function') updateWorkoutViewSwitcherUi();
+        }
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
 
     window.addEventListener('DOMContentLoaded', async () => {
         const prevBuild = localStorage.getItem('ble_app_build_seen');
@@ -5116,12 +5126,30 @@
             cell.style.setProperty('--hr-zone-glow', info.glow);
         });
 
+        // Celozaslonski HUD - metrična kartica za utrip
+        const valHrEl = document.getElementById('valHr');
+        if (valHrEl) {
+            valHrEl.textContent = info.bpm > 0 ? String(info.bpm) : '--';
+        }
+
         // Rahli video HUD: barva utripa glede na cono
         const hudHr = document.getElementById('hudHr');
         if (hudHr) {
             const color = info.bpm > 0 ? info.color : 'var(--accent-red)';
             hudHr.style.color = color;
             hudHr.innerHTML = `${info.bpm > 0 ? info.bpm : '--'} <span style="font-size: 0.75rem;">bpm</span>`;
+        }
+
+        // Video HUD: SVG obroč območja utripa & procent cone
+        const circle = document.getElementById('hudHrCircle');
+        const hudPctEl = document.getElementById('hudHrPct');
+        if (circle) {
+            const dashOffset = info.bpm > 0 ? (100 - Math.min(100, Math.max(0, info.pct))) : 100;
+            circle.setAttribute('stroke-dashoffset', String(dashOffset));
+            circle.setAttribute('stroke', info.bpm > 0 ? info.color : '#94a3b8');
+        }
+        if (hudPctEl) {
+            hudPctEl.textContent = `${info.bpm > 0 ? info.pct : 0}%`;
         }
     }
 
@@ -10233,24 +10261,41 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
 
     function syncVideoSpeed() {
         const refSpeed = 10.0;
+        const spd = getEffectiveSpeedKmh();
 
         if (isYouTubeActive && ytPlayer && typeof ytPlayer.setPlaybackRate === 'function') {
-            if (currentSpeed <= 0.2) {
-                ytPlayer.pauseVideo();
-            } else {
-                ytPlayer.playVideo();
-                const rate = Math.max(0.25, Math.min(currentSpeed / refSpeed, 2.0));
-                ytPlayer.setPlaybackRate(rate);
+            try {
+                const playerState = typeof ytPlayer.getPlayerState === 'function' ? ytPlayer.getPlayerState() : -1;
+                if (spd <= 0.2) {
+                    if (playerState === 1) {
+                        ytPlayer.pauseVideo();
+                    }
+                } else {
+                    if (playerState === 2 || playerState === 5) {
+                        ytPlayer.playVideo();
+                    }
+                    const rate = Math.max(0.25, Math.min(spd / refSpeed, 2.0));
+                    ytPlayer.setPlaybackRate(rate);
+                }
+            } catch (e) {
+                console.warn('syncVideoSpeed YouTube error:', e);
             }
         } else {
             const video = document.getElementById('routeVideo');
-            if (!video || !video.src) return;
+            if (!video || !video.src || video.style.display === 'none') return;
 
-            if (currentSpeed <= 0.2) {
-                video.pause();
-            } else {
-                if (video.paused) video.play();
-                video.playbackRate = Math.max(0.25, Math.min(currentSpeed / refSpeed, 3.0));
+            try {
+                if (spd <= 0.2) {
+                    if (!video.paused) video.pause();
+                } else {
+                    if (video.paused && isVideoPlaying) {
+                        const playPromise = video.play();
+                        if (playPromise !== undefined) playPromise.catch(() => {});
+                    }
+                    video.playbackRate = Math.max(0.25, Math.min(spd / refSpeed, 3.0));
+                }
+            } catch (e) {
+                console.warn('syncVideoSpeed HTML5 error:', e);
             }
         }
     }
