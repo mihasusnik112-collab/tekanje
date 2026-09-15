@@ -3287,7 +3287,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v59';
+    const APP_BUILD = 'v60';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -5299,12 +5299,19 @@
         if (overlay) overlay.style.display = 'none';
     }
 
+    let countdownAudioCtx = null;
+
     function playCountdownBeep(isGo = false) {
         try {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             if (!AudioContext) return;
-            const ctx = new AudioContext();
-            if (ctx.state === 'suspended') ctx.resume();
+            if (!countdownAudioCtx || countdownAudioCtx.state === 'closed') {
+                countdownAudioCtx = new AudioContext();
+            }
+            if (countdownAudioCtx.state === 'suspended') {
+                countdownAudioCtx.resume();
+            }
+            const ctx = countdownAudioCtx;
             const now = ctx.currentTime;
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
@@ -10409,6 +10416,19 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             return alert("⚠️ Steza ni povezana. GPX proge ni mogoče zagnati.");
         }
 
+        const initialInc = Math.min(gpxPoints[0].inclinePct || 0, maxInclineLimit);
+        const routeName = (document.getElementById('gpxName')?.textContent || 'GPX Proga').trim();
+
+        const countdownOk = await runWorkoutStartCountdown({
+            modeTitle: `GPX: ${routeName}`,
+            subtext: 'Pripravite se na zagon proge (5.0 km/h)...',
+            targetDetails: `Začetna hitrost: 5.0 km/h · Začetni naklon: ${initialInc.toFixed(1)}%`
+        });
+
+        if (!countdownOk) {
+            return;
+        }
+
         isGpxFollowingActive = true;
         isWorkoutActive = true;
         hasHadSpeedBefore = false;
@@ -10421,7 +10441,6 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             startTimer();
         }
 
-        const initialInc = Math.min(gpxPoints[0].inclinePct || 0, maxInclineLimit);
         const ok = await applyTreadmillTargets(5.0, initialInc, { start: true });
         if (!ok) {
             isGpxFollowingActive = false;
