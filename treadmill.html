@@ -3204,6 +3204,19 @@
     </div>
 </div>
 
+<!-- ODŠTEVALNIK DO ZAČETKA ZAGONA STEZE (5s do 0s) -->
+<div class="modal-overlay" id="workoutCountdownOverlay" style="z-index: 99999; background: rgba(5, 8, 15, 0.94); backdrop-filter: blur(14px); display: none; align-items: center; justify-content: center; flex-direction: column;">
+    <div style="text-align: center; color: #fff; max-width: 420px; padding: 2.5rem 2rem; border-radius: 1.5rem; background: radial-gradient(circle at center, rgba(16, 185, 129, 0.14), rgba(11, 15, 25, 0.85) 80%); border: 1px solid rgba(16, 185, 129, 0.4); box-shadow: 0 0 50px rgba(0,0,0,0.85);">
+        <div style="font-size: 1.1rem; font-weight: 800; color: var(--accent-cyan); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.25rem;" id="countdownModeLabel">PRIPRAVA NA TEK</div>
+        <div style="font-size: 7.5rem; font-weight: 900; line-height: 1; color: var(--accent-green); margin: 0.75rem 0; font-family: 'Outfit', sans-serif; text-shadow: 0 0 40px rgba(16, 185, 129, 0.7);" id="countdownNumber">5</div>
+        <div style="font-size: 1.1rem; color: #e2e8f0; font-weight: 700; margin-bottom: 0.75rem;" id="countdownSubtext">Stopite na tekalno stezo...</div>
+        <div style="font-size: 0.85rem; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 0.5rem 1rem; border-radius: 999px; margin-bottom: 1.25rem; display: inline-block;" id="countdownTargetDetails">Začetna hitrost: 3.0 km/h · Naklon: 0.0%</div>
+        <div>
+            <button class="btn btn-secondary" style="font-size: 0.82rem; padding: 0.4rem 1.2rem;" onclick="cancelWorkoutCountdown()">Prekliči</button>
+        </div>
+    </div>
+</div>
+
 <!-- TABLICA: SAMO LEŽEČI NAČIN -->
 <div class="rotate-lock-overlay" id="tabletRotateOverlay">
     <div style="font-size: 3rem;">🔄</div>
@@ -3274,7 +3287,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v57';
+    const APP_BUILD = 'v58';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -5250,6 +5263,89 @@
             `radial-gradient(circle at 28% 18%, hsl(${h1},${sat}%,${light + 12}%), hsl(${h2},${sat - 8}%,${light}%) 55%, #080c14 100%)`;
     }
 
+    let workoutCountdownCancelled = false;
+
+    function cancelWorkoutCountdown() {
+        workoutCountdownCancelled = true;
+        const overlay = document.getElementById('workoutCountdownOverlay');
+        if (overlay) overlay.style.display = 'none';
+    }
+
+    function playCountdownBeep(isGo = false) {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            if (ctx.state === 'suspended') ctx.resume();
+            const now = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            if (isGo) {
+                osc.frequency.setValueAtTime(1046.5, now); // C6 visok pisk ob startu
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.28, now + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.42);
+            } else {
+                osc.frequency.setValueAtTime(659.25, now); // E5 prijeten odštevalni pisk
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.18, now + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+                osc.start(now);
+                osc.stop(now + 0.16);
+            }
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+        } catch (_) {}
+    }
+
+    async function runWorkoutStartCountdown({ modeTitle = 'PRIPRAVA NA TEK', subtext = 'Stopite na tekalno stezo...', targetDetails = '' } = {}) {
+        workoutCountdownCancelled = false;
+        const overlay = document.getElementById('workoutCountdownOverlay');
+        const numEl = document.getElementById('countdownNumber');
+        const titleEl = document.getElementById('countdownModeLabel');
+        const subEl = document.getElementById('countdownSubtext');
+        const detEl = document.getElementById('countdownTargetDetails');
+
+        if (titleEl) titleEl.textContent = modeTitle;
+        if (subEl) subEl.textContent = subtext;
+        if (detEl) detEl.textContent = targetDetails || 'Začetna hitrost: 3.0 km/h · Naklon: 0.0%';
+
+        if (overlay) {
+            overlay.style.display = 'flex';
+        }
+
+        for (let sec = 5; sec >= 1; sec--) {
+            if (workoutCountdownCancelled) {
+                if (overlay) overlay.style.display = 'none';
+                return false;
+            }
+            if (numEl) {
+                numEl.textContent = sec;
+                numEl.style.color = sec <= 2 ? '#f59e0b' : 'var(--accent-green)';
+            }
+            playCountdownBeep(false);
+            await sleepMs(1000);
+        }
+
+        if (workoutCountdownCancelled) {
+            if (overlay) overlay.style.display = 'none';
+            return false;
+        }
+
+        if (numEl) {
+            numEl.textContent = 'START!';
+            numEl.style.color = '#10b981';
+        }
+        playCountdownBeep(true);
+        await sleepMs(500);
+
+        if (overlay) overlay.style.display = 'none';
+        return true;
+    }
+
     async function executeStartWorkoutWizard() {
         closeWizardModal();
 
@@ -5306,11 +5402,6 @@
 
         const progType = document.querySelector('input[name="wizProgramType"]:checked').value;
 
-        if (!startTime) {
-            startTime = Date.now();
-            startTimer();
-        }
-
         if (progType === 'program') {
             const selEl = document.getElementById('wizProgramSelect');
             const progChoice = selEl ? selEl.value : 'current';
@@ -5351,15 +5442,36 @@
             return;
         }
 
-        const ok = await applyTreadmillTargets(5.0, 2.0, { start: true });
+        // Ročni zagon (Free Run): 3.0 km/h, 0.0% naklon, 5s odštevalnik s piski
+        const initialSpeed = 3.0;
+        const initialIncline = 0.0;
+
+        const countdownOk = await runWorkoutStartCountdown({
+            modeTitle: 'ROČNI ZAGON TEKA',
+            subtext: 'Pripravite se za tek (3.0 km/h, brez naklona)...',
+            targetDetails: `Začetna hitrost: ${initialSpeed.toFixed(1)} km/h · Naklon: ${initialIncline.toFixed(1)}%`
+        });
+
+        if (!countdownOk) {
+            isWorkoutActive = false;
+            closeFullscreenHud();
+            return;
+        }
+
+        if (!startTime) {
+            startTime = Date.now();
+            startTimer();
+        }
+
+        const ok = await applyTreadmillTargets(initialSpeed, initialIncline, { start: true });
         if (!ok) {
             isWorkoutActive = false;
             closeFullscreenHud();
             alert("Ukazi za hitrost/naklon niso bili sprejeti. Preverite Bluetooth povezavo s stezo.");
             return;
         }
-        currentSpeed = 5.0;
-        currentIncline = Math.min(2.0, maxInclineLimit);
+        currentSpeed = initialSpeed;
+        currentIncline = initialIncline;
         updateUI();
 
         document.getElementById('btnStopWorkout').disabled = false;
@@ -9770,10 +9882,25 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         renderStepsList();
     }
 
-    /** Zažene trenutni intervalni program na stezi (brez čarovnika). */
+    /** Zažene trenutni intervalni program na stezi (z odštevalnikom 5s do 0s in piski). */
     async function runIntervalProgramOnTreadmill() {
         if (programSteps.length === 0) {
             alert('Najprej sestavite ali izberite program!');
+            return false;
+        }
+
+        const firstStep = programSteps[0] || { speed: 3.0, incline: 0.0, duration: 60 };
+
+        const countdownOk = await runWorkoutStartCountdown({
+            modeTitle: currentProgramName || 'INTERVALNI PROGRAM',
+            subtext: 'Program se bo začel čez...',
+            targetDetails: `1. korak: ${Number(firstStep.speed || 3.0).toFixed(1)} km/h · Naklon: ${Number(firstStep.incline || 0).toFixed(1)}%`
+        });
+
+        if (!countdownOk) {
+            isWorkoutActive = false;
+            isProgramActive = false;
+            closeFullscreenHud();
             return false;
         }
 
