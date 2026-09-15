@@ -3274,7 +3274,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v56';
+    const APP_BUILD = 'v57';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -3438,6 +3438,7 @@
     let fitshowLastWriteMs = 0;
     let fitshowStartInProgress = false;
     let isProgramActive = false;
+    let currentProgramName = '';
     let continuousListenInterval = null;
     let reconnectWatchdogInterval = null;
 
@@ -5311,7 +5312,10 @@
         }
 
         if (progType === 'program') {
-            const progChoice = document.getElementById('wizProgramSelect').value;
+            const selEl = document.getElementById('wizProgramSelect');
+            const progChoice = selEl ? selEl.value : 'current';
+            currentProgramName = selEl?.options?.[selEl.selectedIndex]?.text || 'Intervalni program';
+
             if (progChoice === 'current') {
                 if (!programSteps.length) {
                     isWorkoutActive = false;
@@ -5320,6 +5324,7 @@
                 }
             } else if (progChoice.startsWith('saved:')) {
                 const savedName = progChoice.slice('saved:'.length);
+                currentProgramName = savedName;
                 const loaded = await loadSavedProgramByName(savedName, false);
                 if (!loaded) {
                     isWorkoutActive = false;
@@ -5327,10 +5332,13 @@
                     return;
                 }
             } else if (progChoice === 'tibialis') {
+                currentProgramName = 'Tibialis Anterior Razbremenitev';
                 loadTibialisReliefProgram({ silent: true });
             } else if (progChoice === 'fatburn') {
+                currentProgramName = 'Zone 2 Fat Burn Program';
                 loadFatBurnProgram({ silent: true });
             } else if (progChoice === 'ai') {
+                currentProgramName = 'Gemini AI Personalizirani Program';
                 await generateAndApplyAiWorkout({ stayOnGemini: false, skipSavePrompt: true });
                 if (!programSteps.length) {
                     isWorkoutActive = false;
@@ -6863,8 +6871,8 @@ Uporabi null, če vrednosti ni mogoče zanesljivo prebrati.
         if (titleEl) titleEl.textContent = currentUser;
         const nutrUserLabel = document.getElementById('holNutrUserLabel');
         if (nutrUserLabel) nutrUserLabel.textContent = currentUser;
-        const stressUserLabel = document.getElementById('holStressUserLabel');
-        if (stressUserLabel) stressUserLabel.textContent = currentUser;
+        const sleepUserLabel = document.getElementById('sleepFormUserLabel');
+        if (sleepUserLabel) sleepUserLabel.textContent = currentUser;
 
         // 2. Telesna sestava in ITM
         const bmi = (weight / Math.pow(height / 100, 2)).toFixed(1);
@@ -7125,7 +7133,7 @@ Odgovori v slovenščini, kratko in strokovno.`;
         if (geminiBusy) return;
         geminiBusy = true;
 
-        const content = document.getElementById('holSleepAdvisorBox');
+        const content = document.getElementById('sleepGeminiAnalysisBox');
         if (content) content.innerHTML = '<span style="color:var(--accent-cyan);">⏳ Gemini analizira vzorce spanja in regeneracije…</span>';
 
         try {
@@ -10465,7 +10473,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         const sessionIsProgram = isProgramActive;
         const sessionIsGpx = isGpxFollowingActive;
         const sessionGpxName = isGpxFollowingActive ? (document.getElementById('gpxName')?.textContent || 'GPX') : '';
-        const sessionProgramName = (document.getElementById('currentProgramTitle')?.textContent || document.getElementById('wizProgramSelect')?.options?.[document.getElementById('wizProgramSelect')?.selectedIndex]?.text || '').trim();
+        const sessionProgramName = (currentProgramName || document.getElementById('wizProgramSelect')?.options?.[document.getElementById('wizProgramSelect')?.selectedIndex]?.text || 'Intervalni program').trim();
 
         let sessionDurationSec = sessionStartTime ? Math.floor((Date.now() - sessionStartTime) / 1000) : 0;
         if (sessionDurationSec <= 0 && sessionWorkoutLog.length > 0) {
@@ -11568,24 +11576,29 @@ Uporabi null, če vrednosti ni.`;
             userHistory = allHistory.filter(i => (i.user || i.user_name) === currentUser);
         }
 
-        const totalDist = userHistory.reduce((acc, i) => acc + (i.distance_km || i.distanceKm || 0), 0);
-        const totalSec = userHistory.reduce((acc, i) => acc + (i.duration_sec || i.durationSec || 0), 0);
-        const totalCals = userHistory.reduce((acc, i) => acc + (i.calories || 0), 0);
+        const totalDist = userHistory.reduce((acc, i) => acc + (Number(i.distance_km || i.distanceKm) || 0), 0);
+        const totalSec = userHistory.reduce((acc, i) => acc + (Number(i.duration_sec || i.durationSec) || 0), 0);
+        const totalCals = userHistory.reduce((acc, i) => acc + (Number(i.calories) || 0), 0);
 
         const incs = userHistory.map(i => {
             const meta = parseWorkoutMeta(i.gpx_name);
-            return i.avg_incline !== undefined && i.avg_incline !== null ? Number(i.avg_incline) : (meta.avgIncline || 0);
+            const val = i.avg_incline !== undefined && i.avg_incline !== null ? Number(i.avg_incline) : (meta.avgIncline || 0);
+            return isNaN(val) ? 0 : val;
         });
         const maxIncs = userHistory.map(i => {
             const meta = parseWorkoutMeta(i.gpx_name);
-            return i.max_incline !== undefined && i.max_incline !== null ? Number(i.max_incline) : (meta.maxIncline || 0);
+            const val = i.max_incline !== undefined && i.max_incline !== null ? Number(i.max_incline) : (meta.maxIncline || 0);
+            return isNaN(val) ? 0 : val;
         });
         const avgInclineAll = incs.length > 0 ? (incs.reduce((a, b) => a + b, 0) / incs.length).toFixed(1) : '0.0';
         const maxInclineAll = maxIncs.length > 0 ? Math.max(...maxIncs).toFixed(1) : '0.0';
 
-        document.getElementById('statTotalDist').textContent = totalDist.toFixed(1);
-        document.getElementById('statTotalTime').textContent = Math.round(totalSec / 60);
-        document.getElementById('statTotalCals').textContent = totalCals;
+        const distEl = document.getElementById('statTotalDist');
+        if (distEl) distEl.textContent = totalDist.toFixed(1);
+        const timeEl = document.getElementById('statTotalTime');
+        if (timeEl) timeEl.textContent = Math.round(totalSec / 60);
+        const calsEl = document.getElementById('statTotalCals');
+        if (calsEl) calsEl.textContent = totalCals;
         const avgIncEl = document.getElementById('statAvgIncline');
         if (avgIncEl) avgIncEl.textContent = avgInclineAll;
         const maxIncEl = document.getElementById('statMaxIncline');
