@@ -1000,18 +1000,77 @@
         }
 
         .modal-card {
-            background: #0d0b2e;
-            border: 1px solid var(--accent-purple);
+            background: #0b1120;
+            border: 1px solid rgba(139, 92, 246, 0.45);
             border-radius: 1.25rem;
             max-width: 650px;
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
             padding: 1.5rem;
-            box-shadow: 0 20px 50px rgba(168, 85, 247, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(139, 92, 246, 0.2);
             display: flex;
             flex-direction: column;
             gap: 1rem;
+            color: #f8fafc;
+            --text-main: #f8fafc;
+            --text-muted: #cbd5e1;
+        }
+
+        .modal-card label {
+            color: #f8fafc;
+        }
+
+        .modal-card select,
+        .modal-card input[type="text"],
+        .modal-card input[type="number"],
+        .modal-card input[type="date"] {
+            background: #1e293b !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.22) !important;
+            border-radius: 0.65rem;
+            padding: 0.6rem 0.85rem;
+        }
+
+        .modal-card .btn-secondary {
+            background: rgba(255, 255, 255, 0.12) !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            font-weight: 700;
+        }
+
+        .modal-card .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.22) !important;
+            color: #ffffff !important;
+        }
+
+        body.female-theme .modal-card {
+            background: #0f172a;
+            color: #f8fafc !important;
+            --text-main: #f8fafc !important;
+            --text-muted: #cbd5e1 !important;
+            border-color: rgba(244, 114, 182, 0.5);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(244, 114, 182, 0.2);
+        }
+
+        body.female-theme .modal-card label,
+        body.female-theme .modal-card span,
+        body.female-theme .modal-card p,
+        body.female-theme .modal-card div {
+            color: inherit;
+        }
+
+        body.female-theme .modal-card select,
+        body.female-theme .modal-card input {
+            background: #1e293b !important;
+            color: #ffffff !important;
+            border-color: rgba(255, 255, 255, 0.25) !important;
+        }
+
+        body.female-theme .modal-card .btn-secondary {
+            background: rgba(255, 255, 255, 0.14) !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.35) !important;
         }
 
         .table-responsive { overflow-x: auto; }
@@ -3097,39 +3156,39 @@
 
 <!-- MODALNO OKNO: ZAČNI TEK (INTERAKTIVNI ČAROVNIK NASTAVITEV Z AVDIO MOŽNOSTJO) -->
 <div class="modal-overlay" id="startWorkoutWizardModal">
-    <div class="modal-card" style="border-color: var(--accent-green);">
-        <h3 style="font-size: 1.35rem; color: var(--accent-green); text-align: center;">🚀 ČAROVNIK ZA ZAGON TEKA</h3>
-        <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center;">Izberite želene nastavitve, video progo in glasbo za današnji trening.</p>
+    <div class="modal-card" style="border-color: #10b981; background: #0b1120; color: #f8fafc; box-shadow: 0 25px 70px rgba(0,0,0,0.85), 0 0 35px rgba(16,185,129,0.25);">
+        <h3 style="font-size: 1.45rem; font-weight: 800; color: #34d399; text-align: center; margin: 0; text-shadow: 0 0 16px rgba(52, 211, 153, 0.45);">🚀 ČAROVNIK ZA ZAGON TEKA</h3>
+        <p style="font-size: 0.9rem; color: #cbd5e1; text-align: center; margin: 0; font-weight: 500;">Izberite želene nastavitve, video progo in glasbo za današnji trening.</p>
 
         <!-- Dinamični priporočeni tlak glede na težo aktivnega profila -->
-        <div style="background: rgba(6, 182, 212, 0.12); border: 1px solid rgba(6, 182, 212, 0.45); padding: 0.85rem 1rem; border-radius: 0.85rem; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-            <div style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.35;">
-                💨 Priporočen tlak zračnih blazin za <strong id="wizKpaUser" style="color: var(--accent-cyan);">Miha</strong>
-                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem;">Izračunano iz trenutne teže profila (realWeightKg)</div>
+        <div style="background: rgba(6, 182, 212, 0.16); border: 1px solid rgba(6, 182, 212, 0.55); padding: 0.9rem 1.1rem; border-radius: 0.85rem; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <div style="font-size: 0.92rem; color: #f8fafc; font-weight: 600; line-height: 1.35;">
+                💨 Priporočen tlak zračnih blazin za <strong id="wizKpaUser" style="color: #38bdf8; font-weight: 800;">Miha</strong>
+                <div style="font-size: 0.76rem; color: #cbd5e1; margin-top: 0.2rem; font-weight: 500;">Izračunano iz trenutne teže profila (realWeightKg)</div>
             </div>
-            <div id="wizKpaVal" style="font-size: 1.35rem; font-weight: 800; color: var(--accent-green); white-space: nowrap;">35 kPa</div>
+            <div id="wizKpaVal" style="font-size: 1.45rem; font-weight: 900; color: #34d399; text-shadow: 0 0 12px rgba(52, 211, 153, 0.4); white-space: nowrap;">35 kPa</div>
         </div>
 
         <!-- KORAK 1: NAČIN UPRAVLJANJA -->
-        <div style="background: rgba(255,255,255,0.04); padding: 1rem; border-radius: 0.85rem;">
-            <label style="font-size: 0.9rem; font-weight: 700; color: var(--accent-cyan); display: block; margin-bottom: 0.5rem;">
+        <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(56, 189, 248, 0.35); padding: 1.1rem; border-radius: 0.85rem;">
+            <label style="font-size: 0.95rem; font-weight: 800; color: #38bdf8; display: block; margin-bottom: 0.65rem; letter-spacing: 0.03em;">
                 1. KAKO ŽELITE VODITI TEK?
             </label>
 
-            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; cursor: pointer;">
-                    <input type="radio" name="wizProgramType" value="manual" checked onchange="toggleWizardProgramSelect(false)">
-                    🖐 <strong>Ročne nastavitve</strong> (Samostojno upravljanje hitrosti in naklona)
+            <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+                <label style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.92rem; color: #f8fafc; cursor: pointer; padding: 0.4rem 0.6rem; border-radius: 0.55rem; background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.08);">
+                    <input type="radio" name="wizProgramType" value="manual" checked onchange="toggleWizardProgramSelect(false)" style="width: 19px; height: 19px; accent-color: #38bdf8; cursor: pointer;">
+                    <span>🖐 <strong style="color: #ffffff; font-weight: 700;">Ročne nastavitve</strong> <span style="color: #cbd5e1; font-size: 0.84rem;">(Samostojno upravljanje hitrosti in naklona)</span></span>
                 </label>
 
-                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; cursor: pointer;">
-                    <input type="radio" name="wizProgramType" value="program" onchange="toggleWizardProgramSelect(true)">
-                    ⏱ <strong>Izberi Intervalni Program</strong> (Samodejno vodenje steze)
+                <label style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.92rem; color: #f8fafc; cursor: pointer; padding: 0.4rem 0.6rem; border-radius: 0.55rem; background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.08);">
+                    <input type="radio" name="wizProgramType" value="program" onchange="toggleWizardProgramSelect(true)" style="width: 19px; height: 19px; accent-color: #38bdf8; cursor: pointer;">
+                    <span>⏱ <strong style="color: #ffffff; font-weight: 700;">Izberi Intervalni Program</strong> <span style="color: #cbd5e1; font-size: 0.84rem;">(Samodejno vodenje steze)</span></span>
                 </label>
             </div>
 
-            <div id="wizProgramSelectContainer" style="display: none; margin-top: 0.75rem;">
-                <select id="wizProgramSelect" style="width: 100%;">
+            <div id="wizProgramSelectContainer" style="display: none; margin-top: 0.85rem;">
+                <select id="wizProgramSelect" style="width: 100%; background: #1e293b !important; color: #ffffff !important; border: 1px solid rgba(56, 189, 248, 0.45) !important; border-radius: 0.65rem; padding: 0.65rem 0.85rem; font-size: 0.92rem; font-weight: 600;">
                     <option value="current">📋 Trenutni program (iz Intervalnih programov)</option>
                     <option value="tibialis">🦵 Tibialis Relief (35 min) - Strma Hoja (Miha)</option>
                     <option value="fatburn">🔥 Fat Burn Low Impact (20 min)</option>
@@ -3139,50 +3198,50 @@
         </div>
 
         <!-- KORAK 2: VIDEO PROGA + HUD DISPLAY (lahko skupaj) -->
-        <div style="background: rgba(255,255,255,0.04); padding: 1rem; border-radius: 0.85rem;">
-            <label style="font-size: 0.9rem; font-weight: 700; color: var(--accent-pink); display: block; margin-bottom: 0.5rem;">
+        <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(244, 114, 182, 0.35); padding: 1.1rem; border-radius: 0.85rem;">
+            <label style="font-size: 0.95rem; font-weight: 800; color: #f472b6; display: block; margin-bottom: 0.65rem; letter-spacing: 0.03em;">
                 2. PRIKAZ MED TEKOM
             </label>
 
-            <div style="display: flex; flex-direction: column; gap: 0.65rem;">
-                <label style="display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem; cursor: pointer;">
-                    <input type="checkbox" id="wizUseVideo" onchange="toggleWizardVideoSelect(this.checked)" style="margin-top: 0.2rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <label style="display: flex; align-items: flex-start; gap: 0.65rem; font-size: 0.92rem; color: #f8fafc; cursor: pointer; padding: 0.4rem 0.6rem; border-radius: 0.55rem; background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.08);">
+                    <input type="checkbox" id="wizUseVideo" onchange="toggleWizardVideoSelect(this.checked)" style="margin-top: 0.25rem; width: 19px; height: 19px; accent-color: #f472b6; cursor: pointer;">
                     <span>
-                        🎬 <strong>Video proga</strong>
-                        <span style="display:block;font-size:0.78rem;color:var(--text-muted);">Lahek video HUD (hitrost, naklon, cona HR) + progress bar pri intervalih</span>
+                        🎬 <strong style="color: #ffffff; font-weight: 700;">Video proga</strong>
+                        <span style="display:block;font-size:0.82rem;color:#cbd5e1;margin-top:0.2rem;font-weight:500;">Lahek video HUD (hitrost, naklon, cona HR) + progress bar pri intervalih</span>
                     </span>
                 </label>
-                <select id="wizVideoSelect" style="width: 100%;" disabled>
-                    <option value="none">❌ Brez videa</option>
+                <select id="wizVideoSelect" style="width: 100%; background: #1e293b !important; color: #ffffff !important; border: 1px solid rgba(244, 114, 182, 0.45) !important; border-radius: 0.65rem; padding: 0.65rem 0.85rem; font-size: 0.92rem; font-weight: 600;" disabled>
+                    <option value="none">❌ Izberi video progo…</option>
                 </select>
 
-                <label style="display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem; cursor: pointer; margin-top: 0.25rem;">
-                    <input type="checkbox" id="wizUseFullscreenHud" checked style="margin-top: 0.2rem;">
+                <label style="display: flex; align-items: flex-start; gap: 0.65rem; font-size: 0.92rem; color: #f8fafc; cursor: pointer; padding: 0.4rem 0.6rem; border-radius: 0.55rem; background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.08);">
+                    <input type="checkbox" id="wizUseFullscreenHud" checked style="margin-top: 0.25rem; width: 19px; height: 19px; accent-color: #38bdf8; cursor: pointer;">
                     <span>
-                        📊 <strong>HUD display</strong>
-                        <span style="display:block;font-size:0.78rem;color:var(--text-muted);">Cel zaslon: HR krivulja, Max HR, cone + metrike. Med tekom preklopi na Video.</span>
+                        📊 <strong style="color: #ffffff; font-weight: 700;">HUD display</strong>
+                        <span style="display:block;font-size:0.82rem;color:#cbd5e1;margin-top:0.2rem;font-weight:500;">Cel zaslon: HR krivulja, Max HR, cone + metrike. Med tekom preklopi na Video.</span>
                     </span>
                 </label>
             </div>
         </div>
 
         <!-- KORAK 3: IZBIRA AVDIO / GLASBE -->
-        <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid var(--accent-purple); padding: 1rem; border-radius: 0.85rem;">
-            <label style="font-size: 0.9rem; font-weight: 700; color: var(--accent-purple); display: block; margin-bottom: 0.5rem;">
+        <div style="background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.45); padding: 1.1rem; border-radius: 0.85rem;">
+            <label style="font-size: 0.95rem; font-weight: 800; color: #c084fc; display: block; margin-bottom: 0.65rem; letter-spacing: 0.03em;">
                 3. ŽELITE PREDVAJATI GLASBO / PODCAST (YouTube Avdio)?
             </label>
 
-            <select id="wizAudioSelect" style="width: 100%;">
+            <select id="wizAudioSelect" style="width: 100%; background: #1e293b !important; color: #ffffff !important; border: 1px solid rgba(168, 85, 247, 0.45) !important; border-radius: 0.65rem; padding: 0.65rem 0.85rem; font-size: 0.92rem; font-weight: 600;">
                 <option value="none">🔇 Brez avdio glasbe</option>
             </select>
         </div>
 
         <!-- FINALNI GUMB ZA ZAGON -->
-        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-            <button class="btn btn-huge-start" style="flex: 1;" onclick="executeStartWorkoutWizard()">
+        <div style="display: flex; gap: 0.75rem; margin-top: 0.5rem;">
+            <button class="btn btn-huge-start" style="flex: 1; font-size: 1.05rem; font-weight: 900; padding: 0.85rem 1.25rem; letter-spacing: 0.03em;" onclick="executeStartWorkoutWizard()">
                 ▶ PRIČNI TEK SEDAJ
             </button>
-            <button class="btn btn-secondary" onclick="closeWizardModal()">Prekliči</button>
+            <button class="btn btn-secondary" style="background: rgba(255, 255, 255, 0.14) !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.35) !important; font-weight: 800; font-size: 0.95rem; padding: 0.85rem 1.5rem; border-radius: 0.85rem; cursor: pointer;" onclick="closeWizardModal()">Prekliči</button>
         </div>
     </div>
 </div>
@@ -3287,7 +3346,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v60';
+    const APP_BUILD = 'v61';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -5392,14 +5451,23 @@
 
         const useVideo = !!document.getElementById('wizUseVideo')?.checked;
         const useHud = !!document.getElementById('wizUseFullscreenHud')?.checked;
-        const videoUrl = document.getElementById('wizVideoSelect').value;
-        const hasVideo = useVideo && videoUrl && videoUrl !== 'none';
+        const videoUrl = document.getElementById('wizVideoSelect')?.value || '';
+        const hasValidVideoUrl = videoUrl && videoUrl !== 'none';
+        const hasVideo = useVideo && hasValidVideoUrl;
+
+        // Zahteva uporabnika:
+        // 1. Če je označen video (ali ima izbran veljaven video):
+        //    najprej preusmeri na VIDEO, pri čemer je omogočen preklop na HUD in nazaj na Video.
+        // 2. Če video NI označen (ali je označen HUD display):
+        //    avtomatično se aplikacija preusmeri v 📊 HUD display!
+        const preferVideo = (useVideo || hasVideo);
+        const targetView = preferVideo ? 'video' : 'hud';
 
         workoutDisplayMode = {
-            video: hasVideo,
-            hasVideo,
-            fullscreenHud: useHud,
-            view: useHud ? 'hud' : (hasVideo ? 'video' : 'hud')
+            video: preferVideo,
+            hasVideo: preferVideo && hasValidVideoUrl,
+            fullscreenHud: true, // omogoči gladek preklop na HUD kadarkoli med tekom
+            view: targetView
         };
 
         isWorkoutActive = true;
@@ -5410,22 +5478,19 @@
         resetHrSeries();
         refreshHrZoneLabels();
 
-        // 1. Video (naloži v ozadju; prikaz glede na view)
-        if (hasVideo) {
+        // 1. Video (če obstaja veljaven URL, naloži video)
+        if (hasValidVideoUrl) {
             document.getElementById('youtubeUrlInput').value = videoUrl;
-            loadYouTubeVideo();
-        } else {
+            try { loadYouTubeVideo(); } catch (_) {}
+        } else if (!preferVideo) {
             parkVideoContainer();
         }
 
-        // 2. Začetni prikaz: HUD ali video z rahlim HUD
-        if (useHud) {
-            setWorkoutView('hud');
-        } else if (hasVideo) {
+        // 2. Takojšnja samodejna preusmeritev v izbrani način (Video z lahkim HUD ali polni celozaslonski 📊 HUD display)
+        if (targetView === 'video') {
             setWorkoutView('video');
         } else {
-            closeFullscreenHud();
-            updateWorkoutViewSwitcherUi();
+            setWorkoutView('hud');
         }
 
         // 3. Avdio / Glasba
@@ -5490,6 +5555,7 @@
         if (!countdownOk) {
             isWorkoutActive = false;
             closeFullscreenHud();
+            exitVideoHudFullscreen();
             return;
         }
 
@@ -5502,6 +5568,7 @@
         if (!ok) {
             isWorkoutActive = false;
             closeFullscreenHud();
+            exitVideoHudFullscreen();
             alert("Ukazi za hitrost/naklon niso bili sprejeti. Preverite Bluetooth povezavo s stezo.");
             return;
         }
@@ -9936,6 +10003,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             isWorkoutActive = false;
             isProgramActive = false;
             closeFullscreenHud();
+            exitVideoHudFullscreen();
             return false;
         }
 
@@ -9954,7 +10022,11 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         buildHudProgramProgressTrack();
         await executeStep(programSteps[currentStepIdx], true);
         document.getElementById('btnStopWorkout').disabled = false;
-        if (!document.getElementById('fullscreenHudOverlay')?.classList.contains('active')) {
+        if (workoutDisplayMode.view === 'video') {
+            setWorkoutView('video');
+        } else if (workoutDisplayMode.view === 'hud' || document.getElementById('fullscreenHudOverlay')?.classList.contains('active')) {
+            openFullscreenHud({ withVideo: false });
+        } else {
             switchSectionById('secLive');
         }
         return true;
