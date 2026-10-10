@@ -3518,7 +3518,7 @@
     // INICIACIJA SUPABASE ODJEMALCA
     const SUPABASE_URL = 'https://sufmuxdqdnrqbdwppkxc.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_ERA66F3AgzIh5fNW5Fbujg_fpHAhrNX';
-    const APP_BUILD = 'v63';
+    const APP_BUILD = 'v64';
     let supabaseClient = null;
 
     function initSupabase() {
@@ -5219,20 +5219,37 @@
 
     // --- INTERAKTIVNI ČAROVNIK ZA ZAGON TEKA ("ZAČNI TEK" Z AVDIO MOŽNOSTJO) ---
     let workoutDisplayMode = { video: false, fullscreenHud: false, view: 'hud', hasVideo: false };
+    let cachedVideosList = null;
+    let cachedAudioList = null;
 
     async function openStartWorkoutWizard() {
-        await populateWizardVideosDropdown();
-        await populateWizardAudioDropdown();
-        await refreshWizardProgramOptions();
+        // 1. Nemudoma posodobi podatke in takoj prikaži modal, brez čakanja na omrežne klice
+        realWeightKg = Number(userProfiles[currentUser]?.weightKg) || realWeightKg;
+        updateWizardKpaUi();
+        document.getElementById('startWorkoutWizardModal').style.display = 'flex';
+
+        // 2. Takoj napolni možnosti programov iz lokalne shrambe
+        refreshWizardProgramOptions();
+
+        // 3. Takoj napolni iz lokalnega predpomnilnika
+        populateWizardVideosDropdownFast();
+        populateWizardAudioDropdownFast();
+
         const useVideo = document.getElementById('wizUseVideo');
         const videoSelect = document.getElementById('wizVideoSelect');
         if (useVideo && videoSelect) {
             videoSelect.disabled = !useVideo.checked;
         }
-        // Dinamični kPa iz trenutne teže aktivnega profila
-        realWeightKg = Number(userProfiles[currentUser]?.weightKg) || realWeightKg;
-        updateWizardKpaUi();
-        document.getElementById('startWorkoutWizardModal').style.display = 'flex';
+
+        // 4. V ozadju (asinhrono brez blokiranja UI) osveži iz baze, če so novi podatki
+        (async () => {
+            try {
+                await Promise.all([
+                    populateWizardVideosDropdown(),
+                    populateWizardAudioDropdown()
+                ]);
+            } catch (_) {}
+        })();
     }
 
     function closeWizardModal() {
@@ -5248,24 +5265,68 @@
         if (select) select.disabled = !checked;
     }
 
+    function populateWizardVideosDropdownFast() {
+        const select = document.getElementById('wizVideoSelect');
+        if (!select) return;
+        const currentVal = select.value;
+        const local = cachedVideosList || JSON.parse(localStorage.getItem('my_saved_yt_videos')) || [];
+        select.innerHTML = '<option value="none">❌ Izberi video progo…</option>';
+        local.forEach(item => {
+            select.innerHTML += `<option value="${item.video_url}">🎬 ${item.name}</option>`;
+        });
+        if (currentVal && [...select.options].some(o => o.value === currentVal)) {
+            select.value = currentVal;
+        }
+    }
+
+    function populateWizardAudioDropdownFast() {
+        const select = document.getElementById('wizAudioSelect');
+        if (!select) return;
+        const currentVal = select.value;
+        let localTracks = cachedAudioList;
+        if (!localTracks) {
+            const user = currentUser;
+            const userLocal = JSON.parse(localStorage.getItem(getPersonalPlaylistStorageKey(user))) || [];
+            const sharedLocal = JSON.parse(localStorage.getItem('my_playlist_shared_v1')) || [];
+            localTracks = [...userLocal, ...sharedLocal];
+        }
+        select.innerHTML = '<option value="none">🔇 Brez avdio glasbe</option>';
+        localTracks.forEach(item => {
+            select.innerHTML += `<option value="${item.audio_url}">🎵 ${item.name}</option>`;
+        });
+        if (currentVal && [...select.options].some(o => o.value === currentVal)) {
+            select.value = currentVal;
+        }
+    }
+
     async function populateWizardVideosDropdown() {
         const select = document.getElementById('wizVideoSelect');
-        select.innerHTML = '<option value="none">❌ Izberi video progo…</option>';
-
+        if (!select) return;
+        const currentVal = select.value;
         let videos = await fetchAllSavedVideos();
+        cachedVideosList = videos;
+        select.innerHTML = '<option value="none">❌ Izberi video progo…</option>';
         videos.forEach(item => {
             select.innerHTML += `<option value="${item.video_url}">🎬 ${item.name}</option>`;
         });
+        if (currentVal && [...select.options].some(o => o.value === currentVal)) {
+            select.value = currentVal;
+        }
     }
 
     async function populateWizardAudioDropdown() {
         const select = document.getElementById('wizAudioSelect');
-        select.innerHTML = '<option value="none">🔇 Brez avdio glasbe</option>';
-
+        if (!select) return;
+        const currentVal = select.value;
         let audioTracks = await fetchAllSavedAudio();
+        cachedAudioList = audioTracks;
+        select.innerHTML = '<option value="none">🔇 Brez avdio glasbe</option>';
         audioTracks.forEach(item => {
             select.innerHTML += `<option value="${item.audio_url}">🎵 ${item.name}</option>`;
         });
+        if (currentVal && [...select.options].some(o => o.value === currentVal)) {
+            select.value = currentVal;
+        }
     }
 
     function parkVideoContainer() {
@@ -10128,35 +10189,40 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         list.unshift({ name: customName, steps: programSteps, updated_at: new Date().toISOString() });
         setLocalSavedPrograms(list.slice(0, 40));
 
+        // Takoj osveži seznam programov v UI iz lokalne shrambe
+        refreshSavedProgramsList({ localOnly: true });
+
+        // V ozadju asinhrono sinhroniziraj s Supabase brez blokiranja uporabniškega vmesnika
         if (supabaseClient) {
-            try {
-                // upsert po imenu: najprej poišči, nato update/insert
-                const { data: existing } = await supabaseClient
-                    .from('interval_programs')
-                    .select('id,program_name')
-                    .eq('program_name', progName)
-                    .maybeSingle();
-                if (existing?.id) {
-                    await supabaseClient.from('interval_programs').update({ steps: programSteps }).eq('id', existing.id);
-                } else {
-                    await supabaseClient.from('interval_programs').insert({ program_name: progName, steps: programSteps });
+            (async () => {
+                try {
+                    // upsert po imenu: najprej poišči, nato update/insert
+                    const { data: existing } = await supabaseClient
+                        .from('interval_programs')
+                        .select('id,program_name')
+                        .eq('program_name', progName)
+                        .maybeSingle();
+                    if (existing?.id) {
+                        await supabaseClient.from('interval_programs').update({ steps: programSteps }).eq('id', existing.id);
+                    } else {
+                        await supabaseClient.from('interval_programs').insert({ program_name: progName, steps: programSteps });
+                    }
+                    // privzeti slot
+                    const { data: def } = await supabaseClient
+                        .from('interval_programs')
+                        .select('id')
+                        .eq('program_name', `${currentUser}_Program`)
+                        .maybeSingle();
+                    if (def?.id) {
+                        await supabaseClient.from('interval_programs').update({ steps: programSteps }).eq('id', def.id);
+                    } else {
+                        await supabaseClient.from('interval_programs').insert({ program_name: `${currentUser}_Program`, steps: programSteps });
+                    }
+                } catch (e) {
+                    console.warn('persistProgramQuiet background sync:', e);
                 }
-                // privzeti slot
-                const { data: def } = await supabaseClient
-                    .from('interval_programs')
-                    .select('id')
-                    .eq('program_name', `${currentUser}_Program`)
-                    .maybeSingle();
-                if (def?.id) {
-                    await supabaseClient.from('interval_programs').update({ steps: programSteps }).eq('id', def.id);
-                } else {
-                    await supabaseClient.from('interval_programs').insert({ program_name: `${currentUser}_Program`, steps: programSteps });
-                }
-            } catch (e) {
-                console.warn('persistProgramQuiet:', e);
-            }
+            })();
         }
-        await refreshSavedProgramsList();
         return customName;
     }
 
@@ -10196,13 +10262,14 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         }
     }
 
-    async function refreshSavedProgramsList() {
+    async function refreshSavedProgramsList(opts = {}) {
+        const { localOnly = false } = opts;
         const box = document.getElementById('savedProgramsList');
         if (!box) return;
 
         let programs = getLocalSavedPrograms();
 
-        if (supabaseClient) {
+        if (!localOnly && supabaseClient) {
             try {
                 const { data } = await supabaseClient
                     .from('interval_programs')
@@ -10443,10 +10510,11 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
     }
 
     /**
-     * ZAŽENI PROGRAM → prednastavi čarovnik ZAČNI TEK (intervalni + trenutni program + HUD)
-     * in takoj požene PRIČNI TEK SEDAJ.
+     * ZAŽENI PROGRAM → prednastavi čarovnik ZAČNI TEK (intervalni + trenutni program)
+     * in takoj odpre čarovnik (ali neposredno požene, če je posredovan parameter autoStart).
      */
-    async function startCustomProgram() {
+    async function startCustomProgram(opts = {}) {
+        const { autoStart = false } = opts;
         if (programSteps.length === 0) return alert('Najprej sestavite ali izberite program!');
 
         const nameEl = document.getElementById('progNameInput');
@@ -10456,10 +10524,7 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
             currentProgramName = 'Intervalni program';
         }
 
-        await refreshWizardProgramOptions();
-        await populateWizardVideosDropdown();
-        await populateWizardAudioDropdown();
-
+        // Prednastavi izbiro v čarovniku na intervalni program -> trenutni program
         const progRadio = document.querySelector('input[name="wizProgramType"][value="program"]');
         if (progRadio) {
             progRadio.checked = true;
@@ -10471,7 +10536,20 @@ Odgovori celovito na vprašanje (fitnes, šport, zdravje, prehrana, regeneracija
         const hud = document.getElementById('wizUseFullscreenHud');
         if (hud) hud.checked = true;
 
-        await executeStartWorkoutWizard();
+        if (autoStart) {
+            await executeStartWorkoutWizard();
+        } else {
+            // Nemudoma odpri čarovnik za začetek vadbe brez čakanja ali zamikov
+            await openStartWorkoutWizard();
+            // Po odprtju zagotovi, da je označen radio "program" in "current"
+            const r = document.querySelector('input[name="wizProgramType"][value="program"]');
+            if (r) {
+                r.checked = true;
+                toggleWizardProgramSelect(true);
+            }
+            const s = document.getElementById('wizProgramSelect');
+            if (s) s.value = 'current';
+        }
     }
 
     async function executeStep(step, isFirstStep = false) {
